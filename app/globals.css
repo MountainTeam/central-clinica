@@ -1,26 +1,106 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@theme {
+  --font-sans: var(--font-jakarta), system-ui, sans-serif;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --color-fundo: #f4f8f9;
+  --color-superficie: #ffffff;
+  --color-borda: #e2eaee;
+  --color-texto: #0f2a33;
+  --color-suave: #5d7682;
+  --color-verde: #0d9b86;
+  --color-verde-claro: #e5f5f1;
+  --color-azul: #2d6be0;
+  --color-azul-claro: #e9f0fd;
+  --color-alerta: #a85b06;
+  --color-alerta-claro: #fff6e5;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --ease-saida: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-gaveta: cubic-bezier(0.32, 0.72, 0, 1);
+
+  --shadow-card: 0 1px 2px rgb(15 42 51 / 0.04), 0 4px 16px -6px rgb(15 42 51 / 0.08);
+  --shadow-elevado: 0 2px 6px rgb(15 42 51 / 0.05), 0 18px 40px -12px rgb(15 42 51 / 0.18);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-fundo);
+  color: var(--color-texto);
 }
+
+.gradiente-marca {
+  background-image: linear-gradient(135deg, #12b39a 0%, #2d6be0 100%);
+}
+.texto-marca {
+  background-image: linear-gradient(135deg, #0d9b86 0%, #2d6be0 100%);
+  background-clip: text;
+  color: transparent;
+}
+
+/* Entrada escalonada: use style={{"--i": n}} */
+@keyframes entrar {
+  from { opacity: 0; transform: translateY(10px); }
+}
+.entrar {
+  animation: entrar 480ms var(--ease-saida) backwards;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+/* Botões e cartões: resposta ao toque */
+.pressionavel {
+  transition: transform 160ms var(--ease-saida), box-shadow 200ms ease, border-color 200ms ease, background-color 200ms ease;
+}
+.pressionavel:active { transform: scale(0.97); }
+@media (hover: hover) and (pointer: fine) {
+  .levanta:hover { transform: translateY(-2px); box-shadow: var(--shadow-elevado); border-color: #cfe3e2; }
+  .levanta:active { transform: translateY(0) scale(0.98); }
+}
+
+/* Gaveta lateral */
+.gaveta {
+  transform: translateX(104%);
+  transition: transform 260ms var(--ease-saida);
+}
+.gaveta[data-aberta="true"] {
+  transform: translateX(0);
+  transition: transform 460ms var(--ease-gaveta);
+}
+.veu {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 260ms ease;
+}
+.veu[data-aberta="true"] { opacity: 1; pointer-events: auto; }
+
+/* Aviso (toast) */
+.aviso {
+  transition: opacity 300ms ease, transform 300ms var(--ease-saida);
+  @starting-style { opacity: 0; transform: translateY(12px) scale(0.97); }
+}
+
+/* Login: fundo vivo */
+@keyframes flutuar {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(30px, -40px) scale(1.08); }
+}
+.bolha { animation: flutuar 14s ease-in-out infinite; }
+@keyframes tracar { to { stroke-dashoffset: 0; } }
+.ecg {
+  stroke-dasharray: 1200;
+  stroke-dashoffset: 1200;
+  animation: tracar 2.6s cubic-bezier(0.65, 0, 0.35, 1) 300ms forwards;
+}
+@keyframes pulsar {
+  0% { box-shadow: 0 0 0 0 rgb(13 155 134 / 0.45); }
+  100% { box-shadow: 0 0 0 10px rgb(13 155 134 / 0); }
+}
+.pulso { animation: pulsar 2s ease-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .entrar { animation: none; }
+  .bolha, .pulso { animation: none; }
+  .ecg { animation: none; stroke-dashoffset: 0; }
+  .gaveta, .gaveta[data-aberta="true"] { transition: opacity 200ms ease; }
+  .pressionavel:active, .levanta:hover { transform: none; }
+}
+
+::selection { background: #cdeee7; }
