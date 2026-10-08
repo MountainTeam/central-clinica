@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# documentos internos do projeto (não vão para o repositório público)
+/CLAUDE.md
+/.claude/
+/topicos.md
+/proposta-rascunho.md
+/transcricao-audio.txt
