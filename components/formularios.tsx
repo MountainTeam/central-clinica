@@ -3,9 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useStore, type Formulario } from "@/lib/store";
-import { DIAS, type Convenio, type DadosClinica, type Exame, type Horario, type Profissional } from "@/lib/modelo";
+import { DIAS, type Convenio, type DadosClinica, type Exame, type Horario, type Papel, type Profissional } from "@/lib/modelo";
+import { PAPEIS } from "@/lib/permissoes";
 import { corDoIndice, novoId, slug } from "@/lib/regras";
-import { salvarClinica, salvarConvenio, salvarEspecialidade, salvarExame, salvarOrganizacao, salvarProfissional } from "@/lib/repositorio";
+import { salvarClinica, salvarConvenio, salvarEspecialidade, salvarExame, salvarOrganizacao, salvarProfissional, salvarUsuario } from "@/lib/repositorio";
 import { Botao, EnvioLogo, Gaveta } from "./ui";
 
 export const campo = "w-full rounded-xl border border-borda bg-superficie px-3 py-2.5 text-[15px] outline-none transition placeholder:text-suave/60 focus:border-verde focus:ring-4 focus:ring-verde/15";
@@ -62,6 +63,7 @@ export function Formularios() {
       {atual?.tipo === "exame" && <FormExame key={k} id={atual.id} />}
       {atual?.tipo === "organizacao" && <FormOrganizacao key={k} />}
       {atual?.tipo === "clinica" && <FormClinica key={k} id={atual.id} />}
+      {atual?.tipo === "usuario" && <FormUsuario key={k} />}
     </Gaveta>
   );
 }
@@ -317,6 +319,68 @@ function FormClinica({ id }: { id?: string }) {
       <Campo rotulo="Nome da clínica">
         <input name="nome" defaultValue={c?.nome} onChange={(e) => setNomeAtual(e.target.value)} placeholder="Ex.: COMN" className={campo} />
       </Campo>
+    </Moldura>
+  );
+}
+
+function FormUsuario() {
+  const { banco, executar, abrirForm, avisar } = useStore();
+  const [papel, setPapel] = useState<Papel>("recepcao");
+  const todas = papel === "administrador" || papel === "comercial";
+
+  const salvar = (f: FormData) => {
+    const nome = String(f.get("nome")).trim();
+    const email = String(f.get("email")).trim();
+    if (!nome || !email) return avisar("Informe nome e e-mail");
+    const clinicas = todas ? [] : banco.clinicas.filter((c) => f.get(`cl:${c.id}`)).map((c) => c.id);
+    // a regra "pelo menos uma clínica" é conferida no repositório
+    if (executar((b, u) => salvarUsuario(b, u, { id: novoId("usuario"), nome, email, papel, clinicas }), "Usuário cadastrado")) abrirForm(null);
+  };
+
+  return (
+    <Moldura titulo="Novo usuário" descricao="O papel define o que a pessoa pode fazer; as clínicas, onde." onSalvar={salvar}>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Campo rotulo="Nome"><input name="nome" placeholder="Ex.: Recepção COMN — tarde" className={campo} /></Campo>
+        <Campo rotulo="E-mail"><input name="email" type="email" placeholder="nome@clinica.com.br" className={campo} /></Campo>
+      </div>
+      <fieldset>
+        <legend className="mb-1.5 block text-sm font-semibold">Papel</legend>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {(Object.keys(PAPEIS) as Papel[]).map((p) => (
+            <label key={p} className="pressionavel flex cursor-pointer gap-3 rounded-xl border border-borda px-3 py-2.5 has-[:checked]:border-verde/50 has-[:checked]:bg-verde-claro">
+              <input type="radio" name="papel" checked={papel === p} onChange={() => setPapel(p)} className="mt-1 size-4 accent-verde" />
+              <span>
+                <span className="block text-sm font-semibold">{PAPEIS[p].rotulo}</span>
+                <span className="block text-xs text-suave">{PAPEIS[p].descricao}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      {todas ? (
+        <p className="rounded-xl bg-fundo px-4 py-3 text-sm text-suave">{PAPEIS[papel].rotulo} acessa todas as clínicas.</p>
+      ) : (
+        <fieldset>
+          <legend className="mb-1.5 block text-sm font-semibold">Clínicas vinculadas</legend>
+          <div className="space-y-3">
+            {banco.organizacoes.map((o) => {
+              const daOrg = banco.clinicas.filter((c) => c.organizacaoId === o.id);
+              return daOrg.length > 0 && (
+                <div key={o.id}>
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-suave">{o.nome}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {daOrg.map((c) => (
+                      <label key={c.id} className="pressionavel flex cursor-pointer items-center gap-2 rounded-xl border border-borda px-3 py-1.5 text-sm has-[:checked]:border-azul/40 has-[:checked]:bg-azul-claro has-[:checked]:text-azul">
+                        <input type="checkbox" name={`cl:${c.id}`} className="accent-azul" />{c.nome}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </fieldset>
+      )}
     </Moldura>
   );
 }

@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Building2, Check, CheckCircle2, ChevronsUpDown, FlaskConical, LayoutGrid, Lock, LogOut, Search, ShieldCheck } from "lucide-react";
+import { Building2, Check, CheckCircle2, ChevronsUpDown, FlaskConical, LayoutGrid, Lock, LogOut, Search, ShieldCheck, Users } from "lucide-react";
 import type { Usuario } from "@/lib/modelo";
-import { PAPEIS, podeVerTelaClinicas } from "@/lib/permissoes";
+import { PAPEIS, podeCriarUsuario, podeVerTelaClinicas } from "@/lib/permissoes";
 import { useStore } from "@/lib/store";
 import { Logo, LogoMarca, Vazio } from "@/components/ui";
 import { Paineis } from "@/components/paineis";
@@ -18,6 +18,7 @@ const menu: ItemMenu[] = [
   { href: "/convenios", rotulo: "Convênios", icone: ShieldCheck },
   { href: "/exames", rotulo: "Exames", icone: FlaskConical },
   { href: "/clinicas", rotulo: "Clínicas", icone: Building2, mostrar: podeVerTelaClinicas },
+  { href: "/usuarios", rotulo: "Usuários", icone: Users, mostrar: podeCriarUsuario },
 ];
 
 export function Estrutura({ children }: { children: React.ReactNode }) {
