@@ -129,7 +129,7 @@ export default function BuscaRapida() {
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {resultados.map((p, i) => (
-          <CartaoProfissional key={p.id} p={p} i={i} especialidade={nomeEsp(p.especialidadeId)} onClick={() => abrir({ tipo: "profissional", id: p.id })}
+          <CartaoProfissional key={p.id} p={p} i={i} especialidade={nomeEsp(p.especialidadeId)}
             destaque={p.procedimentos.length > 0 && (
               <div className="flex flex-wrap gap-1.5 border-t border-borda pt-3">
                 {p.procedimentos.slice(0, 3).map((x) => <span key={x} className="rounded-md bg-fundo px-2 py-0.5 text-xs text-suave">{x}</span>)}
@@ -138,7 +138,7 @@ export default function BuscaRapida() {
             )} />
         ))}
       </div>
-      {!resultados.length && <div className="mt-4"><Vazio texto="Ninguém atende com esses filtros. Tente outra rede do convênio ou tire um filtro." /></div>}
+      {!resultados.length && <div className="mt-4"><Vazio texto={dados.profissionais.length ? "Ninguém atende com esses filtros. Tente outra rede do convênio ou tire um filtro." : "Nenhum profissional cadastrado nesta clínica ainda."} /></div>}
     </div>
   );
 }

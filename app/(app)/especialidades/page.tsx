@@ -6,7 +6,7 @@ import { useStore } from "@/lib/store";
 import { Botao, CabecalhoPagina, CartaoProfissional, Icone, Vazio } from "@/components/ui";
 
 export default function Especialidades() {
-  const { dados, perfil, abrir, abrirForm } = useStore();
+  const { dados, perfil, abrirForm } = useStore();
   const [sel, setSel] = useState(dados.especialidades[0]?.id ?? "");
   const atual = dados.especialidades.find((e) => e.id === sel);
   const lista = dados.profissionais.filter((p) => p.especialidadeId === sel);
@@ -46,7 +46,7 @@ export default function Especialidades() {
           {lista.length ? (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {lista.map((p, i) => (
-                <CartaoProfissional key={p.id} p={p} i={i} onClick={() => abrir({ tipo: "profissional", id: p.id })}
+                <CartaoProfissional key={p.id} p={p} i={i}
                   destaque={
                     <div className="flex flex-wrap gap-1.5 border-t border-borda pt-3">
                       {p.procedimentos.length

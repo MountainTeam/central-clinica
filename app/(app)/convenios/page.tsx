@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { ChevronRight, FlaskConical, Plus, Stethoscope, TriangleAlert } from "lucide-react";
 import { useStore } from "@/lib/store";
@@ -34,7 +35,7 @@ export default function Convenios() {
         {l.length ? (
           <div className="space-y-1">
             {l.map((p, i) => (
-              <button key={p.id} onClick={() => abrir({ tipo: "profissional", id: p.id })} style={{ "--i": i } as React.CSSProperties}
+              <Link key={p.id} href={`/profissionais/${p.id}`} style={{ "--i": i } as React.CSSProperties}
                 className="entrar pressionavel group flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left hover:bg-fundo">
                 <Avatar nome={p.nome} />
                 <span className="min-w-0 flex-1">
@@ -43,7 +44,7 @@ export default function Convenios() {
                 </span>
                 {p.restricoes.length > 0 && <TriangleAlert className="size-4 text-alerta" aria-label="Tem restrição" />}
                 <ChevronRight className="size-4 text-suave/50 transition-transform group-hover:translate-x-0.5" />
-              </button>
+              </Link>
             ))}
           </div>
         ) : <Vazio texto={`Ninguém atende ${tipo} por esta rede.`} />}

@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect } from "react";
 import * as Icones from "lucide-react";
 import { X } from "lucide-react";
-import { iniciais, type Dados, type Tipo } from "@/lib/dados";
+import { useStore } from "@/lib/store";
+import { iniciais, resumoHorarios, type Dados, type Profissional, type Tipo } from "@/lib/dados";
 
 export function Logo({ claro = false }: { claro?: boolean }) {
   return (
@@ -147,11 +149,13 @@ export function Vazio({ texto }: { texto: string }) {
   return <p className="rounded-xl border border-dashed border-borda px-4 py-6 text-center text-sm text-suave">{texto}</p>;
 }
 
-export function CartaoProfissional({ p, especialidade, destaque, i, onClick }: {
-  p: { nome: string; dias: string; restricoes: unknown[] }; especialidade?: string; destaque?: React.ReactNode; i: number; onClick: () => void;
+export function CartaoProfissional({ p, especialidade, destaque, i }: {
+  p: Profissional; especialidade?: string; destaque?: React.ReactNode; i: number;
 }) {
+  const { dados, perfil } = useStore();
+  const setor = perfil === "admin" && dados.setores.length ? (dados.setores.find((x) => x.id === p.setorId)?.nome ?? "Compartilhado") : null;
   return (
-    <button onClick={onClick} style={{ "--i": Math.min(i, 10) } as React.CSSProperties}
+    <Link href={`/profissionais/${p.id}`} style={{ "--i": Math.min(i, 10) } as React.CSSProperties}
       className="entrar pressionavel levanta group flex w-full flex-col gap-4 rounded-3xl border border-borda bg-superficie p-5 text-left shadow-card">
       <div className="flex items-center gap-3">
         <Avatar nome={p.nome} />
@@ -162,10 +166,11 @@ export function CartaoProfissional({ p, especialidade, destaque, i, onClick }: {
         <Icones.ChevronRight className="size-5 text-suave/50 transition-transform group-hover:translate-x-0.5 group-hover:text-verde" />
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <span className="flex items-center gap-1.5 text-sm text-suave"><Icones.CalendarDays className="size-4" />{p.dias || "Dias não informados"}</span>
+        <span className="flex items-center gap-1.5 text-sm text-suave"><Icones.CalendarDays className="size-4 shrink-0" />{resumoHorarios(p.horarios)}</span>
+        {setor && <Chip tom="azul">{setor}</Chip>}
         {p.restricoes.length > 0 && <Chip tom="alerta"><Icones.TriangleAlert className="size-3.5" />{p.restricoes.length === 1 ? "1 restrição" : `${p.restricoes.length} restrições`}</Chip>}
       </div>
       {destaque}
-    </button>
+    </Link>
   );
 }

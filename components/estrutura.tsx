@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { CheckCircle2, FileSpreadsheet, FlaskConical, LayoutGrid, LogOut, Search, ShieldCheck } from "lucide-react";
+import { Building2, CheckCircle2, ChevronsUpDown, FlaskConical, LayoutGrid, Lock, LogOut, Search, ShieldCheck, Users } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { Logo } from "@/components/ui";
 import { Paineis } from "@/components/paineis";
@@ -14,11 +14,11 @@ const menu = [
   { href: "/especialidades", rotulo: "Especialidades", icone: LayoutGrid },
   { href: "/convenios", rotulo: "Convênios", icone: ShieldCheck },
   { href: "/exames", rotulo: "Exames", icone: FlaskConical },
-  { href: "/importar", rotulo: "Importar planilha", icone: FileSpreadsheet, admin: true },
+  { href: "/usuarios", rotulo: "Usuários e setores", icone: Users, admin: true },
 ];
 
-export default function LayoutApp({ children }: { children: React.ReactNode }) {
-  const { perfil, carregado, sair, aviso } = useStore();
+export function Estrutura({ children }: { children: React.ReactNode }) {
+  const { perfil, carregado, sair, aviso, clinica, usuario, setor } = useStore();
   const router = useRouter();
   const rota = usePathname();
 
@@ -27,6 +27,19 @@ export default function LayoutApp({ children }: { children: React.ReactNode }) {
   }, [carregado, perfil, router]);
 
   const itens = menu.filter((m) => !m.admin || perfil === "admin");
+  // usuário ligado a uma clínica não troca de clínica
+  const travada = !!usuario?.clinicaId;
+  const conteudoClinica = (
+    <>
+      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-superficie text-verde shadow-card"><Building2 className="size-4" /></span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[11px] font-semibold uppercase tracking-wider text-suave">Clínica</span>
+        <span key={clinica.id} className="entrar block truncate font-semibold">{clinica.nome}</span>
+        {setor && <span className="mt-1 inline-flex rounded-md bg-azul-claro px-1.5 py-0.5 text-[11px] font-semibold text-azul">Setor {setor.nome}</span>}
+      </span>
+      {travada ? <Lock className="size-4 text-suave/60" aria-label="Clínica fixa do seu usuário" /> : <ChevronsUpDown className="size-4 text-suave" />}
+    </>
+  );
   const ativo = itens.findIndex((m) => (m.href === "/" ? rota === "/" : rota.startsWith(m.href)));
 
   return (
@@ -34,7 +47,15 @@ export default function LayoutApp({ children }: { children: React.ReactNode }) {
     <div className={`min-h-screen lg:pl-72 ${perfil ? "" : "invisible"}`}>
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 flex-col border-r border-borda bg-superficie/80 p-5 backdrop-blur lg:flex">
         <Logo />
-        <nav className="relative mt-10 space-y-1">
+        {travada ? (
+          <div className="mt-8 flex items-center gap-3 rounded-2xl border border-borda bg-fundo p-3">{conteudoClinica}</div>
+        ) : (
+          <Link href="/clinicas"
+            className={`pressionavel mt-8 flex items-center gap-3 rounded-2xl border p-3 hover:border-verde/40 ${rota === "/clinicas" ? "border-verde/40 bg-verde-claro" : "border-borda bg-fundo"}`}>
+            {conteudoClinica}
+          </Link>
+        )}
+        <nav className="relative mt-6 space-y-1">
           {ativo >= 0 && (
             <span className="absolute inset-x-0 top-0 h-11 rounded-xl bg-verde-claro transition-transform duration-300 ease-saida"
               style={{ transform: `translateY(calc(${ativo} * (2.75rem + 0.25rem)))` }} />
@@ -49,9 +70,11 @@ export default function LayoutApp({ children }: { children: React.ReactNode }) {
         <div className="mt-auto rounded-2xl border border-borda bg-fundo p-4">
           <div className="flex items-center gap-2">
             <span className="pulso size-2 rounded-full bg-verde" />
-            <p className="text-sm font-semibold">{perfil === "admin" ? "Administrador" : "Atendente"}</p>
+            <p className="truncate text-sm font-semibold">{usuario?.nome}</p>
           </div>
-          <p className="mt-1 text-xs text-suave">{perfil === "admin" ? "Pode cadastrar e editar." : "Acesso só para consulta."}</p>
+          <p className="mt-1 text-xs text-suave">
+            {perfil === "admin" ? "Administrador: cadastra e edita." : setor ? `Vê só os médicos do setor ${setor.nome}.` : "Acesso só para consulta."}
+          </p>
           <button onClick={() => { sair(); router.replace("/login"); }}
             className="pressionavel mt-3 flex items-center gap-2 text-sm font-semibold text-suave hover:text-texto">
             <LogOut className="size-4" />Sair
@@ -61,8 +84,12 @@ export default function LayoutApp({ children }: { children: React.ReactNode }) {
 
       {/* Celular e tablet */}
       <header className="sticky top-0 z-30 border-b border-borda bg-superficie/85 backdrop-blur lg:hidden">
-        <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center justify-between gap-2 px-4 py-3">
           <Logo />
+          <Link href={travada ? "/" : "/clinicas"} className="pressionavel ml-auto flex min-w-0 items-center gap-1.5 rounded-xl border border-borda bg-fundo px-3 py-2 text-sm font-semibold">
+            <Building2 className="size-4 shrink-0 text-verde" /><span className="truncate">{clinica.nome}{setor && ` · ${setor.nome}`}</span>
+            {!travada && <ChevronsUpDown className="size-3.5 shrink-0 text-suave" />}
+          </Link>
           <button onClick={() => { sair(); router.replace("/login"); }} aria-label="Sair" className="pressionavel grid size-10 place-items-center rounded-xl text-suave hover:bg-fundo">
             <LogOut className="size-5" />
           </button>
@@ -77,7 +104,7 @@ export default function LayoutApp({ children }: { children: React.ReactNode }) {
         </nav>
       </header>
 
-      <main key={rota} className="mx-auto max-w-6xl px-4 py-8 sm:px-8 lg:py-12">{children}</main>
+      <main key={`${rota}-${clinica.id}`} className="mx-auto max-w-6xl px-4 py-8 sm:px-8 lg:py-12">{children}</main>
 
       <Paineis />
       <Formularios />

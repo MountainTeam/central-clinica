@@ -4,15 +4,21 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ArrowRight, FlaskConical, ShieldCheck, Stethoscope } from "lucide-react";
 import { useStore } from "@/lib/store";
-import type { Perfil } from "@/lib/dados";
-import { Logo, Segmentado } from "@/components/ui";
+import { Logo } from "@/components/ui";
 
 const campo = "h-12 w-full rounded-xl border border-borda bg-superficie px-4 text-[15px] outline-none transition placeholder:text-suave/60 focus:border-verde focus:ring-4 focus:ring-verde/15";
 
 export default function Login() {
-  const { entrar } = useStore();
+  const { entrar, usuarios, clinicas } = useStore();
   const router = useRouter();
-  const [perfil, setPerfil] = useState<Perfil>("leitura");
+  const [usuarioId, setUsuarioId] = useState(usuarios[1]?.id ?? usuarios[0].id);
+  const escolhido = usuarios.find((u) => u.id === usuarioId)!;
+  const alcance = (u: typeof escolhido) => {
+    if (u.perfil === "admin") return "Vê e edita todas as clínicas";
+    const c = clinicas.find((x) => x.id === u.clinicaId);
+    const s = c?.dados.setores.find((x) => x.id === u.setorId);
+    return s ? `${c?.nome} · só médicos do setor ${s.nome}` : `${c?.nome ?? "Todas as clínicas"} · só consulta`;
+  };
 
   return (
     <div className="grid min-h-screen lg:grid-cols-[1.1fr_1fr]">
@@ -48,7 +54,7 @@ export default function Login() {
 
       {/* Formulário */}
       <div className="flex items-center justify-center p-6">
-        <form className="w-full max-w-sm" onSubmit={(e) => { e.preventDefault(); entrar(perfil); router.replace("/"); }}>
+        <form className="w-full max-w-sm" onSubmit={(e) => { e.preventDefault(); entrar(usuarioId); router.replace(escolhido.clinicaId ? "/" : "/clinicas"); }}>
           <div className="entrar mb-10 lg:hidden"><Logo /></div>
           <h2 className="entrar text-[28px] font-bold tracking-tight" style={{ "--i": 1 } as React.CSSProperties}>Entrar</h2>
           <p className="entrar mt-1 text-suave" style={{ "--i": 2 } as React.CSSProperties}>Use o acesso que a coordenação te passou.</p>
@@ -56,16 +62,26 @@ export default function Login() {
           <div className="entrar mt-8 space-y-4" style={{ "--i": 3 } as React.CSSProperties}>
             <label className="block">
               <span className="mb-1.5 block text-sm font-semibold">E-mail</span>
-              <input type="email" placeholder="voce@clinica.com.br" className={campo} />
+              <input key={usuarioId} type="email" defaultValue={escolhido.email} placeholder="voce@clinica.com.br" className={campo} />
             </label>
             <label className="block">
               <span className="mb-1.5 block text-sm font-semibold">Senha</span>
               <input type="password" placeholder="••••••••" className={campo} />
             </label>
-            <div>
-              <span className="mb-1.5 block text-sm font-semibold">Acessar como <span className="font-normal text-suave">(só no protótipo)</span></span>
-              <Segmentado valor={perfil} onChange={setPerfil} opcoes={[{ valor: "leitura", rotulo: "Atendente" }, { valor: "admin", rotulo: "Administrador" }]} />
-            </div>
+            <fieldset>
+              <legend className="mb-1.5 block text-sm font-semibold">Usuário de teste <span className="font-normal text-suave">(só no protótipo)</span></legend>
+              <div className="space-y-1.5">
+                {usuarios.map((u) => (
+                  <label key={u.id} className="pressionavel flex cursor-pointer items-center gap-3 rounded-xl border border-borda bg-superficie px-3 py-2.5 has-[:checked]:border-verde/50 has-[:checked]:bg-verde-claro">
+                    <input type="radio" name="usuario" value={u.id} checked={u.id === usuarioId} onChange={() => setUsuarioId(u.id)} className="size-4 accent-verde" />
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold">{u.nome}</span>
+                      <span className="block truncate text-xs text-suave">{alcance(u)}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
           </div>
 
           <button type="submit" className="entrar pressionavel gradiente-marca group mt-8 flex h-12 w-full items-center justify-center gap-2 rounded-xl font-semibold text-white shadow-card hover:brightness-105" style={{ "--i": 4 } as React.CSSProperties}>
