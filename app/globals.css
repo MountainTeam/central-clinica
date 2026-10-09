@@ -95,7 +95,22 @@ body {
 }
 .pulso { animation: pulsar 2s ease-out infinite; }
 
+/* Janela flutuante: aparece rápido, some mais rápido ainda; a sombra cresce enquanto é arrastada */
+.janela {
+  transform-origin: top right;
+  transition: opacity 220ms var(--ease-saida), transform 220ms var(--ease-saida), box-shadow 200ms ease;
+}
+.janela[data-aberta="false"] {
+  opacity: 0;
+  transform: scale(0.96) translateY(-6px);
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 140ms ease, transform 140ms var(--ease-saida), visibility 0s 140ms;
+}
+.janela[data-arrastando="true"] { box-shadow: 0 32px 64px -16px rgb(15 42 51 / 0.35); }
+
 @media (prefers-reduced-motion: reduce) {
+  .janela, .janela[data-aberta="false"] { transform: none; transition: opacity 150ms ease; }
   .entrar { animation: none; }
   .bolha, .pulso { animation: none; }
   .ecg { animation: none; stroke-dashoffset: 0; }

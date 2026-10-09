@@ -5,19 +5,20 @@ import { useState } from "react";
 import { ChevronRight, ClipboardList, Copy, FileText, FlaskConical, Pencil, ShieldCheck, UserRound } from "lucide-react";
 import { useStore, type Painel } from "@/lib/store";
 import { resumoHorarios } from "@/lib/regras";
-import { Avatar, Botao, Chip, Gaveta, LogoMarca, Secao, Vazio } from "./ui";
+import { Avatar, Botao, Chip, Janela, LogoMarca, Secao, Vazio } from "./ui";
 
 export function Paineis() {
-  const { painel, abrir } = useStore();
-  // mantém o conteúdo visível enquanto a gaveta desliza para fora
+  const { painel, abrir, dados } = useStore();
+  // mantém o conteúdo visível enquanto a janela some
   const [ultimo, setUltimo] = useState<Painel>(null);
   if (painel && painel !== ultimo) setUltimo(painel);
   const atual = painel ?? ultimo;
 
   return (
-    <Gaveta aberta={!!painel} onFechar={() => abrir(null)}>
+    <Janela aberta={!!painel} onFechar={() => abrir(null)}
+      titulo={`Preparo · ${dados.exames.find((e) => e.id === atual?.id)?.nome ?? "Exame"}`}>
       {atual && <FichaExame key={atual.id} id={atual.id} />}
-    </Gaveta>
+    </Janela>
   );
 }
 
@@ -36,8 +37,8 @@ function FichaExame({ id }: { id: string }) {
   };
 
   return (
-    <div className="space-y-8 p-6 sm:p-8">
-      <header className="entrar flex items-start gap-4 pr-10">
+    <div className="space-y-7 p-5 sm:p-6">
+      <header className="entrar flex items-start gap-4">
         <div className="grid size-16 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-sky-400 to-blue-600 text-white"><FlaskConical className="size-7" /></div>
         <div>
           <p className="text-sm font-medium text-azul">Exame</p>
@@ -82,7 +83,7 @@ function FichaExame({ id }: { id: string }) {
         {quemFaz.length ? (
           <div className="space-y-2">
             {quemFaz.map((p) => (
-              <Link key={p.id} href={`/profissionais/${p.id}`} onClick={() => abrir(null)}
+              <Link key={p.id} href={`/profissionais/${p.id}`}
                 className="pressionavel group flex w-full items-center gap-3 rounded-2xl border border-borda px-3 py-2.5 text-left hover:border-verde/30 hover:bg-verde-claro/50">
                 <Avatar nome={p.nome} />
                 <span className="flex-1">
