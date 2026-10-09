@@ -28,7 +28,7 @@ Um tipo por futura tabela, em `lib/modelo.ts`. Ids são texto.
 - Médico que atende em duas clínicas é cadastrado nas duas (convênios e regras podem diferir).
 - Sai o conceito de "setor dentro da clínica" (`Setor`, `setorId`, `visivelPara`): a clínica cumpre esse papel.
 
-Na tela, a unidade se chama **Clínica**; a organização aparece como **Organização**, só para quem administra.
+Na tela, a unidade se chama **Clínica**; a organização aparece como **Organização**. Todos os papéis veem o nome da organização (no seletor do menu e, para quem acessa, na tela Clínicas); só Administrador e Comercial criam organizações. (Decidido em 08/10/2026.)
 
 ## 2. Papéis e permissões
 
