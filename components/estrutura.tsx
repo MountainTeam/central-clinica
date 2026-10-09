@@ -84,7 +84,7 @@ export function Estrutura({ children }: { children: React.ReactNode }) {
       </header>
 
       <main key={`${rota}-${clinica?.id}`} className="mx-auto max-w-6xl px-4 py-8 sm:px-8 lg:py-12">
-        {clinica ? children : <Vazio texto="Seu usuário não tem nenhuma clínica vinculada. Fale com o Administrador." />}
+        {clinica || !carregado ? children : <Vazio texto="Seu usuário não tem nenhuma clínica vinculada. Fale com o Administrador." />}
       </main>
 
       <Paineis />
