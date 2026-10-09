@@ -6,7 +6,7 @@ import { useStore } from "@/lib/store";
 import { Botao, CabecalhoPagina, CartaoProfissional, Icone, Vazio } from "@/components/ui";
 
 export default function Especialidades() {
-  const { dados, perfil, abrirForm } = useStore();
+  const { dados, podeEditarAtual, abrirForm } = useStore();
   const [sel, setSel] = useState(dados.especialidades[0]?.id ?? "");
   const atual = dados.especialidades.find((e) => e.id === sel);
   const lista = dados.profissionais.filter((p) => p.especialidadeId === sel);
@@ -14,7 +14,7 @@ export default function Especialidades() {
   return (
     <div>
       <CabecalhoPagina titulo="Especialidades" descricao="Escolha a especialidade para ver quem atende e o que cada profissional faz."
-        acao={perfil === "admin" && (
+        acao={podeEditarAtual && (
           <div className="flex gap-2">
             <Botao variante="secundario" onClick={() => abrirForm({ tipo: "especialidade" })}><Plus className="size-4" />Especialidade</Botao>
             <Botao onClick={() => abrirForm({ tipo: "profissional" })}><Plus className="size-4" />Profissional</Botao>
@@ -39,6 +39,10 @@ export default function Especialidades() {
           );
         })}
       </div>
+
+      {!dados.especialidades.length && (
+        <Vazio texto="Nenhuma especialidade cadastrada nesta clínica. Cadastre a primeira para depois vincular os médicos." />
+      )}
 
       {atual && (
         <section key={sel} className="mt-10">

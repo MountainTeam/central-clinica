@@ -4,11 +4,12 @@ import Link from "next/link";
 import { useState } from "react";
 import { ChevronRight, FlaskConical, Plus, Stethoscope, TriangleAlert } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { atende, type Profissional, type Tipo } from "@/lib/dados";
+import { atende } from "@/lib/regras";
+import type { Profissional, Tipo } from "@/lib/modelo";
 import { Avatar, Botao, CabecalhoPagina, Segmentado, Vazio } from "@/components/ui";
 
 export default function Convenios() {
-  const { dados, perfil, abrirForm, abrir } = useStore();
+  const { dados, podeEditarAtual, abrirForm, abrir } = useStore();
   const [convId, setConvId] = useState(dados.convenios[0]?.id ?? "");
   const conv = dados.convenios.find((c) => c.id === convId);
   const [subId, setSubId] = useState(conv?.subtipos[0]?.id ?? "");
@@ -55,8 +56,9 @@ export default function Convenios() {
   return (
     <div>
       <CabecalhoPagina titulo="Convênios" descricao="Escolha o convênio e a rede para ver quem atende consulta e quem atende exame."
-        acao={perfil === "admin" && <Botao onClick={() => abrirForm({ tipo: "convenio" })}><Plus className="size-4" />Convênio</Botao>} />
+        acao={podeEditarAtual && <Botao onClick={() => abrirForm({ tipo: "convenio" })}><Plus className="size-4" />Convênio</Botao>} />
 
+      {!dados.convenios.length && <Vazio texto="Nenhum convênio cadastrado nesta clínica." />}
       <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
         <div className="flex gap-2 overflow-x-auto lg:flex-col">
           {dados.convenios.map((c, i) => (

@@ -1,36 +1,37 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { clinicasIniciais, dadosVazios, usuariosIniciais, visivelPara, type Clinica, type Dados, type Perfil, type Setor, type Usuario } from "./dados";
+import type { Banco, Clinica, DadosClinica, Usuario } from "./modelo";
+import { podeEditar } from "./permissoes";
+import { carregar, clinicasDo, dadosDaClinica, gravar } from "./repositorio";
+import { pontoZero } from "./semente";
 
 export type Painel = { tipo: "exame"; id: string } | null;
 export type Formulario =
   | { tipo: "profissional"; id?: string }
   | { tipo: "especialidade" }
-  | { tipo: "convenio" }
+  | { tipo: "convenio"; id?: string }
   | { tipo: "exame"; id?: string }
-  | { tipo: "clinica" }
-  | { tipo: "setor" }
+  | { tipo: "organizacao" }
+  | { tipo: "clinica"; id?: string }
   | { tipo: "usuario" }
   | null;
 
 type Store = {
-  usuarios: Usuario[];
+  banco: Banco;
   usuario: Usuario | null;
-  criarUsuario: (u: Omit<Usuario, "id">) => void;
-  // clínicas que o usuário pode abrir
-  clinicas: Clinica[];
-  clinica: Clinica;
-  escolherClinica: (id: string) => void;
-  criarClinica: (nome: string, cidade: string) => void;
-  setor: Setor | undefined;
-  // dados da clínica escolhida, já filtrados pelo setor do usuário
-  dados: Dados;
-  setDados: (f: (d: Dados) => Dados) => void;
-  perfil: Perfil | null;
   carregado: boolean;
+  // clínicas que o usuário pode ver e a atual
+  clinicas: Clinica[];
+  clinica: Clinica | null;
+  // dados da clínica atual, no formato que as telas de consulta usam
+  dados: DadosClinica;
+  podeEditarAtual: boolean;
+  escolherClinica: (id: string) => void;
   entrar: (usuarioId: string) => void;
   sair: () => void;
+  // aplica uma gravação do repositório; mostra o aviso de sucesso ou a mensagem de recusa
+  executar: (op: (b: Banco, u: Usuario) => Banco, sucesso: string) => boolean;
   painel: Painel;
   abrir: (p: Painel) => void;
   form: Formulario;
@@ -41,65 +42,88 @@ type Store = {
 
 const Ctx = createContext<Store | null>(null);
 
+const SESSAO_USUARIO = "cartilha:usuario";
+const SESSAO_CLINICA = "cartilha:clinica";
 const lerLocal = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
 const gravarLocal = (k: string, v: string | null) => {
   try { if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch {}
 };
+const VAZIO: DadosClinica = { especialidades: [], convenios: [], exames: [], profissionais: [] };
 
 export function Provider({ children }: { children: React.ReactNode }) {
-  const [todasClinicas, setClinicas] = useState(clinicasIniciais);
-  const [clinicaId, setClinicaId] = useState(clinicasIniciais[0].id);
-  const [usuarios, setUsuarios] = useState(usuariosIniciais);
+  const [banco, setBanco] = useState<Banco>(pontoZero);
   const [usuarioId, setUsuarioId] = useState<string | null>(null);
+  const [clinicaId, setClinicaId] = useState<string | null>(null);
   const [carregado, setCarregado] = useState(false);
   const [painel, abrir] = useState<Painel>(null);
   const [form, abrirForm] = useState<Formulario>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const avisouFalha = useRef(false);
 
-  // ponytail: sessão no navegador só para o protótipo; na v1 vira login de verdade checado no servidor
-  useEffect(() => {
-    const u = lerLocal("usuario");
-    if (u && usuariosIniciais.some((x) => x.id === u)) setUsuarioId(u);
-    const c = lerLocal("clinica");
-    if (c && clinicasIniciais.some((x) => x.id === c)) setClinicaId(c);
-    setCarregado(true);
-  }, []);
-
-  const usuario = usuarios.find((u) => u.id === usuarioId) ?? null;
-  const clinicas = usuario?.clinicaId ? todasClinicas.filter((c) => c.id === usuario.clinicaId) : todasClinicas;
-  const clinica = clinicas.find((c) => c.id === clinicaId) ?? clinicas[0];
-  const setor = clinica.dados.setores.find((s) => s.id === usuario?.setorId);
-
-  const escolherClinica = (id: string) => { setClinicaId(id); gravarLocal("clinica", id); abrir(null); };
-  const criarClinica = (nome: string, cidade: string) => {
-    const id = `clinica-${Date.now()}`;
-    setClinicas((cs) => [...cs, { id, nome, cidade, dados: dadosVazios() }]);
-    escolherClinica(id);
-  };
-  // edição sempre sobre os dados completos da clínica (só o admin edita, e ele vê tudo)
-  const setDados = (f: (d: Dados) => Dados) =>
-    setClinicas((cs) => cs.map((c) => (c.id === clinica.id ? { ...c, dados: f(c.dados) } : c)));
-  const criarUsuario = (u: Omit<Usuario, "id">) => setUsuarios((us) => [...us, { ...u, id: `usuario-${Date.now()}` }]);
-
-  const entrar = (id: string) => {
-    setUsuarioId(id);
-    gravarLocal("usuario", id);
-    const c = usuarios.find((u) => u.id === id)?.clinicaId;
-    if (c) escolherClinica(c);
-  };
-  const sair = () => { setUsuarioId(null); gravarLocal("usuario", null); };
   const avisar = useCallback((t: string) => {
     setAviso(t);
     clearTimeout(timer.current);
-    timer.current = setTimeout(() => setAviso(null), 2400);
+    timer.current = setTimeout(() => setAviso(null), 2800);
   }, []);
+
+  // ponytail: sessão no navegador só para o protótipo; na v1 vira login de verdade no servidor
+  useEffect(() => {
+    setBanco(carregar());
+    setUsuarioId(lerLocal(SESSAO_USUARIO));
+    setClinicaId(lerLocal(SESSAO_CLINICA));
+    setCarregado(true);
+  }, []);
+
+  // toda mudança vai para o navegador; se não couber, o app segue em memória e avisa uma vez
+  useEffect(() => {
+    if (!carregado) return;
+    if (!gravar(banco) && !avisouFalha.current) {
+      avisouFalha.current = true;
+      avisar("Não foi possível salvar neste navegador. As mudanças valem só até fechar a página.");
+    }
+  }, [banco, carregado, avisar]);
+
+  const usuario = banco.usuarios.find((u) => u.id === usuarioId) ?? null;
+  const clinicas = usuario ? clinicasDo(banco, usuario) : [];
+  // clínica guardada que deixou de ser permitida cai na primeira permitida
+  const clinica = clinicas.find((c) => c.id === clinicaId) ?? clinicas[0] ?? null;
+
+  const escolherClinica = (id: string) => {
+    setClinicaId(id);
+    gravarLocal(SESSAO_CLINICA, id);
+    abrir(null);
+  };
+  const entrar = (id: string) => {
+    setUsuarioId(id);
+    gravarLocal(SESSAO_USUARIO, id);
+    setClinicaId(null);
+    gravarLocal(SESSAO_CLINICA, null);
+  };
+  const sair = () => {
+    setUsuarioId(null);
+    gravarLocal(SESSAO_USUARIO, null);
+    abrir(null);
+    abrirForm(null);
+  };
+  const executar = (op: (b: Banco, u: Usuario) => Banco, sucesso: string) => {
+    if (!usuario) return false;
+    try {
+      setBanco(op(banco, usuario));
+      avisar(sucesso);
+      return true;
+    } catch (e) {
+      avisar(e instanceof Error ? e.message : "Não foi possível salvar.");
+      return false;
+    }
+  };
 
   return (
     <Ctx.Provider value={{
-      usuarios, usuario, criarUsuario, clinicas, clinica, escolherClinica, criarClinica, setor,
-      dados: visivelPara(clinica.dados, usuario?.setorId), setDados,
-      perfil: usuario?.perfil ?? null, carregado, entrar, sair, painel, abrir, form, abrirForm, aviso, avisar,
+      banco, usuario, carregado, clinicas, clinica,
+      dados: clinica ? dadosDaClinica(banco, clinica.id) : VAZIO,
+      podeEditarAtual: !!usuario && !!clinica && podeEditar(usuario, clinica.id),
+      escolherClinica, entrar, sair, executar, painel, abrir, form, abrirForm, aviso, avisar,
     }}>
       {children}
     </Ctx.Provider>

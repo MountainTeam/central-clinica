@@ -3,18 +3,18 @@
 import { useState } from "react";
 import { ArrowUpRight, FlaskConical, Plus, Search } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { semAcento } from "@/lib/dados";
+import { semAcento } from "@/lib/regras";
 import { Botao, CabecalhoPagina, Vazio } from "@/components/ui";
 
 export default function Exames() {
-  const { dados, perfil, abrir, abrirForm } = useStore();
+  const { dados, podeEditarAtual, abrir, abrirForm } = useStore();
   const [q, setQ] = useState("");
   const lista = dados.exames.filter((e) => semAcento(e.nome).includes(semAcento(q.trim())));
 
   return (
     <div>
       <CabecalhoPagina titulo="Exames" descricao="Clique no exame para ver o preparo, o que trazer e quais convênios cobrem."
-        acao={perfil === "admin" && <Botao onClick={() => abrirForm({ tipo: "exame" })}><Plus className="size-4" />Exame</Botao>} />
+        acao={podeEditarAtual && <Botao onClick={() => abrirForm({ tipo: "exame" })}><Plus className="size-4" />Exame</Botao>} />
 
       <div className="entrar relative mb-6 max-w-md" style={{ "--i": 1 } as React.CSSProperties}>
         <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-suave" />
@@ -45,7 +45,7 @@ export default function Exames() {
           );
         })}
       </div>
-      {!lista.length && <Vazio texto="Nenhum exame com esse nome." />}
+      {!lista.length && <Vazio texto={dados.exames.length ? "Nenhum exame com esse nome." : "Nenhum exame cadastrado nesta clínica."} />}
     </div>
   );
 }

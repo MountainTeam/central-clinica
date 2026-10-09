@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { FlaskConical, LayoutGrid, Search, ShieldCheck, UserRound, X } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { atende, semAcento, subtipoInfo, type Tipo } from "@/lib/dados";
+import { atende, semAcento, subtipoInfo } from "@/lib/regras";
+import type { Tipo } from "@/lib/modelo";
 import { CartaoProfissional, Chip, Segmentado, SeletorConvenio, TipoBadge, Vazio } from "@/components/ui";
 
 function Contador({ valor }: { valor: number }) {

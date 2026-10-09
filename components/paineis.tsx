@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { ChevronRight, ClipboardList, Copy, FileText, FlaskConical, Pencil, ShieldCheck, UserRound } from "lucide-react";
 import { useStore, type Painel } from "@/lib/store";
-import { resumoHorarios } from "@/lib/dados";
+import { resumoHorarios } from "@/lib/regras";
 import { Avatar, Botao, Chip, Gaveta, Secao, Vazio } from "./ui";
 
 export function Paineis() {
@@ -22,7 +22,7 @@ export function Paineis() {
 }
 
 function FichaExame({ id }: { id: string }) {
-  const { dados, perfil, abrir, abrirForm, avisar } = useStore();
+  const { dados, podeEditarAtual, abrir, abrirForm, avisar } = useStore();
   const ex = dados.exames.find((e) => e.id === id);
   if (!ex) return null;
   const quemFaz = dados.profissionais.filter((p) => p.exames.includes(ex.id));
@@ -47,7 +47,7 @@ function FichaExame({ id }: { id: string }) {
 
       <div className="entrar -mt-4 flex flex-wrap gap-2" style={{ "--i": 1 } as React.CSSProperties}>
         <Botao onClick={copiar}><Copy className="size-4" />Copiar orientações</Botao>
-        {perfil === "admin" && <Botao variante="secundario" onClick={() => abrirForm({ tipo: "exame", id: ex.id })}><Pencil className="size-4" />Editar</Botao>}
+        {podeEditarAtual && <Botao variante="secundario" onClick={() => abrirForm({ tipo: "exame", id: ex.id })}><Pencil className="size-4" />Editar</Botao>}
       </div>
 
       <Secao titulo="Preparo do paciente" icone={<ClipboardList className="size-4" />} i={2}>

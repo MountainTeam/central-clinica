@@ -5,7 +5,9 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Check, ChevronRight, ClipboardList, Clock, FlaskConical, Minus, NotebookPen, Pencil, ShieldCheck, TriangleAlert } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { DIAS, subtipoInfo, type Dados, type Profissional } from "@/lib/dados";
+import { DIAS, type DadosClinica, type Profissional } from "@/lib/modelo";
+import { subtipoInfo } from "@/lib/regras";
+import { salvarProfissional } from "@/lib/repositorio";
 import { Avatar, Botao, Chip, Icone, Secao, Vazio } from "@/components/ui";
 import { EditorHorarios, lerHorarios } from "@/components/formularios";
 
@@ -13,7 +15,7 @@ const cartao = "rounded-3xl border border-borda bg-superficie p-5 shadow-card sm
 
 export default function PaginaProfissional() {
   const { id } = useParams<{ id: string }>();
-  const { dados, setDados, perfil, clinica, setor, abrir, abrirForm, avisar } = useStore();
+  const { dados, podeEditarAtual, clinica, abrir, abrirForm, executar } = useStore();
   const [editando, setEditando] = useState<"horarios" | "obs" | null>(null);
   // dia da semana só no navegador, para não divergir do HTML do servidor
   const [hoje, setHoje] = useState<string | null>(null);
@@ -23,17 +25,15 @@ export default function PaginaProfissional() {
   if (!p) {
     return (
       <div className="entrar space-y-4">
-        <Vazio texto={`Profissional não encontrado na ${clinica.nome}${setor ? ` para o setor ${setor.nome}` : ""}.`} />
+        <Vazio texto={`Profissional não encontrado na ${clinica?.nome ?? "clínica atual"}.`} />
         <Link href="/" className="pressionavel inline-flex items-center gap-2 font-semibold text-verde"><ArrowLeft className="size-4" />Voltar para a busca</Link>
       </div>
     );
   }
   const esp = dados.especialidades.find((e) => e.id === p.especialidadeId);
-  const admin = perfil === "admin";
+  const admin = podeEditarAtual; // pode editar esta clínica
   const salvar = (mudanca: Partial<Profissional>, msg: string) => {
-    setDados((d) => ({ ...d, profissionais: d.profissionais.map((x) => (x.id === p.id ? { ...x, ...mudanca } : x)) }));
-    setEditando(null);
-    avisar(msg);
+    if (executar((b, u) => salvarProfissional(b, u, { ...p, ...mudanca }), msg)) setEditando(null);
   };
   const atendeHoje = hoje && p.horarios.find((h) => h.dia === hoje);
 
@@ -50,7 +50,6 @@ export default function PaginaProfissional() {
           <h1 className="text-[28px] font-bold leading-tight tracking-tight">{p.nome}</h1>
           <div className="mt-2 flex flex-wrap gap-2">
             {esp && <Chip tom="verde"><Icone nome={esp.icone} className="size-3.5" />{esp.nome}</Chip>}
-            {dados.setores.length > 0 && <Chip tom="azul">{dados.setores.find((x) => x.id === p.setorId)?.nome ?? "Compartilhado entre os setores"}</Chip>}
             {p.idadeMinima && <Chip>A partir de {p.idadeMinima} anos</Chip>}
             {hoje && (atendeHoje
               ? <Chip tom="verde"><span className="pulso size-1.5 rounded-full bg-verde" />Atende hoje · {atendeHoje.inicio}–{atendeHoje.fim}</Chip>
@@ -192,7 +191,7 @@ function Acoes({ onCancelar }: { onCancelar: () => void }) {
   );
 }
 
-function TabelaConvenios({ dados, p }: { dados: Dados; p: Profissional }) {
+function TabelaConvenios({ dados, p }: { dados: DadosClinica; p: Profissional }) {
   const convenios = dados.convenios.filter((c) => c.subtipos.some((s) => p.atende[s.id]));
   if (!convenios.length) return <Vazio texto="Nenhum convênio cadastrado. Atende só particular?" />;
   const marca = (ok: boolean) => ok

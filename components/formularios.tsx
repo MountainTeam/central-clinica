@@ -3,14 +3,15 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useStore, type Formulario } from "@/lib/store";
-import { DIAS, semAcento, type Dados, type Horario, type Profissional } from "@/lib/dados";
-import { Botao, Gaveta, Segmentado } from "./ui";
+import { DIAS, type Convenio, type DadosClinica, type Exame, type Horario, type Profissional } from "@/lib/modelo";
+import { corDoIndice, novoId, slug } from "@/lib/regras";
+import { salvarConvenio, salvarEspecialidade, salvarExame, salvarProfissional } from "@/lib/repositorio";
+import { Botao, Gaveta } from "./ui";
 
-const campo = "w-full rounded-xl border border-borda bg-superficie px-3 py-2.5 text-[15px] outline-none transition placeholder:text-suave/60 focus:border-verde focus:ring-4 focus:ring-verde/15";
-const slug = (t: string) => semAcento(t).trim().replace(/[^a-z0-9]+/g, "-");
+export const campo = "w-full rounded-xl border border-borda bg-superficie px-3 py-2.5 text-[15px] outline-none transition placeholder:text-suave/60 focus:border-verde focus:ring-4 focus:ring-verde/15";
 const linhas = (t: FormDataEntryValue | null) => String(t ?? "").split("\n").map((x) => x.trim()).filter(Boolean);
 
-function Campo({ rotulo, children, dica }: { rotulo: string; children: React.ReactNode; dica?: string }) {
+export function Campo({ rotulo, children, dica }: { rotulo: string; children: React.ReactNode; dica?: string }) {
   return (
     <label className="block">
       <span className="mb-1.5 block text-sm font-semibold">{rotulo}</span>
@@ -56,17 +57,14 @@ export function Formularios() {
   return (
     <Gaveta aberta={!!form} onFechar={() => abrirForm(null)} largura="max-w-2xl">
       {atual?.tipo === "profissional" && <FormProfissional key={k} id={atual.id} />}
-      {atual?.tipo === "especialidade" && <FormSimples key={k} tipo="especialidade" />}
-      {atual?.tipo === "convenio" && <FormSimples key={k} tipo="convenio" />}
+      {atual?.tipo === "especialidade" && <FormEspecialidade key={k} />}
+      {atual?.tipo === "convenio" && <FormConvenio key={k} id={atual.id} />}
       {atual?.tipo === "exame" && <FormExame key={k} id={atual.id} />}
-      {atual?.tipo === "clinica" && <FormClinica key={k} />}
-      {atual?.tipo === "setor" && <FormSimples key={k} tipo="setor" />}
-      {atual?.tipo === "usuario" && <FormUsuario key={k} />}
     </Gaveta>
   );
 }
 
-function Moldura({ titulo, descricao, onSalvar, children }: { titulo: string; descricao: string; onSalvar: (f: FormData) => void; children: React.ReactNode }) {
+export function Moldura({ titulo, descricao, onSalvar, children }: { titulo: string; descricao: string; onSalvar: (f: FormData) => void; children: React.ReactNode }) {
   const { abrirForm } = useStore();
   return (
     <form className="flex min-h-full flex-col" onSubmit={(e) => { e.preventDefault(); onSalvar(new FormData(e.currentTarget)); }}>
@@ -83,7 +81,8 @@ function Moldura({ titulo, descricao, onSalvar, children }: { titulo: string; de
   );
 }
 
-function MatrizConvenios({ dados, atende }: { dados: Dados; atende: Record<string, string> }) {
+function MatrizConvenios({ dados, atende }: { dados: DadosClinica; atende: Record<string, string> }) {
+  if (!dados.convenios.length) return <p className="rounded-xl border border-dashed border-borda px-4 py-4 text-sm text-suave">Nenhum convênio cadastrado nesta clínica ainda.</p>;
   return (
     <div className="overflow-hidden rounded-2xl border border-borda">
       <div className="grid grid-cols-[1fr_80px_80px] bg-fundo px-4 py-2 text-xs font-semibold text-suave">
@@ -104,20 +103,23 @@ function MatrizConvenios({ dados, atende }: { dados: Dados; atende: Record<strin
 }
 
 function FormProfissional({ id }: { id?: string }) {
-  const { dados, setDados, abrirForm, avisar } = useStore();
+  const { dados, clinica, executar, abrirForm, avisar } = useStore();
   const router = useRouter();
   const p = dados.profissionais.find((x) => x.id === id);
 
   const salvar = (f: FormData) => {
     const nome = String(f.get("nome")).trim();
     if (!nome) return avisar("Informe o nome");
+    if (!dados.especialidades.length) return avisar("Cadastre uma especialidade antes do primeiro médico.");
+    if (!clinica) return;
     const atende: Record<string, string> = {};
     for (const c of dados.convenios) for (const s of c.subtipos) {
       const v = (f.get(`c:${s.id}`) ? "c" : "") + (f.get(`e:${s.id}`) ? "e" : "");
       if (v) atende[s.id] = v;
     }
     const novo: Profissional = {
-      id: p?.id ?? slug(nome),
+      id: p?.id ?? novoId("prof"),
+      clinicaId: clinica.id,
       nome,
       especialidadeId: String(f.get("especialidade")),
       horarios: lerHorarios(f),
@@ -127,12 +129,10 @@ function FormProfissional({ id }: { id?: string }) {
       atende,
       restricoes: linhas(f.get("restricoes")).map((texto) => ({ texto })),
       observacoes: String(f.get("observacoes")).trim(),
-      setorId: String(f.get("setor") ?? "") || undefined,
     };
-    setDados((d) => ({ ...d, profissionais: p ? d.profissionais.map((x) => (x.id === p.id ? novo : x)) : [...d.profissionais, novo] }));
+    if (!executar((b, u) => salvarProfissional(b, u, novo), p ? "Ficha atualizada" : "Profissional cadastrado")) return;
     abrirForm(null);
     router.push(`/profissionais/${novo.id}`);
-    avisar(p ? "Ficha atualizada" : "Profissional cadastrado");
   };
 
   return (
@@ -145,14 +145,6 @@ function FormProfissional({ id }: { id?: string }) {
           </select>
         </Campo>
         <Campo rotulo="Idade mínima do paciente"><input name="idade" type="number" min={0} defaultValue={p?.idadeMinima} placeholder="Sem limite" className={campo} /></Campo>
-        {dados.setores.length > 0 && (
-          <Campo rotulo="Setor" dica="Quem é de outro setor não vê este médico. Compartilhado aparece para todos.">
-            <select name="setor" defaultValue={p?.setorId ?? ""} className={campo}>
-              <option value="">Compartilhado entre os setores</option>
-              {dados.setores.map((x) => <option key={x.id} value={x.id}>{x.nome}</option>)}
-            </select>
-          </Campo>
-        )}
       </div>
       <div>
         <span className="mb-1.5 block text-sm font-semibold">Dias e horários de atendimento</span>
@@ -166,13 +158,15 @@ function FormProfissional({ id }: { id?: string }) {
       </Campo>
       <div>
         <span className="mb-1.5 block text-sm font-semibold">Exames que realiza</span>
-        <div className="flex flex-wrap gap-2">
-          {dados.exames.map((e) => (
-            <label key={e.id} className="pressionavel flex cursor-pointer items-center gap-2 rounded-xl border border-borda px-3 py-2 text-sm has-[:checked]:border-azul/40 has-[:checked]:bg-azul-claro has-[:checked]:text-azul">
-              <input type="checkbox" name={`ex:${e.id}`} defaultChecked={p?.exames.includes(e.id)} className="accent-azul" />{e.nome}
-            </label>
-          ))}
-        </div>
+        {dados.exames.length ? (
+          <div className="flex flex-wrap gap-2">
+            {dados.exames.map((e) => (
+              <label key={e.id} className="pressionavel flex cursor-pointer items-center gap-2 rounded-xl border border-borda px-3 py-2 text-sm has-[:checked]:border-azul/40 has-[:checked]:bg-azul-claro has-[:checked]:text-azul">
+                <input type="checkbox" name={`ex:${e.id}`} defaultChecked={p?.exames.includes(e.id)} className="accent-azul" />{e.nome}
+              </label>
+            ))}
+          </div>
+        ) : <p className="text-sm text-suave">Nenhum exame cadastrado nesta clínica ainda.</p>}
       </div>
       <Campo rotulo="Restrições" dica="Uma por linha. Ex.: Unimed só 5 pacientes por dia.">
         <textarea name="restricoes" rows={3} defaultValue={p?.restricoes.map((r) => r.texto).join("\n")} className={campo} />
@@ -185,23 +179,24 @@ function FormProfissional({ id }: { id?: string }) {
 }
 
 function FormExame({ id }: { id?: string }) {
-  const { dados, setDados, abrirForm, abrir, avisar } = useStore();
+  const { dados, clinica, executar, abrirForm, abrir, avisar } = useStore();
   const ex = dados.exames.find((x) => x.id === id);
 
   const salvar = (f: FormData) => {
     const nome = String(f.get("nome")).trim();
     if (!nome) return avisar("Informe o nome do exame");
-    const novo = {
-      id: ex?.id ?? slug(nome),
+    if (!clinica) return;
+    const novo: Exame = {
+      id: ex?.id ?? novoId("exame"),
+      clinicaId: clinica.id,
       nome,
       preparo: linhas(f.get("preparo")),
       documentos: String(f.get("documentos")).trim(),
       subtipos: dados.convenios.flatMap((c) => c.subtipos).filter((s) => f.get(`s:${s.id}`)).map((s) => s.id),
     };
-    setDados((d) => ({ ...d, exames: ex ? d.exames.map((x) => (x.id === ex.id ? novo : x)) : [...d.exames, novo] }));
+    if (!executar((b, u) => salvarExame(b, u, novo), ex ? "Exame atualizado" : "Exame cadastrado")) return;
     abrirForm(null);
     abrir({ tipo: "exame", id: novo.id });
-    avisar(ex ? "Exame atualizado" : "Exame cadastrado");
   };
 
   return (
@@ -213,107 +208,67 @@ function FormExame({ id }: { id?: string }) {
       <Campo rotulo="O paciente deve trazer"><input name="documentos" defaultValue={ex?.documentos} placeholder="Pedido médico, carteirinha..." className={campo} /></Campo>
       <div>
         <span className="mb-1.5 block text-sm font-semibold">Convênios que cobrem</span>
-        <div className="space-y-3">
-          {dados.convenios.map((c) => (
-            <div key={c.id} className="flex flex-wrap items-center gap-2">
-              <span className="w-32 text-sm font-semibold">{c.nome}</span>
-              {c.subtipos.map((s) => (
-                <label key={s.id} className="pressionavel flex cursor-pointer items-center gap-2 rounded-xl border border-borda px-3 py-1.5 text-sm has-[:checked]:border-azul/40 has-[:checked]:bg-azul-claro has-[:checked]:text-azul">
-                  <input type="checkbox" name={`s:${s.id}`} defaultChecked={ex?.subtipos.includes(s.id)} className="accent-azul" />{s.nome}
-                </label>
-              ))}
-            </div>
-          ))}
-        </div>
+        {dados.convenios.length ? (
+          <div className="space-y-3">
+            {dados.convenios.map((c) => (
+              <div key={c.id} className="flex flex-wrap items-center gap-2">
+                <span className="w-32 text-sm font-semibold">{c.nome}</span>
+                {c.subtipos.map((s) => (
+                  <label key={s.id} className="pressionavel flex cursor-pointer items-center gap-2 rounded-xl border border-borda px-3 py-1.5 text-sm has-[:checked]:border-azul/40 has-[:checked]:bg-azul-claro has-[:checked]:text-azul">
+                    <input type="checkbox" name={`s:${s.id}`} defaultChecked={ex?.subtipos.includes(s.id)} className="accent-azul" />{s.nome}
+                  </label>
+                ))}
+              </div>
+            ))}
+          </div>
+        ) : <p className="text-sm text-suave">Nenhum convênio cadastrado nesta clínica ainda.</p>}
       </div>
     </Moldura>
   );
 }
 
-function FormSimples({ tipo }: { tipo: "especialidade" | "convenio" | "setor" }) {
-  const { setDados, abrirForm, avisar } = useStore();
+function FormEspecialidade() {
+  const { clinica, executar, abrirForm, avisar } = useStore();
   const salvar = (f: FormData) => {
     const nome = String(f.get("nome")).trim();
     if (!nome) return avisar("Informe o nome");
-    const id = slug(nome);
-    if (tipo === "especialidade") setDados((d) => ({ ...d, especialidades: [...d.especialidades, { id, nome, icone: "Stethoscope" }] }));
-    else if (tipo === "setor") setDados((d) => ({ ...d, setores: [...d.setores, { id, nome }] }));
-    else {
-      const subtipos = String(f.get("subtipos")).split(",").map((x) => x.trim()).filter(Boolean).map((n) => ({ id: `${id}-${slug(n)}`, nome: n }));
-      setDados((d) => ({ ...d, convenios: [...d.convenios, { id, nome, cor: "#0d9b86", subtipos }] }));
-    }
-    abrirForm(null);
-    avisar({ especialidade: "Especialidade cadastrada", convenio: "Convênio cadastrado", setor: "Setor cadastrado" }[tipo]);
+    if (!clinica) return;
+    const nova = { id: novoId("esp"), clinicaId: clinica.id, nome, icone: "Stethoscope" };
+    if (executar((b, u) => salvarEspecialidade(b, u, nova), "Especialidade cadastrada")) abrirForm(null);
   };
-  if (tipo === "setor") return (
-    <Moldura titulo="Novo setor" descricao="Use quando duas empresas dividem a mesma clínica. Depois, marque o setor de cada médico." onSalvar={salvar}>
-      <Campo rotulo="Nome do setor"><input name="nome" placeholder="Ex.: Oncology" className={campo} /></Campo>
-    </Moldura>
-  );
-  return tipo === "especialidade" ? (
+  return (
     <Moldura titulo="Nova especialidade" descricao="Depois, vincule os profissionais a ela." onSalvar={salvar}>
-      <Campo rotulo="Nome"><input name="nome" placeholder="Ex.: Reumatologia" className={campo} /></Campo>
+      <Campo rotulo="Nome"><input name="nome" placeholder="Ex.: Mastologia" className={campo} /></Campo>
     </Moldura>
-  ) : (
-    <Moldura titulo="Novo convênio" descricao="Cadastre o convênio e os tipos de rede dele." onSalvar={salvar}>
-      <Campo rotulo="Nome do convênio"><input name="nome" placeholder="Ex.: Cassi" className={campo} /></Campo>
+  );
+}
+
+function FormConvenio({ id }: { id?: string }) {
+  const { dados, clinica, executar, abrirForm, avisar } = useStore();
+  const c = dados.convenios.find((x) => x.id === id);
+  const salvar = (f: FormData) => {
+    const nome = String(f.get("nome")).trim();
+    if (!nome) return avisar("Informe o nome do convênio");
+    if (!clinica) return;
+    const convId = c?.id ?? novoId("conv");
+    const nomes = String(f.get("subtipos")).split(",").map((x) => x.trim()).filter(Boolean);
+    const novo: Convenio = {
+      id: convId,
+      clinicaId: clinica.id,
+      nome,
+      cor: c?.cor ?? corDoIndice(dados.convenios.length),
+      logo: c?.logo,
+      // rede com o mesmo nome mantém o id, para não perder o que já foi marcado nos médicos e exames
+      subtipos: nomes.map((n) => c?.subtipos.find((s) => s.nome === n) ?? { id: `${convId}-${slug(n)}`, nome: n }),
+    };
+    if (executar((b, u) => salvarConvenio(b, u, novo), c ? "Convênio atualizado" : "Convênio cadastrado")) abrirForm(null);
+  };
+  return (
+    <Moldura titulo={c ? "Editar convênio" : "Novo convênio"} descricao="Cadastre o convênio e os tipos de rede dele." onSalvar={salvar}>
+      <Campo rotulo="Nome do convênio"><input name="nome" defaultValue={c?.nome} placeholder="Ex.: Unimed" className={campo} /></Campo>
       <Campo rotulo="Tipos de rede" dica="Separe por vírgula. Ex.: Essencial, Flex, Rede fechada">
-        <input name="subtipos" className={campo} />
+        <input name="subtipos" defaultValue={c?.subtipos.map((s) => s.nome).join(", ")} className={campo} />
       </Campo>
-    </Moldura>
-  );
-}
-
-function FormClinica() {
-  const { criarClinica, abrirForm, avisar } = useStore();
-  const router = useRouter();
-  const salvar = (f: FormData) => {
-    const nome = String(f.get("nome")).trim();
-    if (!nome) return avisar("Informe o nome da clínica");
-    criarClinica(nome, String(f.get("cidade")).trim());
-    abrirForm(null);
-    router.push("/especialidades");
-    avisar("Clínica cadastrada. Comece pelas especialidades.");
-  };
-  return (
-    <Moldura titulo="Nova clínica" descricao="Cada clínica tem seus próprios médicos, convênios, especialidades e exames." onSalvar={salvar}>
-      <Campo rotulo="Nome da clínica"><input name="nome" placeholder="Ex.: Unidade Sul" className={campo} /></Campo>
-      <Campo rotulo="Bairro ou cidade"><input name="cidade" placeholder="Ex.: Boa Viagem" className={campo} /></Campo>
-    </Moldura>
-  );
-}
-
-function FormUsuario() {
-  const { dados, clinica, criarUsuario, abrirForm, avisar } = useStore();
-  const [perfil, setPerfil] = useState<"leitura" | "admin">("leitura");
-  const salvar = (f: FormData) => {
-    const nome = String(f.get("nome")).trim();
-    const email = String(f.get("email")).trim();
-    if (!nome || !email) return avisar("Informe nome e e-mail");
-    criarUsuario(perfil === "admin"
-      ? { nome, email, perfil }
-      : { nome, email, perfil, clinicaId: clinica.id, setorId: String(f.get("setor") ?? "") || undefined });
-    abrirForm(null);
-    avisar("Usuário cadastrado");
-  };
-  return (
-    <Moldura titulo="Novo usuário" descricao={`Acesso à ${clinica.nome}. Quem é de um setor só vê os médicos daquele setor.`} onSalvar={salvar}>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Campo rotulo="Nome"><input name="nome" placeholder="Ex.: Marcação COMN — manhã" className={campo} /></Campo>
-        <Campo rotulo="E-mail"><input name="email" type="email" placeholder="nome@clinica.com.br" className={campo} /></Campo>
-      </div>
-      <div>
-        <span className="mb-1.5 block text-sm font-semibold">Perfil</span>
-        <Segmentado valor={perfil} onChange={setPerfil} opcoes={[{ valor: "leitura", rotulo: "Atendente (só consulta)" }, { valor: "admin", rotulo: "Administrador" }]} />
-      </div>
-      {perfil === "leitura" && (
-        <Campo rotulo="Setor" dica={dados.setores.length ? undefined : "Esta clínica não tem setores; o usuário verá todos os médicos dela."}>
-          <select name="setor" defaultValue="" className={campo} disabled={!dados.setores.length}>
-            <option value="">Todos os setores</option>
-            {dados.setores.map((x) => <option key={x.id} value={x.id}>Só {x.nome}</option>)}
-          </select>
-        </Campo>
-      )}
     </Moldura>
   );
 }
