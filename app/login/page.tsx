@@ -49,7 +49,7 @@ export default function Login() {
 
       {/* Formulário */}
       <div className="flex items-center justify-center p-6">
-        <form className="w-full max-w-sm" onSubmit={(e) => { e.preventDefault(); entrar(escolhido.id); router.replace("/"); }}>
+        <form className="w-full max-w-sm" onSubmit={(e) => { e.preventDefault(); entrar(escolhido.id); router.replace(escolhido.clinicas.length ? "/" : "/clinicas"); }}>
           <div className="entrar mb-10 lg:hidden"><Logo /></div>
           <h2 className="entrar text-[28px] font-bold tracking-tight" style={{ "--i": 1 } as React.CSSProperties}>Entrar</h2>
           <p className="entrar mt-1 text-suave" style={{ "--i": 2 } as React.CSSProperties}>Use o acesso que a coordenação te passou.</p>

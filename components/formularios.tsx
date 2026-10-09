@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useStore, type Formulario } from "@/lib/store";
 import { DIAS, type Convenio, type DadosClinica, type Exame, type Horario, type Profissional } from "@/lib/modelo";
 import { corDoIndice, novoId, slug } from "@/lib/regras";
-import { salvarConvenio, salvarEspecialidade, salvarExame, salvarProfissional } from "@/lib/repositorio";
+import { salvarClinica, salvarConvenio, salvarEspecialidade, salvarExame, salvarOrganizacao, salvarProfissional } from "@/lib/repositorio";
 import { Botao, EnvioLogo, Gaveta } from "./ui";
 
 export const campo = "w-full rounded-xl border border-borda bg-superficie px-3 py-2.5 text-[15px] outline-none transition placeholder:text-suave/60 focus:border-verde focus:ring-4 focus:ring-verde/15";
@@ -60,6 +60,8 @@ export function Formularios() {
       {atual?.tipo === "especialidade" && <FormEspecialidade key={k} />}
       {atual?.tipo === "convenio" && <FormConvenio key={k} id={atual.id} />}
       {atual?.tipo === "exame" && <FormExame key={k} id={atual.id} />}
+      {atual?.tipo === "organizacao" && <FormOrganizacao key={k} />}
+      {atual?.tipo === "clinica" && <FormClinica key={k} id={atual.id} />}
     </Gaveta>
   );
 }
@@ -271,6 +273,49 @@ function FormConvenio({ id }: { id?: string }) {
       <Campo rotulo="Nome do convênio"><input name="nome" defaultValue={c?.nome} onChange={(e) => setNomeAtual(e.target.value)} placeholder="Ex.: Unimed" className={campo} /></Campo>
       <Campo rotulo="Tipos de rede" dica="Separe por vírgula. Ex.: Essencial, Flex, Rede fechada">
         <input name="subtipos" defaultValue={c?.subtipos.map((s) => s.nome).join(", ")} className={campo} />
+      </Campo>
+    </Moldura>
+  );
+}
+
+function FormOrganizacao() {
+  const { executar, abrirForm, avisar } = useStore();
+  const salvar = (f: FormData) => {
+    const nome = String(f.get("nome")).trim();
+    if (!nome) return avisar("Informe o nome da organização");
+    if (executar((b, u) => salvarOrganizacao(b, u, { id: novoId("org"), nome }), "Organização cadastrada")) abrirForm(null);
+  };
+  return (
+    <Moldura titulo="Nova organização" descricao="Um cliente do sistema. Depois, cadastre as clínicas dele." onSalvar={salvar}>
+      <Campo rotulo="Nome da organização"><input name="nome" placeholder="Ex.: Clínica de Oncologia e Mastologia" className={campo} /></Campo>
+    </Moldura>
+  );
+}
+
+function FormClinica({ id }: { id?: string }) {
+  const { banco, executar, abrirForm, avisar } = useStore();
+  const c = banco.clinicas.find((x) => x.id === id);
+  const [logo, setLogo] = useState(c?.logo);
+  const [nomeAtual, setNomeAtual] = useState(c?.nome ?? "");
+  const salvar = (f: FormData) => {
+    const nome = String(f.get("nome")).trim();
+    if (!nome) return avisar("Informe o nome da clínica");
+    const organizacaoId = c?.organizacaoId ?? String(f.get("organizacao"));
+    const nova = { id: c?.id ?? novoId("clinica"), organizacaoId, nome, logo };
+    if (executar((b, u) => salvarClinica(b, u, nova), c ? "Clínica atualizada" : "Clínica cadastrada")) abrirForm(null);
+  };
+  return (
+    <Moldura titulo={c ? "Editar clínica" : "Nova clínica"} descricao="Cada clínica tem os próprios médicos, convênios, especialidades e exames." onSalvar={salvar}>
+      <EnvioLogo nome={nomeAtual} valor={logo} onChange={setLogo} />
+      {!c && (
+        <Campo rotulo="Organização">
+          <select name="organizacao" className={campo}>
+            {banco.organizacoes.map((o) => <option key={o.id} value={o.id}>{o.nome}</option>)}
+          </select>
+        </Campo>
+      )}
+      <Campo rotulo="Nome da clínica">
+        <input name="nome" defaultValue={c?.nome} onChange={(e) => setNomeAtual(e.target.value)} placeholder="Ex.: COMN" className={campo} />
       </Campo>
     </Moldura>
   );
