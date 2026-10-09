@@ -1,5 +1,6 @@
 "use client";
 
+import { reduzirImagem } from "@/lib/logo";
 import Link from "next/link";
 import { useEffect } from "react";
 import * as Icones from "lucide-react";
@@ -170,5 +171,43 @@ export function CartaoProfissional({ p, especialidade, destaque, i }: {
       </div>
       {destaque}
     </Link>
+  );
+}
+
+// Logo da clínica ou do convênio; sem imagem, mostra as iniciais sobre a cor
+export function LogoMarca({ nome, logo, cor = "#0d9b86", tamanho = "md" }: {
+  nome: string; logo?: string; cor?: string; tamanho?: "sm" | "md" | "lg";
+}) {
+  const t = { sm: "size-6 rounded-md text-[10px]", md: "size-9 rounded-xl text-xs", lg: "size-14 rounded-2xl text-base" }[tamanho];
+  return logo
+    // eslint-disable-next-line @next/next/no-img-element -- data URL local, sem otimização do Next
+    ? <img src={logo} alt={`Logo ${nome}`} className={`${t} shrink-0 bg-white object-contain p-0.5 ring-1 ring-borda`} />
+    : <span aria-hidden className={`${t} grid shrink-0 place-items-center font-bold text-white`} style={{ background: cor }}>{iniciais(nome)}</span>;
+}
+
+// Quadro clicável para escolher a logo; a imagem é reduzida antes de voltar em `onChange`
+export function EnvioLogo({ nome, cor, valor, onChange }: {
+  nome: string; cor?: string; valor?: string; onChange: (logo: string | undefined) => void;
+}) {
+  const { avisar } = useStore();
+  const escolher = async (arquivo?: File) => {
+    if (!arquivo) return;
+    try { onChange(await reduzirImagem(arquivo)); } catch (e) { avisar((e as Error).message); }
+  };
+  return (
+    <div className="flex items-center gap-4">
+      <label className="pressionavel group relative cursor-pointer rounded-2xl" title="Escolher logo">
+        <LogoMarca nome={nome || "?"} logo={valor} cor={cor} tamanho="lg" />
+        <span className="absolute inset-0 grid place-items-center rounded-2xl bg-texto/0 text-white opacity-0 transition group-hover:bg-texto/40 group-hover:opacity-100">
+          <Icones.ImageUp className="size-5" />
+        </span>
+        <input type="file" accept="image/*" className="sr-only" onChange={(e) => { escolher(e.target.files?.[0]); e.target.value = ""; }} />
+      </label>
+      <div className="text-sm">
+        <p className="font-semibold">Logo</p>
+        <p className="text-suave">Clique no quadro para escolher uma imagem.</p>
+        {valor && <button type="button" onClick={() => onChange(undefined)} className="mt-1 font-semibold text-alerta hover:underline">Remover logo</button>}
+      </div>
+    </div>
   );
 }

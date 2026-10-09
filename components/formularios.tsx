@@ -6,7 +6,7 @@ import { useStore, type Formulario } from "@/lib/store";
 import { DIAS, type Convenio, type DadosClinica, type Exame, type Horario, type Profissional } from "@/lib/modelo";
 import { corDoIndice, novoId, slug } from "@/lib/regras";
 import { salvarConvenio, salvarEspecialidade, salvarExame, salvarProfissional } from "@/lib/repositorio";
-import { Botao, Gaveta } from "./ui";
+import { Botao, EnvioLogo, Gaveta } from "./ui";
 
 export const campo = "w-full rounded-xl border border-borda bg-superficie px-3 py-2.5 text-[15px] outline-none transition placeholder:text-suave/60 focus:border-verde focus:ring-4 focus:ring-verde/15";
 const linhas = (t: FormDataEntryValue | null) => String(t ?? "").split("\n").map((x) => x.trim()).filter(Boolean);
@@ -246,6 +246,8 @@ function FormEspecialidade() {
 function FormConvenio({ id }: { id?: string }) {
   const { dados, clinica, executar, abrirForm, avisar } = useStore();
   const c = dados.convenios.find((x) => x.id === id);
+  const [logo, setLogo] = useState(c?.logo);
+  const [nomeAtual, setNomeAtual] = useState(c?.nome ?? "");
   const salvar = (f: FormData) => {
     const nome = String(f.get("nome")).trim();
     if (!nome) return avisar("Informe o nome do convênio");
@@ -257,7 +259,7 @@ function FormConvenio({ id }: { id?: string }) {
       clinicaId: clinica.id,
       nome,
       cor: c?.cor ?? corDoIndice(dados.convenios.length),
-      logo: c?.logo,
+      logo,
       // rede com o mesmo nome mantém o id, para não perder o que já foi marcado nos médicos e exames
       subtipos: nomes.map((n) => c?.subtipos.find((s) => s.nome === n) ?? { id: `${convId}-${slug(n)}`, nome: n }),
     };
@@ -265,7 +267,8 @@ function FormConvenio({ id }: { id?: string }) {
   };
   return (
     <Moldura titulo={c ? "Editar convênio" : "Novo convênio"} descricao="Cadastre o convênio e os tipos de rede dele." onSalvar={salvar}>
-      <Campo rotulo="Nome do convênio"><input name="nome" defaultValue={c?.nome} placeholder="Ex.: Unimed" className={campo} /></Campo>
+      <EnvioLogo nome={nomeAtual} cor={c?.cor ?? corDoIndice(dados.convenios.length)} valor={logo} onChange={setLogo} />
+      <Campo rotulo="Nome do convênio"><input name="nome" defaultValue={c?.nome} onChange={(e) => setNomeAtual(e.target.value)} placeholder="Ex.: Unimed" className={campo} /></Campo>
       <Campo rotulo="Tipos de rede" dica="Separe por vírgula. Ex.: Essencial, Flex, Rede fechada">
         <input name="subtipos" defaultValue={c?.subtipos.map((s) => s.nome).join(", ")} className={campo} />
       </Campo>

@@ -8,7 +8,7 @@ import { useStore } from "@/lib/store";
 import { DIAS, type DadosClinica, type Profissional } from "@/lib/modelo";
 import { subtipoInfo } from "@/lib/regras";
 import { salvarProfissional } from "@/lib/repositorio";
-import { Avatar, Botao, Chip, Icone, Secao, Vazio } from "@/components/ui";
+import { Avatar, Botao, Chip, Icone, LogoMarca, Secao, Vazio } from "@/components/ui";
 import { EditorHorarios, lerHorarios } from "@/components/formularios";
 
 const cartao = "rounded-3xl border border-borda bg-superficie p-5 shadow-card sm:p-6";
@@ -208,7 +208,7 @@ function TabelaConvenios({ dados, p }: { dados: DadosClinica; p: Profissional })
           {c.subtipos.filter((s) => p.atende[s.id]).map((s, k) => (
             <div key={s.id} className="grid grid-cols-[1fr_76px_76px] items-center px-4 py-2.5">
               <span className="flex items-center gap-2 text-[15px]">
-                <span className="size-2 rounded-full" style={{ background: c.cor, opacity: k ? 0 : 1 }} />
+                {k ? <span className="size-6 shrink-0" /> : <LogoMarca nome={c.nome} logo={c.logo} cor={c.cor} tamanho="sm" />}
                 {!k && <span className="font-semibold">{c.nome} ·</span>}
                 <span>{s.nome}</span>
               </span>

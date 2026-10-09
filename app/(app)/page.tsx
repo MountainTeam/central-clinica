@@ -5,7 +5,7 @@ import { FlaskConical, LayoutGrid, Search, ShieldCheck, UserRound, X } from "luc
 import { useStore } from "@/lib/store";
 import { atende, semAcento, subtipoInfo } from "@/lib/regras";
 import type { Tipo } from "@/lib/modelo";
-import { CartaoProfissional, Chip, Segmentado, SeletorConvenio, TipoBadge, Vazio } from "@/components/ui";
+import { CartaoProfissional, Chip, LogoMarca, Segmentado, SeletorConvenio, TipoBadge, Vazio } from "@/components/ui";
 
 function Contador({ valor }: { valor: number }) {
   const [n, setN] = useState(0);
@@ -112,7 +112,7 @@ export default function BuscaRapida() {
         </h2>
         {info && (
           <div className="flex items-center gap-2 text-sm text-suave">
-            Atendem <Chip><span className="size-2 rounded-full" style={{ background: info.convenio.cor }} />{info.convenio.nome} · {info.subtipo.nome}</Chip> para <TipoBadge tipo={tipo} />
+            Atendem <Chip><LogoMarca nome={info.convenio.nome} logo={info.convenio.logo} cor={info.convenio.cor} tamanho="sm" />{info.convenio.nome} · {info.subtipo.nome}</Chip> para <TipoBadge tipo={tipo} />
           </div>
         )}
       </div>

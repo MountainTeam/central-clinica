@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ChevronRight, FlaskConical, Plus, Stethoscope, TriangleAlert } from "lucide-react";
+import { ChevronRight, FlaskConical, Pencil, Plus, Stethoscope, TriangleAlert } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { atende } from "@/lib/regras";
 import type { Profissional, Tipo } from "@/lib/modelo";
-import { Avatar, Botao, CabecalhoPagina, Segmentado, Vazio } from "@/components/ui";
+import { Avatar, Botao, CabecalhoPagina, LogoMarca, Segmentado, Vazio } from "@/components/ui";
 
 export default function Convenios() {
   const { dados, podeEditarAtual, abrirForm, abrir } = useStore();
@@ -64,7 +64,7 @@ export default function Convenios() {
           {dados.convenios.map((c, i) => (
             <button key={c.id} onClick={() => escolher(c.id)} style={{ "--i": i } as React.CSSProperties}
               className={`entrar pressionavel flex shrink-0 items-center gap-3 rounded-2xl border px-4 py-3 text-left ${c.id === convId ? "border-verde/40 bg-superficie shadow-card" : "border-transparent hover:bg-superficie"}`}>
-              <span className="size-3 rounded-full ring-4 ring-white" style={{ background: c.cor }} />
+              <LogoMarca nome={c.nome} logo={c.logo} cor={c.cor} />
               <span>
                 <span className="block font-semibold">{c.nome}</span>
                 <span className="text-sm text-suave">{c.subtipos.length} {c.subtipos.length === 1 ? "rede" : "redes"}</span>
@@ -76,6 +76,13 @@ export default function Convenios() {
         {conv && (
           <div key={convId} className="space-y-5">
             <div className="entrar">
+              <div className="mb-4 flex items-center gap-3">
+                <LogoMarca nome={conv.nome} logo={conv.logo} cor={conv.cor} tamanho="lg" />
+                <h2 className="flex-1 text-xl font-bold">{conv.nome}</h2>
+                {podeEditarAtual && (
+                  <Botao variante="secundario" onClick={() => abrirForm({ tipo: "convenio", id: conv.id })}><Pencil className="size-4" />Editar convênio</Botao>
+                )}
+              </div>
               <p className="mb-2 text-sm font-semibold text-suave">Tipo de rede</p>
               {conv.subtipos.length
                 ? <div className="max-w-xl"><Segmentado valor={subId} onChange={setSubId} opcoes={conv.subtipos.map((s) => ({ valor: s.id, rotulo: s.nome }))} /></div>

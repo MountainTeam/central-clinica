@@ -5,7 +5,7 @@ import { useState } from "react";
 import { ChevronRight, ClipboardList, Copy, FileText, FlaskConical, Pencil, ShieldCheck, UserRound } from "lucide-react";
 import { useStore, type Painel } from "@/lib/store";
 import { resumoHorarios } from "@/lib/regras";
-import { Avatar, Botao, Chip, Gaveta, Secao, Vazio } from "./ui";
+import { Avatar, Botao, Chip, Gaveta, LogoMarca, Secao, Vazio } from "./ui";
 
 export function Paineis() {
   const { painel, abrir } = useStore();
@@ -70,7 +70,7 @@ function FichaExame({ id }: { id: string }) {
           <div className="space-y-3">
             {porConvenio.map(({ c, subs }) => (
               <div key={c.id} className="flex flex-wrap items-center gap-2">
-                <span className="flex w-36 items-center gap-2 text-[15px] font-semibold"><span className="size-2 rounded-full" style={{ background: c.cor }} />{c.nome}</span>
+                <span className="flex w-36 items-center gap-2 text-[15px] font-semibold"><LogoMarca nome={c.nome} logo={c.logo} cor={c.cor} tamanho="sm" />{c.nome}</span>
                 {subs.map((s) => <Chip key={s.id} tom="azul">{s.nome}</Chip>)}
               </div>
             ))}

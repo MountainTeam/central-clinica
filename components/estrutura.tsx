@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Building2, Check, CheckCircle2, ChevronsUpDown, FlaskConical, LayoutGrid, Lock, LogOut, Search, ShieldCheck } from "lucide-react";
+import { Check, CheckCircle2, ChevronsUpDown, FlaskConical, LayoutGrid, Lock, LogOut, Search, ShieldCheck } from "lucide-react";
 import type { Usuario } from "@/lib/modelo";
 import { PAPEIS } from "@/lib/permissoes";
 import { useStore } from "@/lib/store";
-import { Logo, Vazio } from "@/components/ui";
+import { Logo, LogoMarca, Vazio } from "@/components/ui";
 import { Paineis } from "@/components/paineis";
 import { Formularios } from "@/components/formularios";
 
@@ -130,7 +130,7 @@ function SeletorClinica({ compacto = false }: { compacto?: boolean }) {
     <div ref={caixa} className="relative">
       <button type="button" disabled={!varias} onClick={() => setAberto(!aberto)} aria-expanded={aberto}
         className={`flex w-full items-center gap-3 rounded-2xl border border-borda bg-fundo text-left ${compacto ? "px-2.5 py-2" : "p-3"} ${varias ? "pressionavel hover:border-verde/40" : ""}`}>
-        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-superficie text-verde shadow-card"><Building2 className="size-4" /></span>
+        <LogoMarca nome={clinica.nome} logo={clinica.logo} />
         <span className="min-w-0 flex-1">
           {!compacto && <span className="block truncate text-[11px] font-semibold uppercase tracking-wider text-suave">{org?.nome ?? "Clínica"}</span>}
           <span key={clinica.id} className="entrar block truncate text-sm font-semibold">{clinica.nome}</span>
