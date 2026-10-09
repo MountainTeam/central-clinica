@@ -113,8 +113,8 @@ function FormProfissional({ id }: { id?: string }) {
 
   const salvar = (f: FormData) => {
     const nome = String(f.get("nome")).trim();
-    if (!nome) return avisar("Informe o nome");
-    if (!dados.especialidades.length) return avisar("Cadastre uma especialidade antes do primeiro médico.");
+    if (!nome) return avisar("Informe o nome", true);
+    if (!dados.especialidades.length) return avisar("Cadastre uma especialidade antes do primeiro médico.", true);
     if (!clinica) return;
     const atende: Record<string, string> = {};
     for (const c of dados.convenios) for (const s of c.subtipos) {
@@ -188,7 +188,7 @@ function FormExame({ id }: { id?: string }) {
 
   const salvar = (f: FormData) => {
     const nome = String(f.get("nome")).trim();
-    if (!nome) return avisar("Informe o nome do exame");
+    if (!nome) return avisar("Informe o nome do exame", true);
     if (!clinica) return;
     const novo: Exame = {
       id: ex?.id ?? novoId("exame"),
@@ -235,7 +235,7 @@ function FormEspecialidade() {
   const { clinica, executar, abrirForm, avisar } = useStore();
   const salvar = (f: FormData) => {
     const nome = String(f.get("nome")).trim();
-    if (!nome) return avisar("Informe o nome");
+    if (!nome) return avisar("Informe o nome", true);
     if (!clinica) return;
     const nova = { id: novoId("esp"), clinicaId: clinica.id, nome, icone: "Stethoscope" };
     if (executar((b, u) => salvarEspecialidade(b, u, nova), "Especialidade cadastrada")) abrirForm(null);
@@ -254,7 +254,7 @@ function FormConvenio({ id }: { id?: string }) {
   const [nomeAtual, setNomeAtual] = useState(c?.nome ?? "");
   const salvar = (f: FormData) => {
     const nome = String(f.get("nome")).trim();
-    if (!nome) return avisar("Informe o nome do convênio");
+    if (!nome) return avisar("Informe o nome do convênio", true);
     if (!clinica) return;
     const convId = c?.id ?? novoId("conv");
     const nomes = String(f.get("subtipos")).split(",").map((x) => x.trim()).filter(Boolean);
@@ -284,7 +284,7 @@ function FormOrganizacao() {
   const { executar, abrirForm, avisar } = useStore();
   const salvar = (f: FormData) => {
     const nome = String(f.get("nome")).trim();
-    if (!nome) return avisar("Informe o nome da organização");
+    if (!nome) return avisar("Informe o nome da organização", true);
     if (executar((b, u) => salvarOrganizacao(b, u, { id: novoId("org"), nome }), "Organização cadastrada")) abrirForm(null);
   };
   return (
@@ -301,7 +301,7 @@ function FormClinica({ id }: { id?: string }) {
   const [nomeAtual, setNomeAtual] = useState(c?.nome ?? "");
   const salvar = (f: FormData) => {
     const nome = String(f.get("nome")).trim();
-    if (!nome) return avisar("Informe o nome da clínica");
+    if (!nome) return avisar("Informe o nome da clínica", true);
     const organizacaoId = c?.organizacaoId ?? String(f.get("organizacao"));
     const nova = { id: c?.id ?? novoId("clinica"), organizacaoId, nome, logo };
     if (executar((b, u) => salvarClinica(b, u, nova), c ? "Clínica atualizada" : "Clínica cadastrada")) abrirForm(null);
@@ -331,7 +331,7 @@ function FormUsuario() {
   const salvar = (f: FormData) => {
     const nome = String(f.get("nome")).trim();
     const email = String(f.get("email")).trim();
-    if (!nome || !email) return avisar("Informe nome e e-mail");
+    if (!nome || !email) return avisar("Informe nome e e-mail", true);
     const clinicas = todas ? [] : banco.clinicas.filter((c) => f.get(`cl:${c.id}`)).map((c) => c.id);
     // a regra "pelo menos uma clínica" é conferida no repositório
     if (executar((b, u) => salvarUsuario(b, u, { id: novoId("usuario"), nome, email, papel, clinicas }), "Usuário cadastrado")) abrirForm(null);

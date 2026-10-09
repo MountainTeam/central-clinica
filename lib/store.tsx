@@ -36,8 +36,8 @@ type Store = {
   abrir: (p: Painel) => void;
   form: Formulario;
   abrirForm: (f: Formulario) => void;
-  aviso: string | null;
-  avisar: (t: string) => void;
+  aviso: { texto: string; erro: boolean } | null;
+  avisar: (t: string, erro?: boolean) => void;
 };
 
 const Ctx = createContext<Store | null>(null);
@@ -57,12 +57,12 @@ export function Provider({ children }: { children: React.ReactNode }) {
   const [carregado, setCarregado] = useState(false);
   const [painel, abrir] = useState<Painel>(null);
   const [form, abrirForm] = useState<Formulario>(null);
-  const [aviso, setAviso] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<{ texto: string; erro: boolean } | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const avisouFalha = useRef(false);
 
-  const avisar = useCallback((t: string) => {
-    setAviso(t);
+  const avisar = useCallback((t: string, erro = false) => {
+    setAviso({ texto: t, erro });
     clearTimeout(timer.current);
     timer.current = setTimeout(() => setAviso(null), 2800);
   }, []);
@@ -80,7 +80,7 @@ export function Provider({ children }: { children: React.ReactNode }) {
     if (!carregado) return;
     if (!gravar(banco) && !avisouFalha.current) {
       avisouFalha.current = true;
-      avisar("Não foi possível salvar neste navegador. As mudanças valem só até fechar a página.");
+      avisar("Não foi possível salvar neste navegador. As mudanças valem só até fechar a página.", true);
     }
   }, [banco, carregado, avisar]);
 
@@ -113,7 +113,7 @@ export function Provider({ children }: { children: React.ReactNode }) {
       avisar(sucesso);
       return true;
     } catch (e) {
-      avisar(e instanceof Error ? e.message : "Não foi possível salvar.");
+      avisar(e instanceof Error ? e.message : "Não foi possível salvar.", true);
       return false;
     }
   };

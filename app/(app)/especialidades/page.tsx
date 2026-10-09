@@ -7,7 +7,9 @@ import { Botao, CabecalhoPagina, CartaoProfissional, Icone, Vazio } from "@/comp
 
 export default function Especialidades() {
   const { dados, podeEditarAtual, abrirForm } = useStore();
-  const [sel, setSel] = useState(dados.especialidades[0]?.id ?? "");
+  const [escolhida, setSel] = useState("");
+  // sem escolha (ou escolha que sumiu) cai na primeira, inclusive a recém-cadastrada
+  const sel = dados.especialidades.some((e) => e.id === escolhida) ? escolhida : dados.especialidades[0]?.id ?? "";
   const atual = dados.especialidades.find((e) => e.id === sel);
   const lista = dados.profissionais.filter((p) => p.especialidadeId === sel);
 

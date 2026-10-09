@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Building2, Check, CheckCircle2, ChevronsUpDown, FlaskConical, LayoutGrid, Lock, LogOut, Search, ShieldCheck, Users } from "lucide-react";
+import { Building2, Check, CheckCircle2, ChevronsUpDown, FlaskConical, LayoutGrid, Lock, LogOut, Search, ShieldCheck, TriangleAlert, Users } from "lucide-react";
 import type { Usuario } from "@/lib/modelo";
 import { PAPEIS, podeCriarUsuario, podeVerTelaClinicas } from "@/lib/permissoes";
 import { useStore } from "@/lib/store";
@@ -93,8 +93,8 @@ export function Estrutura({ children }: { children: React.ReactNode }) {
       <Formularios />
 
       {aviso && (
-        <div key={aviso} role="status" className="aviso fixed bottom-6 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-2 rounded-2xl bg-texto px-4 py-3 text-sm font-medium text-white shadow-elevado">
-          <CheckCircle2 className="size-4 shrink-0 text-emerald-300" />{aviso}
+        <div key={aviso.texto} role="status" className="aviso fixed bottom-6 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-2 rounded-2xl bg-texto px-4 py-3 text-sm font-medium text-white shadow-elevado">
+          {aviso.erro ? <TriangleAlert className="size-4 shrink-0 text-amber-300" /> : <CheckCircle2 className="size-4 shrink-0 text-emerald-300" />}{aviso.texto}
         </div>
       )}
     </div>

@@ -10,13 +10,16 @@ import { Avatar, Botao, CabecalhoPagina, LogoMarca, Segmentado, Vazio } from "@/
 
 export default function Convenios() {
   const { dados, podeEditarAtual, abrirForm, abrir } = useStore();
-  const [convId, setConvId] = useState(dados.convenios[0]?.id ?? "");
-  const conv = dados.convenios.find((c) => c.id === convId);
-  const [subId, setSubId] = useState(conv?.subtipos[0]?.id ?? "");
+  const [escolhido, setConvId] = useState("");
+  // sem escolha (ou escolha que sumiu) cai no primeiro convênio e na primeira rede
+  const conv = dados.convenios.find((c) => c.id === escolhido) ?? dados.convenios[0];
+  const convId = conv?.id ?? "";
+  const [subEscolhido, setSubId] = useState("");
+  const subId = conv?.subtipos.some((s) => s.id === subEscolhido) ? subEscolhido : conv?.subtipos[0]?.id ?? "";
 
   const escolher = (id: string) => {
     setConvId(id);
-    setSubId(dados.convenios.find((c) => c.id === id)?.subtipos[0]?.id ?? "");
+    setSubId("");
   };
   const quem = (tipo: Tipo) => dados.profissionais.filter((p) => atende(p, subId, tipo));
   const exames = dados.exames.filter((e) => e.subtipos.includes(subId));

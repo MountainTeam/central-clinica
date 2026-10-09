@@ -32,7 +32,7 @@ function FichaExame({ id }: { id: string }) {
 
   const copiar = async () => {
     const texto = `${ex.nome}\n\nPreparo:\n${ex.preparo.map((x, i) => `${i + 1}. ${x}`).join("\n")}\n\nTrazer: ${ex.documentos}`;
-    try { await navigator.clipboard.writeText(texto); avisar("Orientações copiadas"); } catch { avisar("Não foi possível copiar"); }
+    try { await navigator.clipboard.writeText(texto); avisar("Orientações copiadas"); } catch { avisar("Não foi possível copiar", true); }
   };
 
   return (

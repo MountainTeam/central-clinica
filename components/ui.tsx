@@ -192,7 +192,7 @@ export function EnvioLogo({ nome, cor, valor, onChange }: {
   const { avisar } = useStore();
   const escolher = async (arquivo?: File) => {
     if (!arquivo) return;
-    try { onChange(await reduzirImagem(arquivo)); } catch (e) { avisar((e as Error).message); }
+    try { onChange(await reduzirImagem(arquivo)); } catch (e) { avisar((e as Error).message, true); }
   };
   return (
     <div className="flex items-center gap-4">
