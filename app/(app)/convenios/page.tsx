@@ -51,17 +51,17 @@ export default function Convenios() {
               </Link>
             ))}
           </div>
-        ) : <Vazio texto={`Ninguém atende ${tipo} por esta rede.`} />}
+        ) : <Vazio texto={"Ninguém."} />}
       </div>
     );
   };
 
   return (
     <div>
-      <CabecalhoPagina titulo="Convênios" descricao="Escolha o convênio e a rede para ver quem atende consulta e quem atende exame."
+      <CabecalhoPagina titulo="Convênios"
         acao={podeEditarAtual && <Botao onClick={() => abrirForm({ tipo: "convenio" })}><Plus className="size-4" />Convênio</Botao>} />
 
-      {!dados.convenios.length && <Vazio texto="Nenhum convênio cadastrado nesta clínica." />}
+      {!dados.convenios.length && <Vazio texto="Nenhum convênio cadastrado." />}
       <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
         <div className="flex gap-2 overflow-x-auto lg:flex-col">
           {dados.convenios.map((c, i) => (
@@ -89,14 +89,14 @@ export default function Convenios() {
               <p className="mb-2 text-sm font-semibold text-suave">Tipo de rede</p>
               {conv.subtipos.length
                 ? <div className="max-w-xl"><Segmentado valor={subId} onChange={setSubId} opcoes={conv.subtipos.map((s) => ({ valor: s.id, rotulo: s.nome }))} /></div>
-                : <Vazio texto="Nenhuma rede cadastrada para este convênio." />}
+                : <Vazio texto="Nenhuma rede cadastrada." />}
             </div>
             <div key={subId} className="grid gap-5 md:grid-cols-2">
               {lista("consulta")}
               {lista("exame")}
             </div>
             <div className="entrar rounded-3xl border border-borda bg-superficie p-5 shadow-card" style={{ "--i": 3 } as React.CSSProperties}>
-              <h3 className="mb-3 font-bold">Exames cobertos nesta rede</h3>
+              <h3 className="mb-3 font-bold">Exames cobertos</h3>
               {exames.length ? (
                 <div className="flex flex-wrap gap-2">
                   {exames.map((e) => (
@@ -104,7 +104,7 @@ export default function Convenios() {
                       className="pressionavel rounded-xl bg-azul-claro px-3 py-1.5 text-sm font-semibold text-azul hover:brightness-95">{e.nome}</button>
                   ))}
                 </div>
-              ) : <Vazio texto="Nenhum exame cadastrado para esta rede." />}
+              ) : <Vazio texto="Nenhum exame nesta rede." />}
             </div>
           </div>
         )}

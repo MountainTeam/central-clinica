@@ -13,7 +13,7 @@ export default function Exames() {
 
   return (
     <div>
-      <CabecalhoPagina titulo="Exames" descricao="Clique no exame para ver o preparo, o que trazer e quais convênios cobrem."
+      <CabecalhoPagina titulo="Exames"
         acao={podeEditarAtual && <Botao onClick={() => abrirForm({ tipo: "exame" })}><Plus className="size-4" />Exame</Botao>} />
 
       <div className="entrar relative mb-6 max-w-md" style={{ "--i": 1 } as React.CSSProperties}>
@@ -45,7 +45,7 @@ export default function Exames() {
           );
         })}
       </div>
-      {!lista.length && <Vazio texto={dados.exames.length ? "Nenhum exame com esse nome." : "Nenhum exame cadastrado nesta clínica."} />}
+      {!lista.length && <Vazio texto={dados.exames.length ? "Nenhum exame com esse nome." : "Nenhum exame cadastrado."} />}
     </div>
   );
 }

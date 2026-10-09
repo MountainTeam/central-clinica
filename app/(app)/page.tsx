@@ -66,16 +66,11 @@ export default function BuscaRapida() {
 
   return (
     <div>
-      <div className="entrar mb-8">
-        <p className="text-sm font-semibold text-verde">Busca rápida</p>
-        <h1 className="mt-1 text-[32px] font-bold leading-tight tracking-tight">Quem atende <span className="texto-marca">este paciente</span>?</h1>
-      </div>
-
       <div className="entrar rounded-3xl border border-borda bg-superficie p-4 shadow-card sm:p-5" style={{ "--i": 1 } as React.CSSProperties}>
         <div className="relative">
           <Search className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-suave" />
           <input ref={campo} value={texto} onChange={(e) => setTexto(e.target.value)} autoFocus
-            placeholder="Médico, especialidade, procedimento ou exame"
+            placeholder="Médico, procedimento ou exame"
             className="h-14 w-full rounded-2xl bg-fundo pl-12 pr-24 text-[17px] outline-none ring-1 ring-transparent transition placeholder:text-suave/70 focus:bg-superficie focus:ring-verde/40 focus:shadow-[0_0_0_4px_rgb(13_155_134/0.12)]" />
           {texto ? (
             <button onClick={() => setTexto("")} aria-label="Limpar" className="pressionavel absolute right-3 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-lg text-suave hover:bg-borda/60"><X className="size-4" /></button>
@@ -139,7 +134,7 @@ export default function BuscaRapida() {
             )} />
         ))}
       </div>
-      {!resultados.length && <div className="mt-4"><Vazio texto={dados.profissionais.length ? "Ninguém atende com esses filtros. Tente outra rede do convênio ou tire um filtro." : "Nenhum profissional cadastrado nesta clínica ainda."} /></div>}
+      {!resultados.length && <div className="mt-4"><Vazio texto={dados.profissionais.length ? "Ninguém atende com esses filtros." : "Nenhum profissional cadastrado."} /></div>}
     </div>
   );
 }

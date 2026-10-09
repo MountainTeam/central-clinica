@@ -15,7 +15,7 @@ export default function Clinicas() {
 
   return (
     <div>
-      <CabecalhoPagina titulo="Clínicas" descricao="Cada clínica tem os próprios médicos, convênios, especialidades e exames."
+      <CabecalhoPagina titulo="Clínicas"
         acao={criar && (
           <div className="flex gap-2">
             <Botao variante="secundario" onClick={() => abrirForm({ tipo: "organizacao" })}><Plus className="size-4" />Organização</Botao>
@@ -63,7 +63,7 @@ export default function Clinicas() {
                     );
                   })}
                 </div>
-              ) : <Vazio texto="Nenhuma clínica nesta organização ainda." />}
+              ) : <Vazio texto="Nenhuma clínica." />}
             </section>
           );
         })}

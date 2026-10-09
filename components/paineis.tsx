@@ -76,7 +76,7 @@ function FichaExame({ id }: { id: string }) {
               </div>
             ))}
           </div>
-        ) : <Vazio texto="Nenhum convênio cadastrado para este exame." />}
+        ) : <Vazio texto="Nenhum convênio." />}
       </Secao>
 
       <Secao titulo="Quem realiza" icone={<UserRound className="size-4" />} i={6}>

@@ -15,7 +15,7 @@ export default function Especialidades() {
 
   return (
     <div>
-      <CabecalhoPagina titulo="Especialidades" descricao="Escolha a especialidade para ver quem atende e o que cada profissional faz."
+      <CabecalhoPagina titulo="Especialidades"
         acao={podeEditarAtual && (
           <div className="flex gap-2">
             <Botao variante="secundario" onClick={() => abrirForm({ tipo: "especialidade" })}><Plus className="size-4" />Especialidade</Botao>
@@ -43,7 +43,7 @@ export default function Especialidades() {
       </div>
 
       {!dados.especialidades.length && (
-        <Vazio texto="Nenhuma especialidade cadastrada nesta clínica. Cadastre a primeira para depois vincular os médicos." />
+        <Vazio texto="Nenhuma especialidade cadastrada." />
       )}
 
       {atual && (
@@ -62,7 +62,7 @@ export default function Especialidades() {
                   } />
               ))}
             </div>
-          ) : <Vazio texto="Nenhum profissional cadastrado nesta especialidade ainda." />}
+          ) : <Vazio texto="Nenhum profissional." />}
         </section>
       )}
     </div>

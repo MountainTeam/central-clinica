@@ -1,10 +1,10 @@
 import type { Papel, Usuario } from "./modelo.ts";
 
 export const PAPEIS: Record<Papel, { rotulo: string; descricao: string }> = {
-  administrador: { rotulo: "Administrador", descricao: "Vê e edita todas as clínicas e cria usuários." },
-  comercial: { rotulo: "Comercial", descricao: "Vê e edita todas as clínicas; não cria usuários." },
-  coordenador: { rotulo: "Coordenador", descricao: "Edita só as clínicas vinculadas." },
-  recepcao: { rotulo: "Recepção/Central", descricao: "Só consulta as clínicas vinculadas." },
+  administrador: { rotulo: "Administrador", descricao: "Tudo, inclusive usuários" },
+  comercial: { rotulo: "Comercial", descricao: "Tudo, menos usuários" },
+  coordenador: { rotulo: "Coordenador", descricao: "Edita as clínicas dele" },
+  recepcao: { rotulo: "Recepção/Central", descricao: "Só consulta" },
 };
 
 // Administrador e Comercial enxergam todas as clínicas

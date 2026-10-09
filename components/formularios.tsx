@@ -68,13 +68,12 @@ export function Formularios() {
   );
 }
 
-export function Moldura({ titulo, descricao, onSalvar, children }: { titulo: string; descricao: string; onSalvar: (f: FormData) => void; children: React.ReactNode }) {
+export function Moldura({ titulo, onSalvar, children }: { titulo: string; onSalvar: (f: FormData) => void; children: React.ReactNode }) {
   const { abrirForm } = useStore();
   return (
     <form className="flex min-h-full flex-col" onSubmit={(e) => { e.preventDefault(); onSalvar(new FormData(e.currentTarget)); }}>
       <div className="entrar border-b border-borda p-6 pr-14 sm:p-8">
         <h2 className="text-2xl font-bold tracking-tight">{titulo}</h2>
-        <p className="mt-1 text-suave">{descricao}</p>
       </div>
       <div className="flex-1 space-y-6 p-6 sm:p-8">{children}</div>
       <div className="sticky bottom-0 flex justify-end gap-2 border-t border-borda bg-superficie/90 p-4 backdrop-blur">
@@ -86,7 +85,7 @@ export function Moldura({ titulo, descricao, onSalvar, children }: { titulo: str
 }
 
 function MatrizConvenios({ dados, atende }: { dados: DadosClinica; atende: Record<string, string> }) {
-  if (!dados.convenios.length) return <p className="rounded-xl border border-dashed border-borda px-4 py-4 text-sm text-suave">Nenhum convênio cadastrado nesta clínica ainda.</p>;
+  if (!dados.convenios.length) return <p className="rounded-xl border border-dashed border-borda px-4 py-4 text-sm text-suave">Nenhum convênio cadastrado.</p>;
   return (
     <div className="overflow-hidden rounded-2xl border border-borda">
       <div className="grid grid-cols-[1fr_80px_80px] bg-fundo px-4 py-2 text-xs font-semibold text-suave">
@@ -114,7 +113,7 @@ function FormProfissional({ id }: { id?: string }) {
   const salvar = (f: FormData) => {
     const nome = String(f.get("nome")).trim();
     if (!nome) return avisar("Informe o nome", true);
-    if (!dados.especialidades.length) return avisar("Cadastre uma especialidade antes do primeiro médico.", true);
+    if (!dados.especialidades.length) return avisar("Cadastre uma especialidade antes.", true);
     if (!clinica) return;
     const atende: Record<string, string> = {};
     for (const c of dados.convenios) for (const s of c.subtipos) {
@@ -140,10 +139,10 @@ function FormProfissional({ id }: { id?: string }) {
   };
 
   return (
-    <Moldura titulo={p ? "Editar profissional" : "Novo profissional"} descricao="Tudo o que a central precisa saber antes de marcar." onSalvar={salvar}>
+    <Moldura titulo={p ? "Editar profissional" : "Novo profissional"} onSalvar={salvar}>
       <div className="grid gap-4 sm:grid-cols-2">
         <Campo rotulo="Nome"><input name="nome" defaultValue={p?.nome} placeholder="Dra. Nome Sobrenome" className={campo} /></Campo>
-        <Campo rotulo="Especialidade" dica={dados.especialidades.length ? undefined : "Cadastre uma especialidade nesta clínica primeiro."}>
+        <Campo rotulo="Especialidade" dica={dados.especialidades.length ? undefined : "Cadastre uma especialidade antes."}>
           <select name="especialidade" defaultValue={p?.especialidadeId} className={campo}>
             {dados.especialidades.map((e) => <option key={e.id} value={e.id}>{e.nome}</option>)}
           </select>
@@ -154,7 +153,7 @@ function FormProfissional({ id }: { id?: string }) {
         <span className="mb-1.5 block text-sm font-semibold">Dias e horários de atendimento</span>
         <EditorHorarios valor={p?.horarios ?? []} />
       </div>
-      <Campo rotulo="Convênios atendidos" dica="Marque separadamente consulta e exame: nem todo convênio que cobre exame cobre consulta.">
+      <Campo rotulo="Convênios atendidos">
         <MatrizConvenios dados={dados} atende={p?.atende ?? {}} />
       </Campo>
       <Campo rotulo="Procedimentos que realiza" dica="Separe por vírgula.">
@@ -170,9 +169,9 @@ function FormProfissional({ id }: { id?: string }) {
               </label>
             ))}
           </div>
-        ) : <p className="text-sm text-suave">Nenhum exame cadastrado nesta clínica ainda.</p>}
+        ) : <p className="text-sm text-suave">Nenhum exame cadastrado.</p>}
       </div>
-      <Campo rotulo="Restrições" dica="Uma por linha. Ex.: Unimed só 5 pacientes por dia.">
+      <Campo rotulo="Restrições" dica="Uma por linha.">
         <textarea name="restricoes" rows={3} defaultValue={p?.restricoes.map((r) => r.texto).join("\n")} className={campo} />
       </Campo>
       <Campo rotulo="Observações">
@@ -204,12 +203,12 @@ function FormExame({ id }: { id?: string }) {
   };
 
   return (
-    <Moldura titulo={ex ? "Editar exame" : "Novo exame"} descricao="Orientações que a atendente repassa ao paciente." onSalvar={salvar}>
+    <Moldura titulo={ex ? "Editar exame" : "Novo exame"} onSalvar={salvar}>
       <Campo rotulo="Nome do exame"><input name="nome" defaultValue={ex?.nome} className={campo} /></Campo>
       <Campo rotulo="Preparo" dica="Um passo por linha.">
         <textarea name="preparo" rows={5} defaultValue={ex?.preparo.join("\n")} className={campo} />
       </Campo>
-      <Campo rotulo="O paciente deve trazer"><input name="documentos" defaultValue={ex?.documentos} placeholder="Pedido médico, carteirinha..." className={campo} /></Campo>
+      <Campo rotulo="O paciente deve trazer"><input name="documentos" defaultValue={ex?.documentos} placeholder="Pedido médico, carteirinha" className={campo} /></Campo>
       <div>
         <span className="mb-1.5 block text-sm font-semibold">Convênios que cobrem</span>
         {dados.convenios.length ? (
@@ -225,7 +224,7 @@ function FormExame({ id }: { id?: string }) {
               </div>
             ))}
           </div>
-        ) : <p className="text-sm text-suave">Nenhum convênio cadastrado nesta clínica ainda.</p>}
+        ) : <p className="text-sm text-suave">Nenhum convênio cadastrado.</p>}
       </div>
     </Moldura>
   );
@@ -241,7 +240,7 @@ function FormEspecialidade() {
     if (executar((b, u) => salvarEspecialidade(b, u, nova), "Especialidade cadastrada")) abrirForm(null);
   };
   return (
-    <Moldura titulo="Nova especialidade" descricao="Depois, vincule os profissionais a ela." onSalvar={salvar}>
+    <Moldura titulo="Nova especialidade" onSalvar={salvar}>
       <Campo rotulo="Nome"><input name="nome" placeholder="Ex.: Mastologia" className={campo} /></Campo>
     </Moldura>
   );
@@ -270,10 +269,10 @@ function FormConvenio({ id }: { id?: string }) {
     if (executar((b, u) => salvarConvenio(b, u, novo), c ? "Convênio atualizado" : "Convênio cadastrado")) abrirForm(null);
   };
   return (
-    <Moldura titulo={c ? "Editar convênio" : "Novo convênio"} descricao="Cadastre o convênio e os tipos de rede dele." onSalvar={salvar}>
+    <Moldura titulo={c ? "Editar convênio" : "Novo convênio"} onSalvar={salvar}>
       <EnvioLogo nome={nomeAtual} cor={c?.cor ?? corDoIndice(dados.convenios.length)} valor={logo} onChange={setLogo} />
       <Campo rotulo="Nome do convênio"><input name="nome" defaultValue={c?.nome} onChange={(e) => setNomeAtual(e.target.value)} placeholder="Ex.: Unimed" className={campo} /></Campo>
-      <Campo rotulo="Tipos de rede" dica="Separe por vírgula. Ex.: Essencial, Flex, Rede fechada">
+      <Campo rotulo="Tipos de rede" dica="Separe por vírgula.">
         <input name="subtipos" defaultValue={c?.subtipos.map((s) => s.nome).join(", ")} className={campo} />
       </Campo>
     </Moldura>
@@ -288,7 +287,7 @@ function FormOrganizacao() {
     if (executar((b, u) => salvarOrganizacao(b, u, { id: novoId("org"), nome }), "Organização cadastrada")) abrirForm(null);
   };
   return (
-    <Moldura titulo="Nova organização" descricao="Um cliente do sistema. Depois, cadastre as clínicas dele." onSalvar={salvar}>
+    <Moldura titulo="Nova organização" onSalvar={salvar}>
       <Campo rotulo="Nome da organização"><input name="nome" placeholder="Ex.: Clínica de Oncologia e Mastologia" className={campo} /></Campo>
     </Moldura>
   );
@@ -307,7 +306,7 @@ function FormClinica({ id }: { id?: string }) {
     if (executar((b, u) => salvarClinica(b, u, nova), c ? "Clínica atualizada" : "Clínica cadastrada")) abrirForm(null);
   };
   return (
-    <Moldura titulo={c ? "Editar clínica" : "Nova clínica"} descricao="Cada clínica tem os próprios médicos, convênios, especialidades e exames." onSalvar={salvar}>
+    <Moldura titulo={c ? "Editar clínica" : "Nova clínica"} onSalvar={salvar}>
       <EnvioLogo nome={nomeAtual} valor={logo} onChange={setLogo} />
       {!c && (
         <Campo rotulo="Organização">
@@ -338,9 +337,9 @@ function FormUsuario() {
   };
 
   return (
-    <Moldura titulo="Novo usuário" descricao="O papel define o que a pessoa pode fazer; as clínicas, onde." onSalvar={salvar}>
+    <Moldura titulo="Novo usuário" onSalvar={salvar}>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Campo rotulo="Nome"><input name="nome" placeholder="Ex.: Recepção COMN — tarde" className={campo} /></Campo>
+        <Campo rotulo="Nome"><input name="nome" placeholder="Ex.: Recepção COMN tarde" className={campo} /></Campo>
         <Campo rotulo="E-mail"><input name="email" type="email" placeholder="nome@clinica.com.br" className={campo} /></Campo>
       </div>
       <fieldset>

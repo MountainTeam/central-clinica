@@ -80,7 +80,7 @@ export function Provider({ children }: { children: React.ReactNode }) {
     if (!carregado) return;
     if (!gravar(banco) && !avisouFalha.current) {
       avisouFalha.current = true;
-      avisar("Não foi possível salvar neste navegador. As mudanças valem só até fechar a página.", true);
+      avisar("Não deu para salvar. As mudanças somem ao fechar a página.", true);
     }
   }, [banco, carregado, avisar]);
 

@@ -19,7 +19,7 @@ export default function Usuarios() {
 
   return (
     <div>
-      <CabecalhoPagina titulo="Usuários" descricao="Cada usuário vê só as clínicas vinculadas a ele. Administrador e Comercial veem todas."
+      <CabecalhoPagina titulo="Usuários"
         acao={<Botao onClick={() => abrirForm({ tipo: "usuario" })}><Plus className="size-4" />Usuário</Botao>} />
 
       <div className="overflow-hidden rounded-3xl border border-borda bg-superficie shadow-card">
@@ -45,10 +45,10 @@ export default function Usuarios() {
 
       <section className="entrar mt-10 rounded-3xl border border-borda bg-superficie p-5 sm:p-6" style={{ "--i": 3 } as React.CSSProperties}>
         <h2 className="font-bold">Restaurar demonstração</h2>
-        <p className="mt-1 text-sm text-suave">Apaga médicos, convênios, especialidades, exames, logos e usuários criados, e volta ao ponto zero. Use antes de apresentar.</p>
+        <p className="mt-1 text-sm text-suave">Apaga tudo que foi cadastrado.</p>
         {confirmando ? (
           <div key="confirma" className="entrar mt-4 flex flex-wrap items-center gap-3 rounded-2xl bg-alerta-claro p-4">
-            <p className="flex-1 text-sm font-semibold text-alerta">Tem certeza? Tudo o que foi cadastrado neste navegador será apagado.</p>
+            <p className="flex-1 text-sm font-semibold text-alerta">Apagar tudo?</p>
             <Botao variante="secundario" onClick={() => setConfirmando(false)}>Cancelar</Botao>
             <button type="button" onClick={restaurar}
               className="pressionavel inline-flex h-10 items-center gap-2 rounded-xl bg-alerta px-4 text-sm font-semibold text-white hover:brightness-110">

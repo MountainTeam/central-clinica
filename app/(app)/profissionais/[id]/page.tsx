@@ -15,7 +15,7 @@ const cartao = "rounded-3xl border border-borda bg-superficie p-5 shadow-card sm
 
 export default function PaginaProfissional() {
   const { id } = useParams<{ id: string }>();
-  const { dados, podeEditarAtual, clinica, abrir, abrirForm, executar } = useStore();
+  const { dados, podeEditarAtual, abrir, abrirForm, executar } = useStore();
   const [editando, setEditando] = useState<"horarios" | "obs" | null>(null);
   // dia da semana só no navegador, para não divergir do HTML do servidor
   const [hoje, setHoje] = useState<string | null>(null);
@@ -25,7 +25,7 @@ export default function PaginaProfissional() {
   if (!p) {
     return (
       <div className="entrar space-y-4">
-        <Vazio texto={`Profissional não encontrado na ${clinica?.nome ?? "clínica atual"}.`} />
+        <Vazio texto={"Profissional não encontrado."} />
         <Link href="/" className="pressionavel inline-flex items-center gap-2 font-semibold text-verde"><ArrowLeft className="size-4" />Voltar para a busca</Link>
       </div>
     );
@@ -80,13 +80,13 @@ export default function PaginaProfissional() {
           )}
 
           <div className={cartao}>
-            <Secao titulo="Convênios atendidos" icone={<ShieldCheck className="size-4" />} i={3}>
+            <Secao titulo="Convênios" icone={<ShieldCheck className="size-4" />} i={3}>
               <TabelaConvenios dados={dados} p={p} />
             </Secao>
           </div>
 
           <div className={cartao}>
-            <Secao titulo="Procedimentos que realiza" icone={<ClipboardList className="size-4" />} i={4}>
+            <Secao titulo="Procedimentos" icone={<ClipboardList className="size-4" />} i={4}>
               {p.procedimentos.length
                 ? <div className="flex flex-wrap gap-2">{p.procedimentos.map((x) => <Chip key={x}>{x}</Chip>)}</div>
                 : <Vazio texto="Nenhum procedimento cadastrado." />}
@@ -94,7 +94,7 @@ export default function PaginaProfissional() {
           </div>
 
           <div className={cartao}>
-            <Secao titulo="Exames que realiza" icone={<FlaskConical className="size-4" />} i={5}>
+            <Secao titulo="Exames" icone={<FlaskConical className="size-4" />} i={5}>
               {p.exames.length ? (
                 <div className="space-y-2">
                   {p.exames.map((eid) => {
@@ -110,14 +110,14 @@ export default function PaginaProfissional() {
                     );
                   })}
                 </div>
-              ) : <Vazio texto="Não realiza exames nesta clínica." />}
+              ) : <Vazio texto="Nenhum exame." />}
             </Secao>
           </div>
         </div>
 
         <aside className="space-y-6 lg:sticky lg:top-8">
           <div className={`entrar ${cartao}`} style={{ "--i": 2 } as React.CSSProperties}>
-            <TituloCartao icone={<Clock className="size-4" />} titulo="Dias e horários"
+            <TituloCartao icone={<Clock className="size-4" />} titulo="Horários"
               acao={admin && editando !== "horarios" && <BotaoEditar onClick={() => setEditando("horarios")} />} />
             {editando === "horarios" ? (
               <form key="edita" className="entrar space-y-3" onSubmit={(e) => { e.preventDefault(); salvar({ horarios: lerHorarios(new FormData(e.currentTarget)) }, "Horários atualizados"); }}>
@@ -149,14 +149,14 @@ export default function PaginaProfissional() {
               acao={admin && editando !== "obs" && <BotaoEditar onClick={() => setEditando("obs")} />} />
             {editando === "obs" ? (
               <form key="edita" className="entrar space-y-3" onSubmit={(e) => { e.preventDefault(); salvar({ observacoes: String(new FormData(e.currentTarget).get("obs")).trim() }, "Observações salvas"); }}>
-                <textarea name="obs" rows={6} autoFocus defaultValue={p.observacoes} placeholder="Particularidades do atendimento, encaixes, preferências do médico..."
+                <textarea name="obs" rows={6} autoFocus defaultValue={p.observacoes} placeholder="Encaixes, preferências do médico"
                   className="w-full rounded-xl border border-borda bg-superficie px-3 py-2.5 text-[15px] leading-relaxed outline-none transition focus:border-verde focus:ring-4 focus:ring-verde/15" />
                 <Acoes onCancelar={() => setEditando(null)} />
               </form>
             ) : p.observacoes ? (
               <p key="ve" className="entrar whitespace-pre-line text-[15px] leading-relaxed">{p.observacoes}</p>
             ) : (
-              <Vazio texto={admin ? "Nenhuma observação. Clique em Editar para escrever." : "Nenhuma observação."} />
+              <Vazio texto={admin ? "Nenhuma observação." : "Nenhuma observação."} />
             )}
           </div>
         </aside>
@@ -193,7 +193,7 @@ function Acoes({ onCancelar }: { onCancelar: () => void }) {
 
 function TabelaConvenios({ dados, p }: { dados: DadosClinica; p: Profissional }) {
   const convenios = dados.convenios.filter((c) => c.subtipos.some((s) => p.atende[s.id]));
-  if (!convenios.length) return <Vazio texto="Nenhum convênio cadastrado. Atende só particular?" />;
+  if (!convenios.length) return <Vazio texto="Nenhum convênio cadastrado." />;
   const marca = (ok: boolean) => ok
     ? <span className="grid size-6 place-items-center rounded-full bg-verde-claro text-verde"><Check className="size-3.5" strokeWidth={3} /></span>
     : <span className="grid size-6 place-items-center text-borda"><Minus className="size-4" /></span>;

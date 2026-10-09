@@ -38,13 +38,10 @@ export function Avatar({ nome, grande = false }: { nome: string; grande?: boolea
   );
 }
 
-export function CabecalhoPagina({ titulo, descricao, acao }: { titulo: string; descricao: string; acao?: React.ReactNode }) {
+export function CabecalhoPagina({ titulo, acao }: { titulo: string; acao?: React.ReactNode }) {
   return (
     <div className="entrar mb-8 flex flex-wrap items-end justify-between gap-4">
-      <div>
-        <h1 className="text-[28px] font-bold tracking-tight">{titulo}</h1>
-        <p className="mt-1 text-suave">{descricao}</p>
-      </div>
+      <h1 className="text-[28px] font-bold tracking-tight">{titulo}</h1>
       {acao}
     </div>
   );
@@ -305,7 +302,6 @@ export function EnvioLogo({ nome, cor, valor, onChange }: {
       </label>
       <div className="text-sm">
         <p className="font-semibold">Logo</p>
-        <p className="text-suave">Clique no quadro para escolher uma imagem.</p>
         {valor && <button type="button" onClick={() => onChange(undefined)} className="mt-1 font-semibold text-alerta hover:underline">Remover logo</button>}
       </div>
     </div>

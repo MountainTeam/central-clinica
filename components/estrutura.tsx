@@ -58,7 +58,7 @@ export function Estrutura({ children }: { children: React.ReactNode }) {
               <span className="pulso size-2 rounded-full bg-verde" />
               <p className="truncate text-sm font-semibold">{usuario.nome}</p>
             </div>
-            <p className="mt-1 text-xs text-suave">{PAPEIS[usuario.papel].rotulo}: {PAPEIS[usuario.papel].descricao}</p>
+            <p className="mt-1 text-xs text-suave">{PAPEIS[usuario.papel].rotulo}</p>
             <button onClick={deslogar} className="pressionavel mt-3 flex items-center gap-2 text-sm font-semibold text-suave hover:text-texto">
               <LogOut className="size-4" />Sair
             </button>
@@ -86,7 +86,7 @@ export function Estrutura({ children }: { children: React.ReactNode }) {
       </header>
 
       <main key={`${rota}-${clinica?.id}`} className="mx-auto max-w-6xl px-4 py-8 sm:px-8 lg:py-12">
-        {clinica || !carregado ? children : <Vazio texto="Seu usuário não tem nenhuma clínica vinculada. Fale com o Administrador." />}
+        {clinica || !carregado ? children : <Vazio texto="Nenhuma clínica vinculada ao seu usuário." />}
       </main>
 
       <Paineis />
