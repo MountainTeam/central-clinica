@@ -33,7 +33,7 @@ export type Profissional = {
 };
 
 // Sobe quando o formato muda; dado guardado com outra versão é descartado
-export const VERSAO = 1;
+export const VERSAO = 2;
 export type Banco = {
   versao: number;
   organizacoes: Organizacao[];

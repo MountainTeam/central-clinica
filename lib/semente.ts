@@ -4,8 +4,6 @@ import { VERSAO, type Banco, type Organizacao, type Usuario } from "./modelo.ts"
 const ESTRUTURA: { org: Organizacao; clinicas: [id: string, nome: string][] }[] = [
   { org: { id: "oncologia-mastologia", nome: "Clínica de Oncologia e Mastologia" }, clinicas: [["comn", "COMN"], ["oncy", "ONCY"]] },
   { org: { id: "promater", nome: "Promater" }, clinicas: [["promater", "Promater"]] },
-  { org: { id: "nossa-clinica", nome: "Nossa Clínica" }, clinicas: [["nossa-clinica", "Nossa Clínica"]] },
-  { org: { id: "oncology-group-mossoro", nome: "Oncology Group - Mossoró" }, clinicas: [["oncology-group-mossoro", "Oncology Group - Mossoró"]] },
   { org: { id: "oncoclinicas", nome: "Oncoclínicas" }, clinicas: [["oncoclinicas", "Oncoclínicas"]] },
   { org: { id: "oncoclinicas-mossoro", nome: "Oncoclínicas Mossoró" }, clinicas: [["oncoclinicas-mossoro", "Oncoclínicas Mossoró"]] },
   { org: { id: "sao-marcos", nome: "Clínica São Marcos" }, clinicas: [["sao-marcos", "Clínica São Marcos"]] },

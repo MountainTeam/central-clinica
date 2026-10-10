@@ -16,8 +16,7 @@ export function Logo({ claro = false }: { claro?: boolean }) {
         <Icones.Plus className="size-5 text-white" strokeWidth={3} />
       </div>
       <div className="leading-tight">
-        <p className={`text-[15px] font-bold ${claro ? "text-white" : "text-texto"}`}>Cartilha</p>
-        <p className={`text-xs ${claro ? "text-white/75" : "text-suave"}`}>Central de agendamento</p>
+        <p className={`text-[15px] font-bold ${claro ? "text-white" : "text-texto"}`}>Guia Comercial</p>
       </div>
     </div>
   );
@@ -273,9 +272,9 @@ export function CartaoProfissional({ p, especialidade, destaque, i }: {
 
 // Logo da clínica ou do convênio; sem imagem, mostra as iniciais sobre a cor
 export function LogoMarca({ nome, logo, cor = "#0d9b86", tamanho = "md" }: {
-  nome: string; logo?: string; cor?: string; tamanho?: "sm" | "md" | "lg";
+  nome: string; logo?: string; cor?: string; tamanho?: "sm" | "md" | "lg" | "xl";
 }) {
-  const t = { sm: "size-6 rounded-md text-[10px]", md: "size-9 rounded-xl text-xs", lg: "size-14 rounded-2xl text-base" }[tamanho];
+  const t = { sm: "size-6 rounded-md text-[10px]", md: "size-9 rounded-xl text-xs", lg: "size-14 rounded-2xl text-base", xl: "h-20 w-44 rounded-2xl text-xl" }[tamanho];
   return logo
     // eslint-disable-next-line @next/next/no-img-element -- data URL local, sem otimização do Next
     ? <img src={logo} alt={`Logo ${nome}`} className={`${t} shrink-0 bg-white object-contain p-0.5 ring-1 ring-borda`} />
@@ -294,7 +293,7 @@ export function EnvioLogo({ nome, cor, valor, onChange }: {
   return (
     <div className="flex items-center gap-4">
       <label className="pressionavel group relative cursor-pointer rounded-2xl" title="Escolher logo">
-        <LogoMarca nome={nome || "?"} logo={valor} cor={cor} tamanho="lg" />
+        <LogoMarca nome={nome || "?"} logo={valor} cor={cor} tamanho="xl" />
         <span className="absolute inset-0 grid place-items-center rounded-2xl bg-texto/0 text-white opacity-0 transition group-hover:bg-texto/40 group-hover:opacity-100">
           <Icones.ImageUp className="size-5" />
         </span>

@@ -5,24 +5,31 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Building2, Check, CheckCircle2, ChevronsUpDown, FlaskConical, LayoutGrid, Lock, LogOut, Search, ShieldCheck, TriangleAlert, Users } from "lucide-react";
 import type { Usuario } from "@/lib/modelo";
-import { PAPEIS, podeCriarUsuario, podeVerTelaClinicas } from "@/lib/permissoes";
+import { PAPEIS, podeCriarUsuario } from "@/lib/permissoes";
 import { useStore } from "@/lib/store";
 import { Logo, LogoMarca, Vazio } from "@/components/ui";
 import { Paineis } from "@/components/paineis";
 import { Formularios } from "@/components/formularios";
 
-type ItemMenu = { href: string; rotulo: string; icone: typeof Search; mostrar?: (u: Usuario) => boolean };
+type ItemMenu = {
+  href: string;
+  rotulo: string;
+  icone: typeof Search;
+  requerClinica?: boolean;
+  mostrar?: (u: Usuario) => boolean;
+};
+
 const menu: ItemMenu[] = [
-  { href: "/", rotulo: "Busca rápida", icone: Search },
-  { href: "/especialidades", rotulo: "Especialidades", icone: LayoutGrid },
-  { href: "/convenios", rotulo: "Convênios", icone: ShieldCheck },
-  { href: "/exames", rotulo: "Exames", icone: FlaskConical },
-  { href: "/clinicas", rotulo: "Clínicas", icone: Building2, mostrar: podeVerTelaClinicas },
+  { href: "/", rotulo: "Unidades", icone: Building2 },
+  { href: "/busca", rotulo: "Busca rápida", icone: Search, requerClinica: true },
+  { href: "/especialidades", rotulo: "Especialidades", icone: LayoutGrid, requerClinica: true },
+  { href: "/convenios", rotulo: "Convênios", icone: ShieldCheck, requerClinica: true },
+  { href: "/exames", rotulo: "Exames", icone: FlaskConical, requerClinica: true },
   { href: "/usuarios", rotulo: "Usuários", icone: Users, mostrar: podeCriarUsuario },
 ];
 
 export function Estrutura({ children }: { children: React.ReactNode }) {
-  const { usuario, carregado, sair, aviso, clinica } = useStore();
+  const { usuario, carregado, sair, aviso, avisar, clinica } = useStore();
   const router = useRouter();
   const rota = usePathname();
 
@@ -30,13 +37,31 @@ export function Estrutura({ children }: { children: React.ReactNode }) {
     if (carregado && !usuario) router.replace("/login");
   }, [carregado, usuario, router]);
 
+  // Se o usuário não tiver uma unidade selecionada, só pode navegar na tela de Unidades
+  useEffect(() => {
+    if (carregado && usuario && !clinica && rota !== "/" && rota !== "/login") {
+      router.replace("/");
+      avisar("Escolha uma unidade para acessar o sistema.", true);
+    }
+  }, [carregado, usuario, clinica, rota, router, avisar]);
+
   const itens = menu.filter((m) => !m.mostrar || (usuario && m.mostrar(usuario)));
   const ativo = itens.findIndex((m) => (m.href === "/" ? rota === "/" : rota.startsWith(m.href)));
   const deslogar = () => { sair(); router.replace("/login"); };
 
+  if (!carregado || !usuario) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-fundo p-6">
+        <div className="text-center">
+          <div className="mx-auto mb-3 size-8 animate-spin rounded-full border-2 border-verde border-t-transparent" />
+          <p className="text-sm font-semibold text-suave">Carregando Guia Comercial...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    // renderiza sempre (o Next 16 valida a página no servidor) e só mostra depois de ler a sessão
-    <div className={`min-h-screen lg:pl-72 ${usuario ? "" : "invisible"}`}>
+    <div className="min-h-screen lg:pl-72">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 flex-col border-r border-borda bg-superficie/80 p-5 backdrop-blur lg:flex">
         <Logo />
         <div className="mt-8"><SeletorClinica /></div>
@@ -45,12 +70,31 @@ export function Estrutura({ children }: { children: React.ReactNode }) {
             <span className="absolute inset-x-0 top-0 h-11 rounded-xl bg-verde-claro transition-transform duration-300 ease-saida"
               style={{ transform: `translateY(calc(${ativo} * (2.75rem + 0.25rem)))` }} />
           )}
-          {itens.map((m, i) => (
-            <Link key={m.href} href={m.href}
-              className={`pressionavel relative flex h-11 items-center gap-3 rounded-xl px-3 text-[15px] font-semibold ${i === ativo ? "text-verde" : "text-suave hover:text-texto"}`}>
-              <m.icone className="size-5" />{m.rotulo}
-            </Link>
-          ))}
+          {itens.map((m, i) => {
+            const bloqueado = m.requerClinica && !clinica;
+            if (bloqueado) {
+              return (
+                <button
+                  key={m.href}
+                  type="button"
+                  onClick={() => avisar("Escolha uma unidade para acessar esta opção.", true)}
+                  className="pressionavel relative flex h-11 w-full items-center gap-3 rounded-xl px-3 text-[15px] font-semibold text-suave/40 hover:text-suave/70"
+                  title="Escolha uma unidade para acessar"
+                >
+                  <m.icone className="size-5" />
+                  <span>{m.rotulo}</span>
+                  <Lock className="ml-auto size-3.5 text-suave/50" />
+                </button>
+              );
+            }
+            return (
+              <Link key={m.href} href={m.href}
+                className={`pressionavel relative flex h-11 items-center gap-3 rounded-xl px-3 text-[15px] font-semibold ${i === ativo ? "text-verde" : "text-suave hover:text-texto"}`}>
+                <m.icone className="size-5" />
+                <span>{m.rotulo}</span>
+              </Link>
+            );
+          })}
         </nav>
         {usuario && (
           <div className="mt-auto rounded-2xl border border-borda bg-fundo p-4">
@@ -76,17 +120,34 @@ export function Estrutura({ children }: { children: React.ReactNode }) {
           </button>
         </div>
         <nav className="flex gap-1 overflow-x-auto px-3 pb-2">
-          {itens.map((m, i) => (
-            <Link key={m.href} href={m.href}
-              className={`pressionavel flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold ${i === ativo ? "bg-verde-claro text-verde" : "text-suave"}`}>
-              <m.icone className="size-4" />{m.rotulo}
-            </Link>
-          ))}
+          {itens.map((m, i) => {
+            const bloqueado = m.requerClinica && !clinica;
+            if (bloqueado) {
+              return (
+                <button
+                  key={m.href}
+                  type="button"
+                  onClick={() => avisar("Escolha uma unidade para acessar esta opção.", true)}
+                  className="pressionavel flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-suave/40"
+                >
+                  <m.icone className="size-4" />
+                  <span>{m.rotulo}</span>
+                  <Lock className="size-3 text-suave/50" />
+                </button>
+              );
+            }
+            return (
+              <Link key={m.href} href={m.href}
+                className={`pressionavel flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold ${i === ativo ? "bg-verde-claro text-verde" : "text-suave"}`}>
+                <m.icone className="size-4" />{m.rotulo}
+              </Link>
+            );
+          })}
         </nav>
       </header>
 
       <main key={`${rota}-${clinica?.id}`} className="mx-auto max-w-6xl px-4 py-8 sm:px-8 lg:py-12">
-        {clinica || !carregado ? children : <Vazio texto="Nenhuma clínica vinculada ao seu usuário." />}
+        {clinica || rota === "/" || !carregado ? children : <Vazio texto="Escolha uma unidade para acessar esta opção." />}
       </main>
 
       <Paineis />
@@ -94,7 +155,8 @@ export function Estrutura({ children }: { children: React.ReactNode }) {
 
       {aviso && (
         <div key={aviso.texto} role="status" className="aviso fixed bottom-6 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-2 rounded-2xl bg-texto px-4 py-3 text-sm font-medium text-white shadow-elevado">
-          {aviso.erro ? <TriangleAlert className="size-4 shrink-0 text-amber-300" /> : <CheckCircle2 className="size-4 shrink-0 text-emerald-300" />}{aviso.texto}
+          {aviso.erro ? <TriangleAlert className="size-4 shrink-0 text-amber-300" /> : <CheckCircle2 className="size-4 shrink-0 text-emerald-300" />}
+          <span>{aviso.texto}</span>
         </div>
       )}
     </div>
@@ -118,14 +180,30 @@ function SeletorClinica({ compacto = false }: { compacto?: boolean }) {
     return () => { document.removeEventListener("pointerdown", fora); document.removeEventListener("keydown", esc); };
   }, [aberto]);
 
-  if (!clinica) return null;
+  if (!clinica) {
+    return (
+      <Link
+        href="/"
+        className={`flex items-center gap-3 rounded-2xl border border-dashed border-borda bg-fundo/70 p-3 hover:border-verde/40 transition ${compacto ? "px-2.5 py-2" : "p-3"}`}
+      >
+        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-superficie text-suave ring-1 ring-borda">
+          <Building2 className="size-4" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-xs font-semibold text-suave">Nenhuma unidade ativa</span>
+          <span className="block truncate text-[11px] text-verde font-medium">Clique para escolher</span>
+        </span>
+      </Link>
+    );
+  }
+
   const varias = clinicas.length > 1;
   const org = banco.organizacoes.find((o) => o.id === clinica.organizacaoId);
   const escolher = (id: string) => {
     setAberto(false);
     escolherClinica(id);
     // a página de um médico não existe na outra clínica
-    if (rota.startsWith("/profissionais/")) router.push("/");
+    if (rota.startsWith("/profissionais/")) router.push("/busca");
   };
 
   return (

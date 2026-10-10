@@ -1,140 +1,146 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { FlaskConical, LayoutGrid, Search, ShieldCheck, UserRound, X } from "lucide-react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { ArrowUpRight, Building2, Check, FlaskConical, Pencil, Plus, ShieldCheck, Users } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { atende, semAcento, subtipoInfo } from "@/lib/regras";
-import type { Tipo } from "@/lib/modelo";
-import { CartaoProfissional, Chip, LogoMarca, Segmentado, SeletorConvenio, TipoBadge, Vazio } from "@/components/ui";
+import { podeCriarClinica, podeEditar } from "@/lib/permissoes";
+import { dadosDaClinica } from "@/lib/repositorio";
+import type { Clinica, Organizacao } from "@/lib/modelo";
+import { Botao, CabecalhoPagina, LogoMarca, Segmentado, Vazio } from "@/components/ui";
 
-function Contador({ valor }: { valor: number }) {
-  const [n, setN] = useState(0);
-  useEffect(() => {
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return setN(valor);
-    const inicio = performance.now();
-    let raf = 0;
-    const passo = (t: number) => {
-      const k = Math.min((t - inicio) / 900, 1);
-      setN(Math.round(valor * (1 - Math.pow(1 - k, 3))));
-      if (k < 1) raf = requestAnimationFrame(passo);
-    };
-    raf = requestAnimationFrame(passo);
-    return () => cancelAnimationFrame(raf);
-  }, [valor]);
-  return <>{n}</>;
+function Indicador({ icone: Icone, valor, rotulo }: { icone: typeof Users; valor: number; rotulo: string }) {
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-borda bg-superficie px-4 py-3 shadow-card">
+      <span className="gradiente-marca grid size-10 shrink-0 place-items-center rounded-xl text-white"><Icone className="size-5" /></span>
+      <span className="leading-tight">
+        <b className="block text-2xl tabular-nums">{valor}</b>
+        <span className="text-xs text-suave">{rotulo}</span>
+      </span>
+    </div>
+  );
 }
 
-export default function BuscaRapida() {
-  const { dados, abrir } = useStore();
-  const [texto, setTexto] = useState("");
-  const [subtipo, setSubtipo] = useState("");
-  const [tipo, setTipo] = useState<Tipo>("consulta");
-  const [esp, setEsp] = useState("");
-  const campo = useRef<HTMLInputElement>(null);
+function Numero({ icone: Icone, valor, rotulo }: { icone: typeof Users; valor: number; rotulo: string }) {
+  return (
+    <span className="flex flex-1 items-center gap-2 rounded-xl bg-fundo px-3 py-2">
+      <Icone className="size-4 shrink-0 text-verde" />
+      <span className="leading-tight">
+        <b className="block tabular-nums">{valor}</b>
+        <span className="text-[11px] text-suave">{rotulo}</span>
+      </span>
+    </span>
+  );
+}
 
-  // "/" foca a busca, como em ferramentas de consulta rápida
-  useEffect(() => {
-    const tecla = (e: KeyboardEvent) => {
-      if (e.key === "/" && document.activeElement?.tagName !== "INPUT" && document.activeElement?.tagName !== "TEXTAREA") {
-        e.preventDefault();
-        campo.current?.focus();
-      }
-    };
-    window.addEventListener("keydown", tecla);
-    return () => window.removeEventListener("keydown", tecla);
-  }, []);
+// Uma organização = um cartão. Com várias clínicas (ex.: COMN / ONCY), elas viram abas dentro do cartão.
+function CartaoOrganizacao({ org, lista, indice }: { org: Organizacao; lista: Clinica[]; indice: number }) {
+  const { banco, usuario, clinica, escolherClinica, abrirForm } = useStore();
+  const router = useRouter();
+  const [sel, setSel] = useState(clinica && lista.some((x) => x.id === clinica.id) ? clinica.id : lista[0].id);
+  const c = lista.find((x) => x.id === sel) ?? lista[0];
+  const d = dadosDaClinica(banco, c.id);
+  const atual = c.id === clinica?.id;
+  const daOrg = lista.some((x) => x.id === clinica?.id);
+  const abrir = () => {
+    escolherClinica(c.id);
+    router.push("/busca");
+  };
 
-  const q = semAcento(texto.trim());
-  const nomeEsp = (id: string) => dados.especialidades.find((e) => e.id === id)?.nome ?? "";
-  const resultados = dados.profissionais.filter((p) => {
-    if (esp && p.especialidadeId !== esp) return false;
-    if (subtipo && !atende(p, subtipo, tipo)) return false;
-    if (!q) return true;
-    const exames = p.exames.map((id) => dados.exames.find((e) => e.id === id)?.nome ?? "");
-    return semAcento([p.nome, nomeEsp(p.especialidadeId), ...p.procedimentos, ...exames].join(" ")).includes(q);
-  });
-  const examesAchados = q ? dados.exames.filter((e) => semAcento(e.nome).includes(q)) : [];
-  const info = subtipo ? subtipoInfo(dados, subtipo) : undefined;
-  const filtrando = !!(q || subtipo || esp);
+  return (
+    <section className={`entrar levanta group relative flex flex-col overflow-hidden rounded-3xl border bg-superficie shadow-card ${daOrg ? "border-verde/40" : "border-borda"}`}
+      style={{ "--i": indice } as React.CSSProperties}>
+      {/* palco da logo: espaço grande, fundo suave e malha de pontos */}
+      <div className="relative grid h-44 place-items-center bg-gradient-to-b from-fundo to-white px-6">
+        <div aria-hidden className="absolute inset-0 opacity-60 [background-image:radial-gradient(var(--color-borda)_1px,transparent_1px)] [background-size:16px_16px]" />
+        <span className="absolute left-4 top-4 flex max-w-[60%] items-center gap-1.5 rounded-lg bg-superficie/90 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-suave ring-1 ring-borda backdrop-blur">
+          <Building2 className="size-3.5 shrink-0" /><span className="truncate">{org.nome}</span>
+        </span>
+        <div className="absolute right-3 top-3 flex items-center gap-1.5">
+          {atual && <span className="inline-flex items-center gap-1 rounded-lg bg-verde-claro px-2 py-1 text-xs font-semibold text-verde"><Check className="size-3.5" strokeWidth={3} />Em uso</span>}
+          {usuario && podeEditar(usuario, c.id) && (
+            <button type="button" aria-label={`Editar ${c.nome}`} onClick={() => abrirForm({ tipo: "clinica", id: c.id })}
+              className="pressionavel grid size-8 place-items-center rounded-lg bg-superficie/90 text-suave ring-1 ring-borda hover:text-verde">
+              <Pencil className="size-4" />
+            </button>
+          )}
+        </div>
+        <div key={c.id} className="entrar relative flex h-full w-full items-center justify-center pb-3 pt-10">
+          {c.logo
+            // eslint-disable-next-line @next/next/no-img-element -- data URL local
+            ? <img src={c.logo} alt={`Logo ${c.nome}`} className="max-h-full max-w-full object-contain transition-transform duration-500 group-hover:scale-105" />
+            : <LogoMarca nome={c.nome} tamanho="xl" />}
+        </div>
+      </div>
 
-  const numeros = [
-    { rotulo: "Especialidades", valor: dados.especialidades.length, icone: LayoutGrid },
-    { rotulo: "Profissionais", valor: dados.profissionais.length, icone: UserRound },
-    { rotulo: "Convênios", valor: dados.convenios.length, icone: ShieldCheck },
-    { rotulo: "Exames", valor: dados.exames.length, icone: FlaskConical },
-  ];
+      <div className="flex flex-1 flex-col gap-4 p-5">
+        {lista.length > 1 && (
+          <Segmentado opcoes={lista.map((x) => ({ valor: x.id, rotulo: x.nome }))} valor={c.id} onChange={setSel} />
+        )}
+        <h3 className="truncate text-lg font-bold">{c.nome}</h3>
+        <div className="flex gap-2">
+          <Numero icone={Users} valor={d.profissionais.length} rotulo="médicos" />
+          <Numero icone={ShieldCheck} valor={d.convenios.length} rotulo="convênios" />
+          <Numero icone={FlaskConical} valor={d.exames.length} rotulo="exames" />
+        </div>
+        <button type="button" onClick={abrir}
+          className="pressionavel gradiente-marca mt-auto flex items-center justify-between rounded-xl px-4 py-2.5 text-sm font-semibold text-white">
+          {atual ? "Continuar na unidade" : "Entrar na unidade"}
+          <ArrowUpRight className="size-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+        </button>
+      </div>
+    </section>
+  );
+}
+
+export default function UnidadesPage() {
+  const { banco, usuario, clinicas, clinica, abrirForm } = useStore();
+  const criar = usuario ? podeCriarClinica(usuario) : false;
+  const vazias = banco.organizacoes.filter((o) => criar && !clinicas.some((c) => c.organizacaoId === o.id));
+  const orgs = banco.organizacoes.filter((o) => clinicas.some((c) => c.organizacaoId === o.id));
+  const soma = (k: "profissionais" | "convenios" | "exames") => clinicas.reduce((n, c) => n + dadosDaClinica(banco, c.id)[k].length, 0);
 
   return (
     <div>
-      <div className="entrar rounded-3xl border border-borda bg-superficie p-4 shadow-card sm:p-5" style={{ "--i": 1 } as React.CSSProperties}>
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-suave" />
-          <input ref={campo} value={texto} onChange={(e) => setTexto(e.target.value)} autoFocus
-            placeholder="Médico, procedimento ou exame"
-            className="h-14 w-full rounded-2xl bg-fundo pl-12 pr-24 text-[17px] outline-none ring-1 ring-transparent transition placeholder:text-suave/70 focus:bg-superficie focus:ring-verde/40 focus:shadow-[0_0_0_4px_rgb(13_155_134/0.12)]" />
-          {texto ? (
-            <button onClick={() => setTexto("")} aria-label="Limpar" className="pressionavel absolute right-3 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-lg text-suave hover:bg-borda/60"><X className="size-4" /></button>
-          ) : (
-            <kbd className="absolute right-4 top-1/2 hidden -translate-y-1/2 rounded-md border border-borda bg-superficie px-2 py-0.5 text-xs text-suave sm:block">/</kbd>
-          )}
-        </div>
-        <div className="mt-3 grid gap-3 md:grid-cols-[1.3fr_1fr_1fr]">
-          <SeletorConvenio dados={dados} valor={subtipo} onChange={setSubtipo} />
-          <Segmentado valor={tipo} onChange={setTipo} opcoes={[{ valor: "consulta", rotulo: "Consulta" }, { valor: "exame", rotulo: "Exame" }]} />
-          <select value={esp} onChange={(e) => setEsp(e.target.value)}
-            className="h-11 w-full rounded-xl border border-borda bg-superficie px-3 text-[15px] outline-none transition focus:border-verde focus:ring-4 focus:ring-verde/15">
-            <option value="">Todas as especialidades</option>
-            {dados.especialidades.map((e) => <option key={e.id} value={e.id}>{e.nome}</option>)}
-          </select>
-        </div>
-      </div>
-
-      {!filtrando && (
-        <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-          {numeros.map((n, i) => (
-            <div key={n.rotulo} className="entrar rounded-2xl border border-borda bg-superficie p-4" style={{ "--i": i + 2 } as React.CSSProperties}>
-              <n.icone className="size-5 text-verde" />
-              <p className="mt-3 text-3xl font-bold tabular-nums tracking-tight"><Contador valor={n.valor} /></p>
-              <p className="text-sm text-suave">{n.rotulo}</p>
+      <div className="mb-8">
+        <CabecalhoPagina
+          titulo="Unidades"
+          acao={criar && (
+            <div className="flex gap-2">
+              <Botao variante="secundario" onClick={() => abrirForm({ tipo: "organizacao" })}><Plus className="size-4" />Organização</Botao>
+              <Botao onClick={() => abrirForm({ tipo: "clinica" })}><Plus className="size-4" />Clínica</Botao>
             </div>
+          )}
+        />
+        <p className="-mt-6 text-sm text-suave">
+          {clinica
+            ? `Você está atualmente na unidade ${clinica.nome}. Escolha outra unidade abaixo para alternar ou continue na ativa.`
+            : "Escolha qual unidade você deseja acessar para consultar médicos, especialidades e convênios."}
+        </p>
+      </div>
+
+      <div className="mb-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <Indicador icone={Building2} valor={orgs.length} rotulo={orgs.length === 1 ? "organização" : "organizações"} />
+        <Indicador icone={Users} valor={soma("profissionais")} rotulo="médicos cadastrados" />
+        <Indicador icone={ShieldCheck} valor={soma("convenios")} rotulo="convênios" />
+        <Indicador icone={FlaskConical} valor={soma("exames")} rotulo="exames" />
+      </div>
+
+      {orgs.length === 0 ? (
+        <Vazio texto="Nenhuma unidade vinculada ao seu usuário." />
+      ) : (
+        <div className="grid items-stretch gap-5 sm:grid-cols-2 xl:grid-cols-3">
+          {orgs.map((o, oi) => (
+            <CartaoOrganizacao key={o.id} org={o} indice={oi} lista={clinicas.filter((c) => c.organizacaoId === o.id)} />
+          ))}
+          {vazias.map((o) => (
+            <section key={o.id} className="rounded-3xl border border-dashed border-borda p-5">
+              <h2 className="mb-3 truncate text-xs font-semibold uppercase tracking-wider text-suave">Organização · {o.nome}</h2>
+              <Vazio texto="Nenhuma clínica." />
+            </section>
           ))}
         </div>
       )}
-
-      <div className="mt-10 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-bold">
-          {filtrando ? `${resultados.length} ${resultados.length === 1 ? "profissional" : "profissionais"}` : "Todos os profissionais"}
-        </h2>
-        {info && (
-          <div className="flex items-center gap-2 text-sm text-suave">
-            Atendem <Chip><LogoMarca nome={info.convenio.nome} logo={info.convenio.logo} cor={info.convenio.cor} tamanho="sm" />{info.convenio.nome} · {info.subtipo.nome}</Chip> para <TipoBadge tipo={tipo} />
-          </div>
-        )}
-      </div>
-
-      {examesAchados.length > 0 && (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {examesAchados.map((e) => (
-            <button key={e.id} onClick={() => abrir({ tipo: "exame", id: e.id })}
-              className="entrar pressionavel flex items-center gap-2 rounded-xl bg-azul-claro px-3 py-2 text-sm font-semibold text-azul hover:brightness-95">
-              <FlaskConical className="size-4" />Preparo: {e.nome}
-            </button>
-          ))}
-        </div>
-      )}
-
-      <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {resultados.map((p, i) => (
-          <CartaoProfissional key={p.id} p={p} i={i} especialidade={nomeEsp(p.especialidadeId)}
-            destaque={p.procedimentos.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 border-t border-borda pt-3">
-                {p.procedimentos.slice(0, 3).map((x) => <span key={x} className="rounded-md bg-fundo px-2 py-0.5 text-xs text-suave">{x}</span>)}
-                {p.procedimentos.length > 3 && <span className="px-1 text-xs text-suave">+{p.procedimentos.length - 3}</span>}
-              </div>
-            )} />
-        ))}
-      </div>
-      {!resultados.length && <div className="mt-4"><Vazio texto={dados.profissionais.length ? "Ninguém atende com esses filtros." : "Nenhum profissional cadastrado."} /></div>}
     </div>
   );
 }

@@ -28,7 +28,12 @@ function conferirClinica(u: Usuario, item: { clinicaId: string }, antes?: { clin
 export function carregar(): Banco {
   try {
     const b = JSON.parse(localStorage.getItem(CHAVE) ?? "null");
-    if (b && b.versao === VERSAO) return b as Banco;
+    if (b && b.versao === VERSAO) {
+      const excluidas = new Set(["nossa-clinica", "oncology-group-mossoro"]);
+      b.organizacoes = b.organizacoes.filter((o: Organizacao) => !excluidas.has(o.id));
+      b.clinicas = b.clinicas.filter((c: Clinica) => !excluidas.has(c.id) && !excluidas.has(c.organizacaoId));
+      return b as Banco;
+    }
   } catch {
     // navegador bloqueando o armazenamento ou JSON corrompido: recomeça do ponto zero
   }

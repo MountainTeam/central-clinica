@@ -86,8 +86,8 @@ export function Provider({ children }: { children: React.ReactNode }) {
 
   const usuario = banco.usuarios.find((u) => u.id === usuarioId) ?? null;
   const clinicas = usuario ? clinicasDo(banco, usuario) : [];
-  // clínica guardada que deixou de ser permitida cai na primeira permitida
-  const clinica = clinicas.find((c) => c.id === clinicaId) ?? clinicas[0] ?? null;
+  // clínica guardada pelo usuário; sem escolha explícita, fica null para exigir escolha de unidade
+  const clinica = clinicas.find((c) => c.id === clinicaId) ?? null;
 
   const escolherClinica = (id: string) => {
     setClinicaId(id);
