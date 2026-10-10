@@ -21,63 +21,17 @@ export default function Login() {
   return (
     <div className="grid min-h-screen lg:grid-cols-[1.1fr_1fr]">
       {/* Painel da marca */}
-      <div
-        className="gradiente-marca relative hidden overflow-hidden p-12 text-white lg:flex"
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          position: "relative",
-          minHeight: "100vh",
-        }}
-      >
+      <div className="gradiente-marca relative hidden min-h-screen items-center justify-center overflow-hidden p-12 text-white lg:flex">
         <div className="bolha absolute -left-24 top-1/4 size-96 rounded-full bg-emerald-300/30 blur-3xl" />
         <div className="bolha absolute -right-16 bottom-10 size-80 rounded-full bg-sky-300/30 blur-3xl" style={{ animationDelay: "-7s" }} />
-        
-        <div
-          className="entrar"
-          style={{
-            position: "absolute",
-            top: "2.5rem",
-            left: "2.5rem",
-            zIndex: 30,
-          }}
-        >
-          <Logo claro />
-        </div>
-
-        <div
-          className="relative z-10 entrar"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: "100%",
-            maxWidth: "960px",
-            margin: "auto",
-            padding: "1.5rem",
-          }}
-        >
-          <img
-            src="/Fundo%20Login.png"
-            alt="Guia Comercial"
-            style={{
-              width: "100%",
-              maxWidth: "880px",
-              maxHeight: "75vh",
-              objectFit: "contain",
-              display: "block",
-              margin: "0 auto",
-              filter: "drop-shadow(0 16px 40px rgba(0, 0, 0, 0.22))",
-            }}
-          />
-        </div>
+        <div className="entrar absolute left-10 top-10 z-30"><Logo claro /></div>
+        {/* eslint-disable-next-line @next/next/no-img-element -- imagem estática decorativa */}
+        <img src="/Fundo%20Login.png" alt="" className="entrar relative z-10 max-h-[75vh] w-full max-w-[880px] object-contain p-6 drop-shadow-[0_16px_40px_rgb(0_0_0/0.22)]" />
       </div>
 
       {/* Formulário */}
       <div className="flex items-center justify-center p-6">
-        <form className="w-full max-w-sm" onSubmit={(e) => { e.preventDefault(); entrar(escolhido.id); router.replace("/"); }}>
+        <form className="w-full max-w-sm" onSubmit={(e) => { e.preventDefault(); router.replace(entrar(escolhido.id) ? "/busca" : "/"); }}>
           <div className="entrar mb-10 lg:hidden"><Logo /></div>
           <h2 className="entrar text-[28px] font-bold tracking-tight" style={{ "--i": 1 } as React.CSSProperties}>Entrar</h2>
 

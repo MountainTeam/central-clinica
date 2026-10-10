@@ -25,7 +25,7 @@ function Contador({ valor }: { valor: number }) {
 }
 
 export default function BuscaRapida() {
-  const { dados, clinica, abrir } = useStore();
+  const { dados, abrir } = useStore();
   const [texto, setTexto] = useState("");
   const [subtipo, setSubtipo] = useState("");
   const [tipo, setTipo] = useState<Tipo>("consulta");

@@ -180,22 +180,8 @@ function SeletorClinica({ compacto = false }: { compacto?: boolean }) {
     return () => { document.removeEventListener("pointerdown", fora); document.removeEventListener("keydown", esc); };
   }, [aberto]);
 
-  if (!clinica) {
-    return (
-      <Link
-        href="/"
-        className={`flex items-center gap-3 rounded-2xl border border-dashed border-borda bg-fundo/70 p-3 hover:border-verde/40 transition ${compacto ? "px-2.5 py-2" : "p-3"}`}
-      >
-        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-superficie text-suave ring-1 ring-borda">
-          <Building2 className="size-4" />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-xs font-semibold text-suave">Nenhuma unidade ativa</span>
-          <span className="block truncate text-[11px] text-verde font-medium">Clique para escolher</span>
-        </span>
-      </Link>
-    );
-  }
+  // sem unidade, a própria tela Unidades já é o seletor
+  if (!clinica) return null;
 
   const varias = clinicas.length > 1;
   const org = banco.organizacoes.find((o) => o.id === clinica.organizacaoId);

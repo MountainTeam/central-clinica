@@ -28,7 +28,8 @@ type Store = {
   dados: DadosClinica;
   podeEditarAtual: boolean;
   escolherClinica: (id: string) => void;
-  entrar: (usuarioId: string) => void;
+  // devolve true quando já dá para ir direto à busca (unidade lembrada ou única)
+  entrar: (usuarioId: string) => boolean;
   sair: () => void;
   // aplica uma gravação do repositório; mostra o aviso de sucesso ou a mensagem de recusa
   executar: (op: (b: Banco, u: Usuario) => Banco, sucesso: string) => boolean;
@@ -86,8 +87,9 @@ export function Provider({ children }: { children: React.ReactNode }) {
 
   const usuario = banco.usuarios.find((u) => u.id === usuarioId) ?? null;
   const clinicas = usuario ? clinicasDo(banco, usuario) : [];
-  // clínica guardada pelo usuário; sem escolha explícita, fica null para exigir escolha de unidade
-  const clinica = clinicas.find((c) => c.id === clinicaId) ?? null;
+  // a última unidade escolhida neste navegador, se ainda for permitida; com uma só, ela mesma
+  const unidade = (cs: Clinica[]) => cs.find((c) => c.id === clinicaId) ?? (cs.length === 1 ? cs[0] : null);
+  const clinica = unidade(clinicas);
 
   const escolherClinica = (id: string) => {
     setClinicaId(id);
@@ -97,8 +99,8 @@ export function Provider({ children }: { children: React.ReactNode }) {
   const entrar = (id: string) => {
     setUsuarioId(id);
     gravarLocal(SESSAO_USUARIO, id);
-    setClinicaId(null);
-    gravarLocal(SESSAO_CLINICA, null);
+    const u = banco.usuarios.find((x) => x.id === id);
+    return !!u && !!unidade(clinicasDo(banco, u));
   };
   const sair = () => {
     setUsuarioId(null);
