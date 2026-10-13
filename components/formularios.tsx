@@ -3,9 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useStore, type Formulario } from "@/lib/store";
-import { DIAS, type Convenio, type DadosClinica, type Exame, type Horario, type Papel, type Profissional } from "@/lib/modelo";
+import { DIAS, type Convenio, type DadosClinica, type Exame, type GrupoPlano, type Horario, type Papel, type Profissional } from "@/lib/modelo";
 import { PAPEIS } from "@/lib/permissoes";
-import { corDoIndice, novoId, slug } from "@/lib/regras";
+import { corDoIndice, gruposPlanosDoConvenio, novoId, observacoesDoConvenio, slug } from "@/lib/regras";
 import { salvarClinica, salvarConvenio, salvarEspecialidade, salvarExame, salvarOrganizacao, salvarProfissional, salvarUsuario } from "@/lib/repositorio";
 import { Botao, EnvioLogo, Gaveta } from "./ui";
 
@@ -251,12 +251,52 @@ function FormConvenio({ id }: { id?: string }) {
   const c = dados.convenios.find((x) => x.id === id);
   const [logo, setLogo] = useState(c?.logo);
   const [nomeAtual, setNomeAtual] = useState(c?.nome ?? "");
+
+  const grupos = c ? gruposPlanosDoConvenio(c) : [];
+  const gAtende = grupos.find((g) => g.status === "atende");
+  const gSomente = grupos.find((g) => g.status === "somente_exames");
+  const gNao = grupos.find((g) => g.status === "nao_atende");
+  const obsIniciais = c ? observacoesDoConvenio(c) : [];
+
   const salvar = (f: FormData) => {
     const nome = String(f.get("nome")).trim();
     if (!nome) return avisar("Informe o nome do convênio", true);
     if (!clinica) return;
     const convId = c?.id ?? novoId("conv");
-    const nomes = String(f.get("subtipos")).split(",").map((x) => x.trim()).filter(Boolean);
+
+    const planosAtende = String(f.get("planosAtende") ?? "")
+      .split(/[\n,]/)
+      .map((x) => x.trim())
+      .filter(Boolean);
+
+    const planosSomente = String(f.get("planosSomente") ?? "")
+      .split(/[\n,]/)
+      .map((x) => x.trim())
+      .filter(Boolean);
+    const notaSomente = String(f.get("notaSomente") ?? "").trim();
+
+    const planosNao = String(f.get("planosNao") ?? "")
+      .split(/[\n,]/)
+      .map((x) => x.trim())
+      .filter(Boolean);
+
+    const observacoes = String(f.get("observacoes") ?? "")
+      .split("\n")
+      .map((x) => x.trim())
+      .filter(Boolean);
+
+    // Tipos de rede para vinculação de profissionais e exames
+    const redesManuais = String(f.get("subtipos") ?? "").split(",").map((x) => x.trim()).filter(Boolean);
+    const nomesRedes = redesManuais.length > 0
+      ? redesManuais
+      : Array.from(new Set([...planosAtende, ...planosSomente]));
+
+    const novosGrupos: GrupoPlano[] = [
+      { status: "atende", titulo: "Atende consultas e exames", planos: planosAtende },
+      { status: "somente_exames", titulo: "Somente exames", nota: notaSomente || undefined, planos: planosSomente },
+      { status: "nao_atende", titulo: "Não atendemos", planos: planosNao },
+    ];
+
     const novo: Convenio = {
       id: convId,
       clinicaId: clinica.id,
@@ -264,17 +304,80 @@ function FormConvenio({ id }: { id?: string }) {
       cor: c?.cor ?? corDoIndice(dados.convenios.length),
       logo,
       // rede com o mesmo nome mantém o id, para não perder o que já foi marcado nos médicos e exames
-      subtipos: nomes.map((n) => c?.subtipos.find((s) => s.nome === n) ?? { id: `${convId}-${slug(n)}`, nome: n }),
+      subtipos: nomesRedes.map((n) => c?.subtipos.find((s) => s.nome === n) ?? { id: `${convId}-${slug(n)}`, nome: n }),
+      gruposPlanos: novosGrupos,
+      observacoesGerais: observacoes,
     };
     if (executar((b, u) => salvarConvenio(b, u, novo), c ? "Convênio atualizado" : "Convênio cadastrado")) abrirForm(null);
   };
   return (
     <Moldura titulo={c ? "Editar convênio" : "Novo convênio"} onSalvar={salvar}>
       <EnvioLogo nome={nomeAtual} cor={c?.cor ?? corDoIndice(dados.convenios.length)} valor={logo} onChange={setLogo} />
-      <Campo rotulo="Nome do convênio"><input name="nome" defaultValue={c?.nome} onChange={(e) => setNomeAtual(e.target.value)} placeholder="Ex.: Unimed" className={campo} /></Campo>
-      <Campo rotulo="Tipos de rede" dica="Separe por vírgula.">
-        <input name="subtipos" defaultValue={c?.subtipos.map((s) => s.nome).join(", ")} className={campo} />
+      <Campo rotulo="Nome do convênio">
+        <input name="nome" defaultValue={c?.nome} onChange={(e) => setNomeAtual(e.target.value)} placeholder="Ex.: Unimed" className={campo} />
       </Campo>
+
+      <div className="border-t border-borda pt-4 space-y-4">
+        <h4 className="text-sm font-bold text-texto">Regras de Atendimento e Planos da Carteirinha</h4>
+
+        <Campo rotulo="● Atende consultas e exames" dica="Nomes dos planos separados por vírgula.">
+          <textarea
+            name="planosAtende"
+            rows={2}
+            defaultValue={gAtende?.planos.join(", ") ?? ""}
+            placeholder="Ex.: Essencial, Prime, Select, Quality"
+            className={campo}
+          />
+        </Campo>
+
+        <div className="space-y-2">
+          <Campo rotulo="● Somente exames" dica="Nomes dos planos separados por vírgula.">
+            <textarea
+              name="planosSomente"
+              rows={2}
+              defaultValue={gSomente?.planos.join(", ") ?? ""}
+              placeholder="Ex.: Preferencial, Fácil, Prático, Pleno"
+              className={campo}
+            />
+          </Campo>
+          <Campo rotulo="Aviso / Restrição para somente exames" dica="Exibido em destaque âmbar para a recepção.">
+            <input
+              name="notaSomente"
+              defaultValue={gSomente?.nota ?? "Não precisa de encaminhamento para a clínica"}
+              placeholder="Ex.: Não precisa de encaminhamento para a clínica"
+              className={campo}
+            />
+          </Campo>
+        </div>
+
+        <Campo rotulo="● Não atendemos" dica="Nomes dos planos que a clínica recusa (separados por vírgula).">
+          <input
+            name="planosNao"
+            defaultValue={gNao?.planos.join(", ") ?? ""}
+            placeholder="Ex.: Life, Ser, Dental"
+            className={campo}
+          />
+        </Campo>
+
+        <Campo rotulo="Observações gerais operacionais" dica="Uma por linha. Exibidas com ícone de alerta.">
+          <textarea
+            name="observacoes"
+            rows={3}
+            defaultValue={obsIniciais.join("\n")}
+            placeholder={"Procedimentos ginecológicos não precisam de pacote\nBiópsia: apenas autorização do procedimento\nDocumentação por e-mail de autorização"}
+            className={campo}
+          />
+        </Campo>
+
+        <details className="text-xs text-suave">
+          <summary className="cursor-pointer font-semibold hover:text-texto">Avançado: Redes técnicas para médicos</summary>
+          <div className="mt-2">
+            <Campo rotulo="Redes manuais" dica="Opcional. Se vazio, sincroniza com os planos de consulta e exames.">
+              <input name="subtipos" defaultValue={c?.subtipos.map((s) => s.nome).join(", ")} className={campo} />
+            </Campo>
+          </div>
+        </details>
+      </div>
     </Moldura>
   );
 }

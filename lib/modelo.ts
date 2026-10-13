@@ -15,7 +15,24 @@ export type Usuario = { id: string; nome: string; email: string; papel: Papel; c
 
 export type Especialidade = { id: string; clinicaId: string; nome: string; icone: string };
 export type Subtipo = { id: string; nome: string };
-export type Convenio = { id: string; clinicaId: string; nome: string; cor: string; logo?: string; subtipos: Subtipo[] };
+export type GrupoPlanoStatus = "atende" | "somente_exames" | "nao_atende";
+export type GrupoPlano = {
+  id?: string;
+  status: GrupoPlanoStatus;
+  titulo: string;
+  nota?: string;
+  planos: string[];
+};
+export type Convenio = {
+  id: string;
+  clinicaId: string;
+  nome: string;
+  cor: string;
+  logo?: string;
+  subtipos: Subtipo[];
+  gruposPlanos?: GrupoPlano[];
+  observacoesGerais?: string[];
+};
 export type Exame = { id: string; clinicaId: string; nome: string; preparo: string[]; documentos: string; subtipos: string[] };
 // `atende` mapeia subtipo → "c" (consulta), "e" (exame) ou "ce" (ambos)
 export type Profissional = {

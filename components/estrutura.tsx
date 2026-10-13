@@ -63,9 +63,8 @@ export function Estrutura({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen lg:pl-72">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 flex-col border-r border-borda bg-superficie/80 p-5 backdrop-blur lg:flex">
-        <Logo />
-        <div className="mt-8"><SeletorClinica /></div>
-        <nav className="relative mt-6 space-y-1">
+        <div className="mb-6"><SeletorClinica /></div>
+        <nav className="relative space-y-1">
           {ativo >= 0 && (
             <span className="absolute inset-x-0 top-0 h-11 rounded-xl bg-verde-claro transition-transform duration-300 ease-saida"
               style={{ transform: `translateY(calc(${ativo} * (2.75rem + 0.25rem)))` }} />
@@ -112,9 +111,8 @@ export function Estrutura({ children }: { children: React.ReactNode }) {
 
       {/* Celular e tablet */}
       <header className="sticky top-0 z-30 border-b border-borda bg-superficie/85 backdrop-blur lg:hidden">
-        <div className="flex items-center gap-2 px-4 py-3">
-          <Logo />
-          <div className="ml-auto min-w-0 max-w-[55%]"><SeletorClinica compacto /></div>
+        <div className="flex items-center gap-3 px-4 py-3">
+          <div className="min-w-0 flex-1"><SeletorClinica compacto /></div>
           <button onClick={deslogar} aria-label="Sair" className="pressionavel grid size-10 shrink-0 place-items-center rounded-xl text-suave hover:bg-fundo">
             <LogOut className="size-5" />
           </button>

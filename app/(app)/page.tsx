@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowUpRight, Building2, FlaskConical, Pencil, Plus, ShieldCheck, Users } from "lucide-react";
+import { ArrowUpRight, FlaskConical, Pencil, Plus, ShieldCheck, Users } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { podeCriarClinica, podeEditar } from "@/lib/permissoes";
 import { dadosDaClinica } from "@/lib/repositorio";
 import type { Clinica, Organizacao } from "@/lib/modelo";
-import { Botao, CabecalhoPagina, LogoMarca, Segmentado, Vazio } from "@/components/ui";
+import { Botao, LogoMarca, Segmentado, Vazio } from "@/components/ui";
 
 function Numero({ icone: Icone, valor, rotulo }: { icone: typeof Users; valor: number; rotulo: string }) {
   return (
@@ -41,19 +41,13 @@ function CartaoOrganizacao({ org, lista, indice }: { org: Organizacao; lista: Cl
       {/* palco da logo: espaço grande, fundo suave e malha de pontos */}
       <div className="relative grid h-44 place-items-center bg-gradient-to-b from-fundo to-white px-6">
         <div aria-hidden className="absolute inset-0 opacity-60 [background-image:radial-gradient(var(--color-borda)_1px,transparent_1px)] [background-size:16px_16px]" />
-        {/* o nome da organização só ajuda quando ela agrupa mais de uma clínica */}
-        {lista.length > 1 && (
-          <span className="absolute left-4 top-4 flex max-w-[calc(100%-4.5rem)] items-center gap-1.5 rounded-lg bg-superficie/90 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-suave ring-1 ring-borda backdrop-blur">
-            <Building2 className="size-3.5 shrink-0" /><span className="truncate">{org.nome}</span>
-          </span>
-        )}
         {usuario && podeEditar(usuario, c.id) && (
           <button type="button" aria-label={`Editar ${c.nome}`} onClick={() => abrirForm({ tipo: "clinica", id: c.id })}
             className="pressionavel absolute right-3 top-3 grid size-8 place-items-center rounded-lg bg-superficie/90 text-suave ring-1 ring-borda hover:text-verde">
             <Pencil className="size-4" />
           </button>
         )}
-        <div key={c.id} className="entrar relative flex h-full w-full items-center justify-center pb-3 pt-10">
+        <div key={c.id} className="entrar relative flex h-full w-full items-center justify-center p-4">
           {c.logo
             // eslint-disable-next-line @next/next/no-img-element -- data URL ou arquivo local
             ? <img src={c.logo} alt={`Logo ${c.nome}`} className="max-h-20 max-w-[85%] object-contain transition-transform duration-500 group-hover:scale-105" />
@@ -91,15 +85,26 @@ export default function UnidadesPage() {
 
   return (
     <div>
-      <CabecalhoPagina
-        titulo="Unidades"
-        acao={criar && (
-          <div className="flex gap-2">
-            <Botao variante="secundario" onClick={() => abrirForm({ tipo: "organizacao" })}><Plus className="size-4" />Organização</Botao>
-            <Botao onClick={() => abrirForm({ tipo: "clinica" })}><Plus className="size-4" />Clínica</Botao>
+      <div className="entrar mb-10 flex flex-wrap items-end justify-between gap-6 border-b border-borda pb-8">
+        <div>
+          <h1 className="text-3xl font-extrabold tracking-tight text-texto sm:text-4xl lg:text-5xl">
+            Guia Comercial
+          </h1>
+          <p className="mt-2 text-base text-suave">
+            Selecione uma das unidades da rede abaixo para consultar especialidades, médicos, exames e convênios.
+          </p>
+        </div>
+        {criar && (
+          <div className="flex shrink-0 gap-2">
+            <Botao variante="secundario" onClick={() => abrirForm({ tipo: "organizacao" })}>
+              <Plus className="size-4" />Organização
+            </Botao>
+            <Botao onClick={() => abrirForm({ tipo: "clinica" })}>
+              <Plus className="size-4" />Clínica
+            </Botao>
           </div>
         )}
-      />
+      </div>
 
       {orgs.length === 0 ? (
         <Vazio texto="Nenhuma unidade vinculada ao seu usuário." />
