@@ -2,12 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { useStore, type Formulario } from "@/lib/store";
 import { DIAS, type Convenio, type DadosClinica, type Exame, type GrupoPlano, type Horario, type Papel, type Profissional } from "@/lib/modelo";
 import { PAPEIS } from "@/lib/permissoes";
 import { corDoIndice, gruposPlanosDoConvenio, novoId, observacoesDoConvenio, slug } from "@/lib/regras";
 import { salvarClinica, salvarConvenio, salvarEspecialidade, salvarExame, salvarOrganizacao, salvarProfissional, salvarUsuario } from "@/lib/repositorio";
-import { Botao, EnvioLogo, Gaveta } from "./ui";
+import { Botao, EnvioLogo, Gaveta, LogoMarca } from "./ui";
 
 export const campo = "w-full rounded-xl border border-borda bg-superficie px-3 py-2.5 text-[15px] outline-none transition placeholder:text-suave/60 focus:border-verde focus:ring-4 focus:ring-verde/15";
 const linhas = (t: FormDataEntryValue | null) => String(t ?? "").split("\n").map((x) => x.trim()).filter(Boolean);
@@ -85,22 +86,165 @@ export function Moldura({ titulo, onSalvar, children }: { titulo: string; onSalv
 }
 
 function MatrizConvenios({ dados, atende }: { dados: DadosClinica; atende: Record<string, string> }) {
-  if (!dados.convenios.length) return <p className="rounded-xl border border-dashed border-borda px-4 py-4 text-sm text-suave">Nenhum convênio cadastrado.</p>;
+  const [estado, setEstado] = useState<Record<string, { c: boolean; e: boolean }>>(() => {
+    const init: Record<string, { c: boolean; e: boolean }> = {};
+    for (const c of dados.convenios) {
+      for (const s of c.subtipos) {
+        const val = atende[s.id] ?? "";
+        init[s.id] = { c: val.includes("c"), e: val.includes("e") };
+      }
+    }
+    return init;
+  });
+
+  const [expandidos, setExpandidos] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {};
+    for (const c of dados.convenios) {
+      init[c.id] = c.subtipos.some((s) => (atende[s.id] ?? "").length > 0);
+    }
+    return init;
+  });
+
+  const toggleCheck = (subId: string, tipo: "c" | "e") => {
+    setEstado((ant) => ({
+      ...ant,
+      [subId]: {
+        c: tipo === "c" ? !ant[subId]?.c : !!ant[subId]?.c,
+        e: tipo === "e" ? !ant[subId]?.e : !!ant[subId]?.e,
+      },
+    }));
+  };
+
+  const marcarTodos = (c: Convenio, tipo: "c" | "e", valor: boolean) => {
+    setEstado((ant) => {
+      const prox = { ...ant };
+      for (const s of c.subtipos) {
+        prox[s.id] = {
+          c: tipo === "c" ? valor : !!prox[s.id]?.c,
+          e: tipo === "e" ? valor : !!prox[s.id]?.e,
+        };
+      }
+      return prox;
+    });
+    if (valor) setExpandidos((ant) => ({ ...ant, [c.id]: true }));
+  };
+
+  const limparConvenio = (c: Convenio) => {
+    setEstado((ant) => {
+      const prox = { ...ant };
+      for (const s of c.subtipos) {
+        prox[s.id] = { c: false, e: false };
+      }
+      return prox;
+    });
+  };
+
+  const toggleExpansao = (cId: string) => {
+    setExpandidos((ant) => ({ ...ant, [cId]: !ant[cId] }));
+  };
+
+  if (!dados.convenios.length) {
+    return <p className="rounded-xl border border-dashed border-borda px-4 py-4 text-sm text-suave">Nenhum convênio cadastrado.</p>;
+  }
+
   return (
-    <div className="overflow-hidden rounded-2xl border border-borda">
-      <div className="grid grid-cols-[1fr_80px_80px] bg-fundo px-4 py-2 text-xs font-semibold text-suave">
-        <span>Convênio · rede</span><span className="text-center">Consulta</span><span className="text-center">Exame</span>
-      </div>
-      {dados.convenios.map((c) => c.subtipos.map((s, k) => (
-        <div key={s.id} className={`grid grid-cols-[1fr_80px_80px] items-center px-4 py-2 ${k ? "" : "border-t border-borda"}`}>
-          <span className="text-[15px]">{!k && <b className="font-semibold">{c.nome} · </b>}{s.nome}</span>
-          {(["c", "e"] as const).map((t) => (
-            <span key={t} className="grid place-items-center">
-              <input type="checkbox" name={`${t}:${s.id}`} defaultChecked={(atende[s.id] ?? "").includes(t)} className="size-5 accent-verde" />
-            </span>
-          ))}
-        </div>
-      )))}
+    <div className="space-y-3">
+      {dados.convenios.map((c) => {
+        const subIds = c.subtipos.map((s) => s.id);
+        const qtdC = subIds.filter((id) => estado[id]?.c).length;
+        const qtdE = subIds.filter((id) => estado[id]?.e).length;
+        const aberto = !!expandidos[c.id];
+        const temMarcado = qtdC > 0 || qtdE > 0;
+
+        return (
+          <div key={c.id} className="overflow-hidden rounded-2xl border border-borda bg-superficie transition-all">
+            <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-fundo/60">
+              <button
+                type="button"
+                onClick={() => toggleExpansao(c.id)}
+                className="flex items-center gap-2.5 font-semibold text-sm text-texto hover:text-verde transition-colors text-left"
+              >
+                <LogoMarca nome={c.nome} logo={c.logo} cor={c.cor} tamanho="sm" />
+                <span>{c.nome}</span>
+                <span className={`text-xs px-2 py-0.5 rounded-md font-medium ${temMarcado ? "bg-verde-claro text-verde" : "bg-borda/40 text-suave"}`}>
+                  {temMarcado ? `${qtdC} consult. · ${qtdE} exam.` : "Não atende"}
+                </span>
+              </button>
+
+              <div className="flex items-center gap-1.5 text-xs font-semibold">
+                <button
+                  type="button"
+                  onClick={() => marcarTodos(c, "c", qtdC !== c.subtipos.length)}
+                  className={`rounded-lg px-2.5 py-1 transition-colors ${qtdC === c.subtipos.length ? "bg-verde text-white shadow-sm" : "text-verde hover:bg-verde-claro"}`}
+                  title="Marcar todas as redes em Consulta"
+                >
+                  {qtdC === c.subtipos.length ? "✓ Consultas" : "+ Consultas"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => marcarTodos(c, "e", qtdE !== c.subtipos.length)}
+                  className={`rounded-lg px-2.5 py-1 transition-colors ${qtdE === c.subtipos.length ? "bg-azul text-white shadow-sm" : "text-azul hover:bg-azul-claro"}`}
+                  title="Marcar todas as redes em Exame"
+                >
+                  {qtdE === c.subtipos.length ? "✓ Exames" : "+ Exames"}
+                </button>
+                {temMarcado && (
+                  <button
+                    type="button"
+                    onClick={() => limparConvenio(c)}
+                    className="rounded-lg px-2 py-1 text-suave hover:text-alerta transition-colors"
+                  >
+                    Limpar
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => toggleExpansao(c.id)}
+                  aria-label={aberto ? "Recolher redes" : "Expandir redes"}
+                  className="rounded-lg p-1 text-suave hover:text-texto hover:bg-borda/40 transition-colors"
+                >
+                  <ChevronDown className={`size-4 transition-transform duration-200 ${aberto ? "rotate-180" : ""}`} />
+                </button>
+              </div>
+            </div>
+
+            <div className={aberto ? "block border-t border-borda/60 divide-y divide-borda/40 bg-superficie" : "hidden"}>
+              <div className="grid grid-cols-[1fr_80px_80px] bg-fundo/40 px-4 py-2 text-xs font-semibold text-suave">
+                <span>Rede / Plano</span>
+                <span className="text-center">Consulta</span>
+                <span className="text-center">Exame</span>
+              </div>
+              {c.subtipos.map((s) => {
+                const checkC = !!estado[s.id]?.c;
+                const checkE = !!estado[s.id]?.e;
+                return (
+                  <div key={s.id} className="grid grid-cols-[1fr_80px_80px] items-center px-4 py-2 hover:bg-fundo/30 transition-colors">
+                    <span className="text-sm font-medium text-texto">{s.nome}</span>
+                    <span className="grid place-items-center">
+                      <input
+                        type="checkbox"
+                        name={`c:${s.id}`}
+                        checked={checkC}
+                        onChange={() => toggleCheck(s.id, "c")}
+                        className="size-5 accent-verde cursor-pointer"
+                      />
+                    </span>
+                    <span className="grid place-items-center">
+                      <input
+                        type="checkbox"
+                        name={`e:${s.id}`}
+                        checked={checkE}
+                        onChange={() => toggleCheck(s.id, "e")}
+                        className="size-5 accent-azul cursor-pointer"
+                      />
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -181,6 +325,143 @@ function FormProfissional({ id }: { id?: string }) {
   );
 }
 
+function SeletorConveniosExame({
+  dados,
+  selecionadosIniciais,
+}: {
+  dados: DadosClinica;
+  selecionadosIniciais: string[];
+}) {
+  const [selecionados, setSelecionados] = useState<Set<string>>(() => new Set(selecionadosIniciais));
+  const [expandidos, setExpandidos] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {};
+    for (const c of dados.convenios) {
+      init[c.id] = c.subtipos.some((s) => selecionadosIniciais.includes(s.id));
+    }
+    return init;
+  });
+
+  const toggleSub = (subId: string) => {
+    setSelecionados((ant) => {
+      const prox = new Set(ant);
+      if (prox.has(subId)) prox.delete(subId);
+      else prox.add(subId);
+      return prox;
+    });
+  };
+
+  const selecionarTodosDoConvenio = (c: Convenio) => {
+    setSelecionados((ant) => {
+      const prox = new Set(ant);
+      for (const s of c.subtipos) prox.add(s.id);
+      return prox;
+    });
+    setExpandidos((ant) => ({ ...ant, [c.id]: true }));
+  };
+
+  const desmarcarTodosDoConvenio = (c: Convenio) => {
+    setSelecionados((ant) => {
+      const prox = new Set(ant);
+      for (const s of c.subtipos) prox.delete(s.id);
+      return prox;
+    });
+  };
+
+  const toggleExpansao = (cId: string) => {
+    setExpandidos((ant) => ({ ...ant, [cId]: !ant[cId] }));
+  };
+
+  if (!dados.convenios.length) {
+    return <p className="text-sm text-suave">Nenhum convênio cadastrado nesta clínica.</p>;
+  }
+
+  return (
+    <div className="space-y-3">
+      {dados.convenios.map((c) => {
+        const marcados = c.subtipos.filter((s) => selecionados.has(s.id)).length;
+        const todosMarcados = marcados === c.subtipos.length && c.subtipos.length > 0;
+        const aberto = !!expandidos[c.id];
+
+        return (
+          <div key={c.id} className="overflow-hidden rounded-2xl border border-borda bg-superficie transition-all">
+            <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-fundo/60">
+              <button
+                type="button"
+                onClick={() => toggleExpansao(c.id)}
+                className="flex items-center gap-2.5 font-semibold text-sm text-texto hover:text-azul transition-colors text-left"
+              >
+                <LogoMarca nome={c.nome} logo={c.logo} cor={c.cor} tamanho="sm" />
+                <span>{c.nome}</span>
+                <span className={`text-xs px-2 py-0.5 rounded-md font-medium ${marcados > 0 ? "bg-azul-claro text-azul" : "bg-borda/40 text-suave"}`}>
+                  {todosMarcados ? `Todas (${c.subtipos.length})` : `${marcados} de ${c.subtipos.length} redes`}
+                </span>
+              </button>
+
+              <div className="flex items-center gap-1.5 text-xs font-semibold">
+                <button
+                  type="button"
+                  onClick={() => selecionarTodosDoConvenio(c)}
+                  className={`rounded-lg px-2.5 py-1 transition-colors ${todosMarcados ? "bg-azul text-white shadow-sm" : "text-azul hover:bg-azul-claro"}`}
+                >
+                  {todosMarcados ? "✓ Todas" : "+ Todas"}
+                </button>
+                {marcados > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => desmarcarTodosDoConvenio(c)}
+                    className="rounded-lg px-2 py-1 text-suave hover:text-alerta transition-colors"
+                  >
+                    Nenhuma
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => toggleExpansao(c.id)}
+                  aria-label={aberto ? "Recolher redes" : "Expandir redes"}
+                  className="rounded-lg p-1 text-suave hover:text-texto hover:bg-borda/40 transition-colors"
+                >
+                  <ChevronDown className={`size-4 transition-transform duration-200 ${aberto ? "rotate-180" : ""}`} />
+                </button>
+              </div>
+            </div>
+
+            <div className={aberto ? "block border-t border-borda/60 p-3 bg-superficie" : "hidden"}>
+              {c.subtipos.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {c.subtipos.map((s) => {
+                    const ativo = selecionados.has(s.id);
+                    return (
+                      <label
+                        key={s.id}
+                        className={`pressionavel flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-1.5 text-sm transition-all select-none ${
+                          ativo
+                            ? "border-azul/50 bg-azul-claro text-azul font-medium shadow-sm"
+                            : "border-borda/80 bg-fundo text-texto hover:border-borda"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          name={`s:${s.id}`}
+                          checked={ativo}
+                          onChange={() => toggleSub(s.id)}
+                          className="accent-azul size-4 rounded cursor-pointer"
+                        />
+                        <span>{s.nome}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-suave">Nenhuma rede cadastrada para este convênio.</p>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function FormExame({ id }: { id?: string }) {
   const { dados, clinica, executar, abrirForm, abrir, avisar } = useStore();
   const ex = dados.exames.find((x) => x.id === id);
@@ -194,7 +475,7 @@ function FormExame({ id }: { id?: string }) {
       clinicaId: clinica.id,
       nome,
       preparo: linhas(f.get("preparo")),
-      documentos: String(f.get("documentos")).trim(),
+      valor: String(f.get("valor") ?? "").trim(),
       subtipos: dados.convenios.flatMap((c) => c.subtipos).filter((s) => f.get(`s:${s.id}`)).map((s) => s.id),
     };
     if (!executar((b, u) => salvarExame(b, u, novo), ex ? "Exame atualizado" : "Exame cadastrado")) return;
@@ -208,23 +489,12 @@ function FormExame({ id }: { id?: string }) {
       <Campo rotulo="Preparo" dica="Um passo por linha.">
         <textarea name="preparo" rows={5} defaultValue={ex?.preparo.join("\n")} className={campo} />
       </Campo>
-      <Campo rotulo="O paciente deve trazer"><input name="documentos" defaultValue={ex?.documentos} placeholder="Pedido médico, carteirinha" className={campo} /></Campo>
+      <Campo rotulo="Valor do exame" dica="Ex.: R$ 150,00 ou Sob consulta">
+        <input name="valor" defaultValue={ex?.valor} placeholder="Ex.: R$ 150,00" className={campo} />
+      </Campo>
       <div>
-        <span className="mb-1.5 block text-sm font-semibold">Convênios que cobrem</span>
-        {dados.convenios.length ? (
-          <div className="space-y-3">
-            {dados.convenios.map((c) => (
-              <div key={c.id} className="flex flex-wrap items-center gap-2">
-                <span className="w-32 text-sm font-semibold">{c.nome}</span>
-                {c.subtipos.map((s) => (
-                  <label key={s.id} className="pressionavel flex cursor-pointer items-center gap-2 rounded-xl border border-borda px-3 py-1.5 text-sm has-[:checked]:border-azul/40 has-[:checked]:bg-azul-claro has-[:checked]:text-azul">
-                    <input type="checkbox" name={`s:${s.id}`} defaultChecked={ex?.subtipos.includes(s.id)} className="accent-azul" />{s.nome}
-                  </label>
-                ))}
-              </div>
-            ))}
-          </div>
-        ) : <p className="text-sm text-suave">Nenhum convênio cadastrado.</p>}
+        <span className="mb-2 block text-sm font-semibold">Convênios e Redes que cobrem</span>
+        <SeletorConveniosExame dados={dados} selecionadosIniciais={ex?.subtipos ?? []} />
       </div>
     </Moldura>
   );

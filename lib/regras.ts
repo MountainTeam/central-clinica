@@ -47,34 +47,30 @@ export const CORES = ["#0d9b86", "#2d6be0", "#d1344b", "#ea7a1a", "#7c3aed", "#0
 export const corDoIndice = (n: number) => CORES[n % CORES.length];
 
 export function gruposPlanosDoConvenio(c: Convenio): GrupoPlano[] {
-  if (c.gruposPlanos && c.gruposPlanos.length > 0) return c.gruposPlanos;
+  if (c.gruposPlanos !== undefined) return c.gruposPlanos;
   const nomesSubtipos = c.subtipos.map((s) => s.nome);
   return [
     {
       status: "atende",
       titulo: "Atende consultas e exames",
-      planos: nomesSubtipos.length > 0 ? nomesSubtipos : ["Essencial", "Prime", "Select", "Quality", "Flex Empresarial", "Compacto", "Intercâmbio", "Federação"],
+      planos: nomesSubtipos,
     },
     {
       status: "somente_exames",
       titulo: "Somente exames",
       nota: "Não precisa de encaminhamento para a clínica",
-      planos: ["Preferencial", "Fácil", "Prático", "Pleno", "Flex"],
+      planos: [],
     },
     {
       status: "nao_atende",
       titulo: "Não atendemos",
-      planos: ["Life", "Ser"],
+      planos: [],
     },
   ];
 }
 
 export function observacoesDoConvenio(c: Convenio): string[] {
-  if (c.observacoesGerais && c.observacoesGerais.length > 0) return c.observacoesGerais;
-  return [
-    "Procedimentos ginecológicos não precisam de pacote",
-    "Biópsia: apenas autorização do procedimento",
-    "Documentação por e-mail de autorização",
-  ];
+  if (c.observacoesGerais !== undefined) return c.observacoesGerais;
+  return [];
 }
 

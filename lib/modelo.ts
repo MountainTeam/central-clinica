@@ -33,7 +33,15 @@ export type Convenio = {
   gruposPlanos?: GrupoPlano[];
   observacoesGerais?: string[];
 };
-export type Exame = { id: string; clinicaId: string; nome: string; preparo: string[]; documentos: string; subtipos: string[] };
+export type Exame = {
+  id: string;
+  clinicaId: string;
+  nome: string;
+  preparo: string[];
+  documentos?: string;
+  valor?: string;
+  subtipos: string[];
+};
 // `atende` mapeia subtipo → "c" (consulta), "e" (exame) ou "ce" (ambos)
 export type Profissional = {
   id: string;

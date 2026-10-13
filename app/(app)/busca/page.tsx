@@ -47,7 +47,7 @@ export default function BuscaRapida() {
   const [subtipo, setSubtipo] = useState("");
   const [tipo, setTipo] = useState<Tipo>("consulta");
   const [esp, setEsp] = useState("");
-  const [secaoAtiva, setSecaoAtiva] = useState<Secao>("profissionais");
+  const [secaoAtiva, setSecaoAtiva] = useState<Secao | null>("profissionais");
   const campo = useRef<HTMLInputElement>(null);
 
   // Tecla "/" foca a busca automaticamente
@@ -194,7 +194,8 @@ export default function BuscaRapida() {
             <button
               key={card.id}
               type="button"
-              onClick={() => setSecaoAtiva(card.id)}
+              onClick={() => setSecaoAtiva((atual) => (atual === card.id ? null : card.id))}
+              title={ativo ? "Clique para desmarcar e recolher" : `Clique para exibir ${card.rotulo.toLowerCase()}`}
               style={{ "--i": i + 2 } as React.CSSProperties}
               className={`entrar pressionavel levanta group relative flex flex-col rounded-2xl border p-4 text-left transition-all duration-200 ${
                 ativo
@@ -243,6 +244,13 @@ export default function BuscaRapida() {
 
       {/* ÁREA DE RESULTADOS DINÂMICA: Exibe APENAS a seção ativa selecionada */}
       <div>
+        {!secaoAtiva && (
+          <div className="entrar rounded-3xl border border-dashed border-borda/80 bg-superficie/50 p-8 text-center">
+            <p className="text-sm font-semibold text-suave">
+              Nenhuma categoria selecionada. Clique em um dos cartões acima para visualizar os dados.
+            </p>
+          </div>
+        )}
         {/* ==================== 1. SEÇÃO ESPECIALIDADES ==================== */}
         {secaoAtiva === "especialidades" && (
           <div className="entrar space-y-4">

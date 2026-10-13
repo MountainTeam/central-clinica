@@ -192,32 +192,63 @@ function Acoes({ onCancelar }: { onCancelar: () => void }) {
 }
 
 function TabelaConvenios({ dados, p }: { dados: DadosClinica; p: Profissional }) {
-  const convenios = dados.convenios.filter((c) => c.subtipos.some((s) => p.atende[s.id]));
-  if (!convenios.length) return <Vazio texto="Nenhum convênio cadastrado." />;
+  const convenios = dados.convenios
+    .map((c) => ({
+      c,
+      subs: c.subtipos.filter((s) => p.atende[s.id]),
+    }))
+    .filter((x) => x.subs.length > 0);
+
+  if (!convenios.length) return <Vazio texto="Nenhum convênio atendido por este profissional." />;
+
   const marca = (ok: boolean) => ok
     ? <span className="grid size-6 place-items-center rounded-full bg-verde-claro text-verde"><Check className="size-3.5" strokeWidth={3} /></span>
     : <span className="grid size-6 place-items-center text-borda"><Minus className="size-4" /></span>;
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-borda">
-      <div className="grid grid-cols-[1fr_76px_76px] bg-fundo px-4 py-2 text-xs font-semibold text-suave">
-        <span>Convênio · rede</span><span className="text-center">Consulta</span><span className="text-center">Exame</span>
-      </div>
-      {convenios.map((c) => (
-        <div key={c.id} className="border-t border-borda">
-          {c.subtipos.filter((s) => p.atende[s.id]).map((s, k) => (
-            <div key={s.id} className="grid grid-cols-[1fr_76px_76px] items-center px-4 py-2.5">
-              <span className="flex items-center gap-2 text-[15px]">
-                {k ? <span className="size-6 shrink-0" /> : <LogoMarca nome={c.nome} logo={c.logo} cor={c.cor} tamanho="sm" />}
-                {!k && <span className="font-semibold">{c.nome} ·</span>}
-                <span>{s.nome}</span>
-              </span>
-              <span className="grid place-items-center">{marca(p.atende[s.id].includes("c"))}</span>
-              <span className="grid place-items-center">{marca(p.atende[s.id].includes("e"))}</span>
+    <div className="space-y-3">
+      {convenios.map(({ c, subs }) => {
+        const todasConsultas = subs.every((s) => p.atende[s.id]?.includes("c"));
+        const todosExames = subs.every((s) => p.atende[s.id]?.includes("e"));
+        const todasRedes = subs.length === c.subtipos.length && c.subtipos.length > 1;
+
+        return (
+          <div key={c.id} className="overflow-hidden rounded-2xl border border-borda bg-superficie shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2 bg-fundo/50 p-3.5">
+              <div className="flex items-center gap-2.5">
+                <LogoMarca nome={c.nome} logo={c.logo} cor={c.cor} tamanho="sm" />
+                <span className="font-bold text-[15px] text-texto">{c.nome}</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                {todasRedes && todasConsultas && todosExames ? (
+                  <span className="rounded-lg bg-verde-claro px-2.5 py-1 font-semibold text-verde">
+                    Todas as redes (Consulta e Exame)
+                  </span>
+                ) : (
+                  <span className="rounded-lg bg-borda/40 px-2 py-0.5 font-medium text-suave">
+                    {subs.length} de {c.subtipos.length} redes credenciadas
+                  </span>
+                )}
+              </div>
             </div>
-          ))}
-        </div>
-      ))}
+
+            <div className="border-t border-borda/60 divide-y divide-borda/40">
+              <div className="grid grid-cols-[1fr_80px_80px] bg-fundo/30 px-4 py-2 text-xs font-semibold text-suave">
+                <span>Rede</span>
+                <span className="text-center">Consulta</span>
+                <span className="text-center">Exame</span>
+              </div>
+              {subs.map((s) => (
+                <div key={s.id} className="grid grid-cols-[1fr_80px_80px] items-center px-4 py-2.5 text-sm hover:bg-fundo/20 transition-colors">
+                  <span className="font-medium text-texto">{s.nome}</span>
+                  <span className="grid place-items-center">{marca(p.atende[s.id]?.includes("c"))}</span>
+                  <span className="grid place-items-center">{marca(p.atende[s.id]?.includes("e"))}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

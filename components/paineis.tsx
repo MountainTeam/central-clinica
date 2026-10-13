@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ChevronRight, ClipboardList, Copy, FileText, FlaskConical, Pencil, ShieldCheck, UserRound } from "lucide-react";
+import { CircleDollarSign, ChevronRight, ClipboardList, Copy, FlaskConical, Pencil, ShieldCheck, UserRound } from "lucide-react";
 import { useStore, type Painel } from "@/lib/store";
 import { resumoHorarios } from "@/lib/regras";
 import { Avatar, Botao, Chip, Janela, LogoMarca, Secao, Vazio } from "./ui";
@@ -32,7 +32,7 @@ function FichaExame({ id }: { id: string }) {
     .filter((x) => x.subs.length);
 
   const copiar = async () => {
-    const texto = `${ex.nome}\n\nPreparo:\n${ex.preparo.map((x, i) => `${i + 1}. ${x}`).join("\n")}\n\nTrazer: ${ex.documentos}`;
+    const texto = `${ex.nome}\n\nPreparo:\n${ex.preparo.map((x, i) => `${i + 1}. ${x}`).join("\n")}${ex.valor ? `\n\nValor: ${ex.valor}` : ""}`;
     try { await navigator.clipboard.writeText(texto); avisar("Orientações copiadas"); } catch { avisar("Não foi possível copiar", true); }
   };
 
@@ -62,21 +62,47 @@ function FichaExame({ id }: { id: string }) {
         </ol>
       </Secao>
 
-      <Secao titulo="O paciente deve trazer" icone={<FileText className="size-4" />} i={4}>
-        <p className="rounded-2xl bg-fundo px-4 py-3 text-[15px]">{ex.documentos}</p>
+      <Secao titulo="Valor do exame" icone={<CircleDollarSign className="size-4" />} i={4}>
+        <div className="flex items-center gap-3 rounded-2xl bg-fundo px-4 py-3">
+          <span className="text-lg font-bold text-verde">
+            {ex.valor || "Consulte a recepção"}
+          </span>
+          {ex.valor && <span className="text-xs font-medium text-suave">Particular / sem convênio</span>}
+        </div>
       </Secao>
 
       <Secao titulo="Convênios que cobrem" icone={<ShieldCheck className="size-4" />} i={5}>
         {porConvenio.length ? (
           <div className="space-y-3">
-            {porConvenio.map(({ c, subs }) => (
-              <div key={c.id} className="flex flex-wrap items-center gap-2">
-                <span className="flex w-36 items-center gap-2 text-[15px] font-semibold"><LogoMarca nome={c.nome} logo={c.logo} cor={c.cor} tamanho="sm" />{c.nome}</span>
-                {subs.map((s) => <Chip key={s.id} tom="azul">{s.nome}</Chip>)}
-              </div>
-            ))}
+            {porConvenio.map(({ c, subs }) => {
+              const cobreTudo = subs.length === c.subtipos.length && c.subtipos.length > 1;
+              return (
+                <div key={c.id} className="rounded-2xl border border-borda/80 bg-fundo/40 p-3.5 space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-2.5 font-bold text-[15px]">
+                      <LogoMarca nome={c.nome} logo={c.logo} cor={c.cor} tamanho="sm" />
+                      {c.nome}
+                    </span>
+                    {cobreTudo ? (
+                      <span className="rounded-lg bg-verde-claro px-2.5 py-1 text-xs font-semibold text-verde">
+                        Todas as redes ({subs.length})
+                      </span>
+                    ) : (
+                      <span className="rounded-lg bg-azul-claro px-2.5 py-1 text-xs font-semibold text-azul">
+                        {subs.length} de {c.subtipos.length} redes
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 pt-1 border-t border-borda/40">
+                    {subs.map((s) => (
+                      <Chip key={s.id} tom="azul">{s.nome}</Chip>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        ) : <Vazio texto="Nenhum convênio." />}
+        ) : <Vazio texto="Nenhum convênio credenciado para este exame." />}
       </Secao>
 
       <Secao titulo="Quem realiza" icone={<UserRound className="size-4" />} i={6}>
