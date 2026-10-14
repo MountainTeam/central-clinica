@@ -2,11 +2,11 @@
 
 import { reduzirImagem } from "@/lib/logo";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as Icones from "lucide-react";
 import { X } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { iniciais, resumoHorarios } from "@/lib/regras";
+import { iniciais, resumoHorarios, semAcento } from "@/lib/regras";
 import type { DadosClinica, Profissional, Tipo } from "@/lib/modelo";
 
 export function Logo({ claro = false }: { claro?: boolean }) {
@@ -97,16 +97,152 @@ export function Segmentado<T extends string>({ opcoes, valor, onChange }: {
 }
 
 export function SeletorConvenio({ dados, valor, onChange }: { dados: DadosClinica; valor: string; onChange: (v: string) => void }) {
+  const [aberto, setAberto] = useState(false);
+  const [busca, setBusca] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const cliqueFora = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setAberto(false);
+      }
+    };
+    document.addEventListener("mousedown", cliqueFora);
+    return () => document.removeEventListener("mousedown", cliqueFora);
+  }, []);
+
+  const infoAtual = useMemo(() => {
+    if (!valor) return null;
+    for (const c of dados.convenios) {
+      const s = c.subtipos.find((sub) => sub.id === valor);
+      if (s) return { c, s };
+    }
+    return null;
+  }, [dados.convenios, valor]);
+
+  const q = semAcento(busca.trim());
+
+  const filtrados = useMemo(() => {
+    if (!q) return dados.convenios;
+    return dados.convenios
+      .map((c) => {
+        const nomeC = semAcento(c.nome);
+        const subs = c.subtipos.filter((s) => nomeC.includes(q) || semAcento(s.nome).includes(q));
+        return { ...c, subtipos: subs };
+      })
+      .filter((c) => c.subtipos.length > 0);
+  }, [dados.convenios, q]);
+
   return (
-    <select value={valor} onChange={(e) => onChange(e.target.value)}
-      className="h-11 w-full rounded-xl border border-borda bg-superficie px-3 text-[15px] outline-none transition focus:border-verde focus:ring-4 focus:ring-verde/15">
-      <option value="">Qualquer convênio</option>
-      {dados.convenios.map((c) => (
-        <optgroup key={c.id} label={c.nome}>
-          {c.subtipos.map((s) => <option key={s.id} value={s.id}>{c.nome} · {s.nome}</option>)}
-        </optgroup>
-      ))}
-    </select>
+    <div ref={containerRef} className="relative w-full">
+      <button
+        type="button"
+        onClick={() => setAberto(!aberto)}
+        className="flex h-11 w-full items-center justify-between rounded-xl border border-borda bg-superficie px-3 text-[14px] text-left outline-none transition focus:border-verde focus:ring-4 focus:ring-verde/15"
+      >
+        <span className="truncate">
+          {infoAtual ? (
+            <span className="font-medium text-texto">
+              <strong className="font-semibold text-verde">{infoAtual.c.nome}</strong> · {infoAtual.s.nome}
+            </span>
+          ) : (
+            <span className="text-suave">Qualquer convênio</span>
+          )}
+        </span>
+        <div className="flex items-center gap-1.5 shrink-0 text-suave">
+          {valor && (
+            <span
+              role="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange("");
+                setBusca("");
+              }}
+              className="rounded-md p-1 hover:bg-borda/40 hover:text-texto"
+            >
+              <X className="size-3.5" />
+            </span>
+          )}
+          <Icones.ChevronDown className={`size-4 transition-transform duration-200 ${aberto ? "rotate-180" : ""}`} />
+        </div>
+      </button>
+
+      {aberto && (
+        <div className="absolute left-0 top-full z-50 mt-1.5 w-full min-w-[280px] rounded-2xl border border-borda bg-superficie p-2 shadow-elevado">
+          <div className="relative mb-2">
+            <Icones.Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-suave" />
+            <input
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder="Buscar convênio ou plano..."
+              autoFocus
+              className="h-8 w-full rounded-xl border border-borda bg-fundo pl-8 pr-7 text-xs outline-none transition focus:border-verde focus:ring-2 focus:ring-verde/15"
+            />
+            {busca && (
+              <button
+                type="button"
+                onClick={() => setBusca("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-suave hover:text-texto"
+              >
+                <X className="size-3" />
+              </button>
+            )}
+          </div>
+
+          <div className="max-h-56 overflow-y-auto space-y-1 pr-1 text-xs">
+            <button
+              type="button"
+              onClick={() => {
+                onChange("");
+                setAberto(false);
+                setBusca("");
+              }}
+              className={`flex w-full items-center justify-between rounded-xl px-2.5 py-2 font-medium transition-colors ${
+                !valor ? "bg-verde-claro text-verde font-semibold" : "hover:bg-fundo text-suave"
+              }`}
+            >
+              <span>Qualquer convênio</span>
+              {!valor && <Icones.Check className="size-3.5" />}
+            </button>
+
+            {filtrados.length ? (
+              filtrados.map((c) => (
+                <div key={c.id} className="pt-1">
+                  <div className="flex items-center gap-2 px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-suave/80 bg-fundo/40 rounded-lg">
+                    <LogoMarca nome={c.nome} logo={c.logo} cor={c.cor} tamanho="sm" />
+                    <span>{c.nome}</span>
+                  </div>
+                  <div className="pl-2 pt-0.5 space-y-0.5">
+                    {c.subtipos.map((s) => {
+                      const ativo = valor === s.id;
+                      return (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => {
+                            onChange(s.id);
+                            setAberto(false);
+                            setBusca("");
+                          }}
+                          className={`flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left transition-colors ${
+                            ativo ? "bg-verde-claro text-verde font-semibold" : "hover:bg-fundo text-texto"
+                          }`}
+                        >
+                          <span>{s.nome}</span>
+                          {ativo && <Icones.Check className="size-3.5" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="py-3 text-center text-xs text-suave">Nenhum convênio encontrado para &quot;{busca}&quot;.</p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

@@ -67,6 +67,24 @@ export function salvarExame(b: Banco, u: Usuario, e: Exame): Banco {
   return { ...b, exames: gravarEm(b.exames, e) };
 }
 
+export function salvarExameComProfissionais(b: Banco, u: Usuario, e: Exame, profsIds: string[]): Banco {
+  conferirClinica(u, e, b.exames.find((x) => x.id === e.id));
+  const examesAtualizados = gravarEm(b.exames, e);
+  const profissionaisAtualizados = b.profissionais.map((p) => {
+    if (p.clinicaId !== e.clinicaId) return p;
+    const selecionado = profsIds.includes(p.id);
+    const jaPossui = p.exames.includes(e.id);
+    if (selecionado && !jaPossui) {
+      return { ...p, exames: [...p.exames, e.id] };
+    }
+    if (!selecionado && jaPossui) {
+      return { ...p, exames: p.exames.filter((id) => id !== e.id) };
+    }
+    return p;
+  });
+  return { ...b, exames: examesAtualizados, profissionais: profissionaisAtualizados };
+}
+
 export function salvarConvenio(b: Banco, u: Usuario, c: Convenio): Banco {
   conferirClinica(u, c, b.convenios.find((x) => x.id === c.id));
   return { ...b, convenios: gravarEm(b.convenios, c) };

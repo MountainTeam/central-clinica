@@ -18,9 +18,9 @@ import {
   X,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { atende, gruposPlanosDoConvenio, observacoesDoConvenio, semAcento, subtipoInfo } from "@/lib/regras";
-import type { Tipo } from "@/lib/modelo";
-import { CartaoProfissional, Chip, Icone, LogoMarca, Segmentado, SeletorConvenio, TipoBadge, Vazio } from "@/components/ui";
+import { atende, gruposPlanosDoConvenio, observacoesDoConvenio, resumoHorarios, semAcento, subtipoInfo } from "@/lib/regras";
+import type { DadosClinica, Tipo } from "@/lib/modelo";
+import { Avatar, CartaoProfissional, Chip, Icone, LogoMarca, Segmentado, SeletorConvenio, TipoBadge, Vazio } from "@/components/ui";
 
 function Contador({ valor }: { valor: number }) {
   const [n, setN] = useState(0);
@@ -114,33 +114,33 @@ export default function BuscaRapida() {
     <div className="space-y-6">
       {/* Barra de Busca e Filtros Principais */}
       <div className="entrar rounded-3xl border border-borda bg-superficie p-4 shadow-card sm:p-5">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-suave" />
-          <input
-            ref={campo}
-            value={texto}
-            onChange={(e) => setTexto(e.target.value)}
-            autoFocus
-            placeholder="Buscar por médico, especialidade, plano de convênio ou exame..."
-            className="h-14 w-full rounded-2xl bg-fundo pl-12 pr-24 text-[17px] outline-none ring-1 ring-transparent transition placeholder:text-suave/70 focus:bg-superficie focus:ring-verde/40 focus:shadow-[0_0_0_4px_rgb(13_155_134/0.12)]"
-          />
-          {texto ? (
-            <button
-              onClick={() => setTexto("")}
-              aria-label="Limpar texto"
-              className="pressionavel absolute right-3 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-lg text-suave hover:bg-borda/60"
-            >
-              <X className="size-4" />
-            </button>
-          ) : (
-            <kbd className="absolute right-4 top-1/2 hidden -translate-y-1/2 rounded-md border border-borda bg-superficie px-2 py-0.5 text-xs text-suave sm:block">
-              /
-            </kbd>
-          )}
-        </div>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-suave" />
+              <input
+                ref={campo}
+                value={texto}
+                onChange={(e) => setTexto(e.target.value)}
+                autoFocus
+                placeholder="Buscar por médico, especialidade, plano de convênio ou exame..."
+                className="h-14 w-full rounded-2xl bg-fundo pl-12 pr-24 text-[17px] outline-none ring-1 ring-transparent transition placeholder:text-suave/70 focus:bg-superficie focus:ring-verde/40 focus:shadow-[0_0_0_4px_rgb(13_155_134/0.12)]"
+              />
+              {texto ? (
+                <button
+                  onClick={() => setTexto("")}
+                  aria-label="Limpar texto"
+                  className="pressionavel absolute right-3 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-lg text-suave hover:bg-borda/60"
+                >
+                  <X className="size-4" />
+                </button>
+              ) : (
+                <kbd className="absolute right-4 top-1/2 hidden -translate-y-1/2 rounded-md border border-borda bg-superficie px-2 py-0.5 text-xs text-suave sm:block">
+                  /
+                </kbd>
+              )}
+            </div>
 
-        <div className="mt-3 grid gap-3 md:grid-cols-[1.3fr_1fr_1fr]">
-          <SeletorConvenio dados={dados} valor={subtipo} onChange={setSubtipo} />
+            <div className="mt-3 grid gap-3 md:grid-cols-[1.3fr_1fr_1fr]">
+              <SeletorConvenio dados={dados} valor={subtipo} onChange={setSubtipo} />
           <Segmentado
             valor={tipo}
             onChange={setTipo}
