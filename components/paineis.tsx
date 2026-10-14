@@ -34,9 +34,9 @@ function Filtro({ valor, onChange, placeholder }: { valor: string; onChange: (v:
 }
 
 // Quem realiza: abre as observações e restrições do médico sem sair do exame
-function QuemRealiza({ p }: { p: Profissional }) {
+function QuemRealiza({ p, cobre }: { p: Profissional; cobre: boolean }) {
   const { dados, plano } = useStore();
-  // com o plano do paciente escolhido, a pergunta seguinte é "este médico atende?"
+  // com o plano cobrindo o exame, a pergunta seguinte é "este médico faz este exame por esse plano?"
   const rede = plano ? subtipoInfo(dados, plano.subtipoId)?.subtipo : undefined;
   const [aberto, setAberto] = useState(false);
   const semNotas = !p.observacoes && !p.observacoesInternas && !p.restricoes.length && !p.idadeMinima;
@@ -50,7 +50,7 @@ function QuemRealiza({ p }: { p: Profissional }) {
             <span className="line-clamp-2">{p.nome}</span>
             {p.restricoes.length > 0 && <TriangleAlert className="size-3.5 shrink-0 text-alerta" aria-label="Tem restrições" />}
           </span>
-          {plano && rede && <span className="mt-1 block">{atende(p, plano.subtipoId, plano.tipo) ? <Chip tom="verde">Atende {rede.nome}</Chip> : <Chip tom="perigo">Não atende {rede.nome}</Chip>}</span>}
+          {plano && rede && cobre && <span className="mt-1 block">{atende(p, plano.subtipoId, "exame") ? <Chip tom="verde">Faz pelo {rede.nome}</Chip> : <Chip tom="perigo">Não faz pelo {rede.nome}</Chip>}</span>}
           <span className="block text-sm text-suave">{p.horarios.length ? gruposHorarios(p.horarios).map((g) => <span key={g} className="block">{g}</span>) : "Horários não informados"}</span>
         </span>
         <ChevronDown className={`size-4 shrink-0 text-suave transition-transform duration-200 ${aberto ? "rotate-180" : ""}`} />
@@ -155,7 +155,7 @@ function FichaExame({ id }: { id: string }) {
         {quemFaz.length ? (
           <div className="space-y-2">
             {quemFaz.length > 5 && <Filtro valor={qMedico} onChange={setQMedico} placeholder="Procurar médico" />}
-            {medicos.map((p) => <QuemRealiza key={p.id} p={p} />)}
+            {medicos.map((p) => <QuemRealiza key={p.id} p={p} cobre={cobre} />)}
             {!medicos.length && <p className="text-sm text-suave">Nenhum médico com esse nome faz este exame.</p>}
           </div>
         ) : <Vazio texto="Nenhum profissional vinculado." />}
