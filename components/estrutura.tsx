@@ -56,8 +56,8 @@ export function Estrutura({ children }: { children: React.ReactNode }) {
       const atalho = ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") || (e.key === "/" && !emCampo && !e.ctrlKey && !e.metaKey);
       if (!atalho || !clinica || form) return;
       e.preventDefault();
-      abrir(null);
-      if (rota !== "/busca") router.push("/busca");
+      // fora da busca só navega: o painel fecha porque o ?exame= some da URL (um replace de volta à rota velha venceria o push)
+      if (rota !== "/busca") router.push("/busca"); else abrir(null);
       window.dispatchEvent(new Event("cartilha:focar-busca"));
     };
     window.addEventListener("keydown", tecla);
@@ -163,7 +163,7 @@ export function Estrutura({ children }: { children: React.ReactNode }) {
         </nav>
       </header>
 
-      <main key={`${rota}-${clinica?.id}`} className="mx-auto max-w-6xl px-4 py-8 sm:px-8 lg:py-12">
+      <main key={`${rota}-${clinica?.id}`} tabIndex={-1} className="mx-auto outline-none max-w-6xl px-4 py-8 sm:px-8 lg:py-12">
         {clinica && !livre && <FaixaPlano />}
         {clinica || livre ? children : <Vazio texto="Escolha uma unidade para acessar esta opção." />}
       </main>
@@ -191,11 +191,15 @@ function ExameNaUrl() {
   const params = useSearchParams();
   const naUrl = params.get("exame");
   const id = painel?.id ?? null;
-  const visto = useRef(`${id}|${rota}`);
+  const visto = useRef(id);
+  const urlAntes = useRef(naUrl);
 
-  // URL -> painel (link, recarregar); id que não existe é descartado
+  // URL -> painel: link/recarregar abre; id que não existe é descartado; o parâmetro sumir (Voltar, outra tela) fecha
   useEffect(() => {
-    if (!carregado || !clinica || !naUrl || naUrl === id) return;
+    const antes = urlAntes.current;
+    urlAntes.current = naUrl;
+    if (!naUrl) { if (antes) abrir(null); return; }
+    if (!carregado || !clinica || naUrl === id) return;
     if (dados.exames.some((e) => e.id === naUrl)) abrir({ tipo: "exame", id: naUrl });
     else {
       const p = new URLSearchParams(params.toString());
@@ -206,16 +210,17 @@ function ExameNaUrl() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [naUrl, carregado, clinica]);
 
-  // painel -> URL (abrir acrescenta, fechar remove); só age quando o painel ou a tela mudam (carregar com ?exame= só lê a URL)
+  // painel -> URL: abrir empilha (o Voltar fecha), fechar pelo X/Esc só troca a URL; a tela mudar não conta
   useEffect(() => {
-    if (visto.current === `${id}|${rota}`) return;
-    visto.current = `${id}|${rota}`;
+    if (visto.current === id) return;
+    visto.current = id;
     if (id === naUrl) return;
     const p = new URLSearchParams(params.toString());
     if (id) p.set("exame", id); else p.delete("exame");
-    router.replace(p.size ? `${rota}?${p}` : rota, { scroll: false });
+    const url = p.size ? `${rota}?${p}` : rota;
+    if (id) router.push(url, { scroll: false }); else router.replace(url, { scroll: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, rota]);
+  }, [id]);
 
   return null;
 }

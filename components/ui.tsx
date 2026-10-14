@@ -334,12 +334,23 @@ export function Janela({ aberta, titulo, onFechar, children }: {
     const origem = document.activeElement as HTMLElement | null;
     fechar.current?.focus({ preventScroll: true });
     // com um formulário por cima, o Esc é dele
-    const esc = (e: KeyboardEvent) => { if (e.key === "Escape" && !formAberto.current) onFecharRef.current(); };
-    window.addEventListener("keydown", esc);
+    const tecla = (e: KeyboardEvent) => {
+      if (formAberto.current) return;
+      if (e.key === "Escape") return onFecharRef.current();
+      if (e.key !== "Tab") return;
+      // prende o Tab dentro do painel
+      const itens = [...painel.current!.querySelectorAll<HTMLElement>('a[href],button:not([disabled]),input:not([disabled]),select,textarea,[tabindex]:not([tabindex="-1"])')];
+      const primeiro = itens[0], ultimo = itens[itens.length - 1];
+      const dentro = painel.current!.contains(document.activeElement);
+      if (!dentro || (e.shiftKey && document.activeElement === primeiro)) { e.preventDefault(); (e.shiftKey ? ultimo : primeiro).focus(); }
+      else if (!e.shiftKey && document.activeElement === ultimo) { e.preventDefault(); primeiro.focus(); }
+    };
+    window.addEventListener("keydown", tecla);
     return () => {
-      window.removeEventListener("keydown", esc);
+      window.removeEventListener("keydown", tecla);
       // o foco só volta se não foi para outro lugar (ex.: o formulário de edição)
-      if (origem?.isConnected && (!document.activeElement || document.activeElement === document.body || painel.current?.contains(document.activeElement))) origem.focus({ preventScroll: true });
+      const destino = origem?.isConnected ? origem : document.querySelector<HTMLElement>("main");
+      if (destino && (!document.activeElement || document.activeElement === document.body || painel.current?.contains(document.activeElement))) destino.focus({ preventScroll: true });
     };
   }, [aberta]);
 
