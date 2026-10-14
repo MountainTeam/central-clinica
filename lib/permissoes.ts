@@ -14,4 +14,6 @@ export const podeVer = (u: Usuario, clinicaId: string) => global(u) || u.clinica
 export const podeEditar = (u: Usuario, clinicaId: string) =>
   global(u) || (u.papel === "coordenador" && u.clinicas.includes(clinicaId));
 export const podeCriarClinica = (u: Usuario) => global(u);
+// Coordenador edita nome e logo das clínicas dele; Recepção só consulta
+export const podeGerenciarUnidades = (u: Usuario) => u.papel !== "recepcao";
 export const podeCriarUsuario = (u: Usuario) => u.papel === "administrador";

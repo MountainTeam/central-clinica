@@ -32,6 +32,8 @@ export function Estrutura({ children }: { children: React.ReactNode }) {
   const { usuario, carregado, sair, aviso, avisar, clinica } = useStore();
   const router = useRouter();
   const rota = usePathname();
+  // telas que funcionam sem unidade escolhida
+  const livre = rota === "/" || rota === "/clinicas";
 
   useEffect(() => {
     if (carregado && !usuario) router.replace("/login");
@@ -39,11 +41,11 @@ export function Estrutura({ children }: { children: React.ReactNode }) {
 
   // Se o usuário não tiver uma unidade selecionada, só pode navegar na tela de Unidades
   useEffect(() => {
-    if (carregado && usuario && !clinica && rota !== "/" && rota !== "/login") {
+    if (carregado && usuario && !clinica && !livre) {
       router.replace("/");
       avisar("Escolha uma unidade para acessar o sistema.", true);
     }
-  }, [carregado, usuario, clinica, rota, router, avisar]);
+  }, [carregado, usuario, clinica, livre, router, avisar]);
 
   const itens = menu.filter((m) => !m.mostrar || (usuario && m.mostrar(usuario)));
   const ativo = itens.findIndex((m) => (m.href === "/" ? rota === "/" : rota.startsWith(m.href)));
@@ -145,7 +147,7 @@ export function Estrutura({ children }: { children: React.ReactNode }) {
       </header>
 
       <main key={`${rota}-${clinica?.id}`} className="mx-auto max-w-6xl px-4 py-8 sm:px-8 lg:py-12">
-        {clinica || rota === "/" || !carregado ? children : <Vazio texto="Escolha uma unidade para acessar esta opção." />}
+        {clinica || livre ? children : <Vazio texto="Escolha uma unidade para acessar esta opção." />}
       </main>
 
       <Paineis />

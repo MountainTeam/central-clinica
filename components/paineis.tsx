@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Check, ChevronDown, ChevronRight, CircleDollarSign, ClipboardList, Copy, FlaskConical, Minus, Pencil, Search, ShieldCheck, UserRound, X } from "lucide-react";
+import { ChevronDown, ChevronRight, ClipboardList, Copy, FlaskConical, Info, Pencil, Search, ShieldCheck, TriangleAlert, UserRound, X } from "lucide-react";
 import { useStore, type Painel } from "@/lib/store";
 import { resumoHorarios, semAcento } from "@/lib/regras";
 import type { DadosClinica, Exame, Profissional } from "@/lib/modelo";
@@ -17,20 +17,74 @@ export function Paineis() {
 
   return (
     <Janela aberta={!!painel} onFechar={() => abrir(null)}
-      titulo={`Preparo · ${dados.exames.find((e) => e.id === atual?.id)?.nome ?? "Exame"}`}>
+      titulo={`Exame · ${dados.exames.find((e) => e.id === atual?.id)?.nome ?? ""}`}>
       {atual && <FichaExame key={atual.id} id={atual.id} />}
     </Janela>
   );
 }
 
+const temTexto = (t: string, q: string) => semAcento(t).includes(semAcento(q.trim()));
+
+function Filtro({ valor, onChange, placeholder }: { valor: string; onChange: (v: string) => void; placeholder: string }) {
+  return (
+    <div className="relative">
+      <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-suave" />
+      <input value={valor} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} aria-label={placeholder}
+        className="h-10 w-full rounded-xl border border-borda bg-superficie pl-9 pr-3 text-sm outline-none transition focus:border-verde focus:ring-4 focus:ring-verde/15" />
+    </div>
+  );
+}
+
+// Quem realiza: abre as observações e restrições do médico sem sair do exame
+function QuemRealiza({ p }: { p: Profissional }) {
+  const [aberto, setAberto] = useState(false);
+  const semNotas = !p.observacoes && !p.restricoes.length && !p.idadeMinima;
+  return (
+    <div className={`overflow-hidden rounded-2xl border ${aberto ? "border-verde/30" : "border-borda"}`}>
+      <button type="button" onClick={() => setAberto(!aberto)} aria-expanded={aberto}
+        className="pressionavel flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-verde-claro/40">
+        <Avatar nome={p.nome} />
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-2 font-semibold">
+            <span className="truncate">{p.nome}</span>
+            {p.restricoes.length > 0 && <TriangleAlert className="size-3.5 shrink-0 text-alerta" aria-label="Tem restrições" />}
+          </span>
+          <span className="block truncate text-sm text-suave">{resumoHorarios(p.horarios)}</span>
+        </span>
+        <ChevronDown className={`size-4 shrink-0 text-suave transition-transform duration-200 ${aberto ? "rotate-180" : ""}`} />
+      </button>
+      {aberto && (
+        <div className="entrar space-y-2 border-t border-borda/60 p-3 text-sm">
+          {p.idadeMinima && <Chip>A partir de {p.idadeMinima} anos</Chip>}
+          {p.restricoes.map((r, k) => (
+            <p key={k} className="flex gap-2 rounded-xl bg-alerta-claro px-3 py-2 text-alerta"><TriangleAlert className="mt-0.5 size-4 shrink-0" />{r.texto}</p>
+          ))}
+          {p.observacoes && <p className="whitespace-pre-line rounded-xl bg-fundo px-3 py-2">{p.observacoes}</p>}
+          {semNotas && <p className="text-suave">Sem observações cadastradas.</p>}
+          <Link href={`/profissionais/${p.id}`} className="inline-flex items-center gap-1 font-semibold text-verde hover:underline">
+            Abrir ficha completa <ChevronRight className="size-4" />
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function FichaExame({ id }: { id: string }) {
   const { dados, podeEditarAtual, abrirForm, avisar } = useStore();
+  const [qMedico, setQMedico] = useState("");
   const ex = dados.exames.find((e) => e.id === id);
   if (!ex) return null;
   const quemFaz = dados.profissionais.filter((p) => p.exames.includes(ex.id));
+  const medicos = quemFaz.filter((p) => temTexto(p.nome, qMedico));
 
   const copiar = async () => {
-    const texto = `${ex.nome}\n\nPreparo:\n${ex.preparo.map((x, i) => `${i + 1}. ${x}`).join("\n")}${ex.valor ? `\n\nValor: ${ex.valor}` : ""}`;
+    const texto = [
+      ex.nome,
+      ex.preparo.length ? `Preparo:\n${ex.preparo.map((x, i) => `${i + 1}. ${x}`).join("\n")}` : "",
+      ex.valor ? `Valor particular: ${ex.valor}` : "",
+      ex.observacoes ? `Observações: ${ex.observacoes}` : "",
+    ].filter(Boolean).join("\n\n");
     try { await navigator.clipboard.writeText(texto); avisar("Orientações copiadas"); } catch { avisar("Não foi possível copiar", true); }
   };
 
@@ -38,9 +92,12 @@ function FichaExame({ id }: { id: string }) {
     <div className="space-y-7 p-5 sm:p-6">
       <header className="entrar flex items-start gap-4">
         <div className="grid size-16 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-sky-400 to-blue-600 text-white"><FlaskConical className="size-7" /></div>
-        <div>
-          <p className="text-sm font-medium text-azul">Exame</p>
+        <div className="min-w-0 flex-1">
           <h2 className="text-2xl font-bold tracking-tight">{ex.nome}</h2>
+          {/* a resposta mais pedida na ligação: quanto custa sem convênio */}
+          <p className="mt-1 text-sm text-suave">
+            Particular: <b className="text-lg text-verde">{ex.valor || "consulte a recepção"}</b>
+          </p>
         </div>
       </header>
 
@@ -49,32 +106,37 @@ function FichaExame({ id }: { id: string }) {
         {podeEditarAtual && <Botao variante="secundario" onClick={() => abrirForm({ tipo: "exame", id: ex.id })}><Pencil className="size-4" />Editar</Botao>}
       </div>
 
-      <Secao titulo="Preparo do paciente" icone={<ClipboardList className="size-4" />} i={2}>
-        <ol className="space-y-2">
-          {ex.preparo.map((passo, k) => (
-            <li key={k} className="entrar flex gap-3 rounded-2xl border border-borda px-4 py-3 text-[15px]" style={{ "--i": k + 3 } as React.CSSProperties}>
-              <span className="grid size-6 shrink-0 place-items-center rounded-full gradiente-marca text-xs font-bold text-white">{k + 1}</span>
-              {passo}
-            </li>
-          ))}
-        </ol>
-      </Secao>
+      {ex.observacoes && (
+        <p className="entrar flex gap-3 whitespace-pre-line rounded-2xl bg-alerta-claro px-4 py-3 text-[15px] text-alerta" style={{ "--i": 2 } as React.CSSProperties}>
+          <Info className="mt-0.5 size-4 shrink-0" />{ex.observacoes}
+        </p>
+      )}
 
-      <Secao titulo="Valor do exame" icone={<CircleDollarSign className="size-4" />} i={4}>
-        <div className="flex items-center gap-3 rounded-2xl bg-fundo px-4 py-3">
-          <span className="text-lg font-bold text-verde">
-            {ex.valor || "Consulte a recepção"}
-          </span>
-          {ex.valor && <span className="text-xs font-medium text-suave">Particular / sem convênio</span>}
-        </div>
-      </Secao>
-
-      <Secao titulo="Convênios que cobrem" icone={<ShieldCheck className="size-4" />} i={5}>
+      <Secao titulo="Convênios que cobrem" icone={<ShieldCheck className="size-4" />} i={3}>
         <ChecadorConveniosExame ex={ex} dados={dados} />
       </Secao>
 
-      <Secao titulo="Quem realiza" icone={<UserRound className="size-4" />} i={6}>
-        <QuemRealizaExame quemFaz={quemFaz} />
+      <Secao titulo="Preparo do paciente" icone={<ClipboardList className="size-4" />} i={4}>
+        {ex.preparo.length ? (
+          <ol className="space-y-2">
+            {ex.preparo.map((passo, k) => (
+              <li key={k} className="flex gap-3 rounded-2xl border border-borda px-4 py-3 text-[15px]">
+                <span className="grid size-6 shrink-0 place-items-center rounded-full gradiente-marca text-xs font-bold text-white">{k + 1}</span>
+                {passo}
+              </li>
+            ))}
+          </ol>
+        ) : <Vazio texto="Sem preparo cadastrado." />}
+      </Secao>
+
+      <Secao titulo={`Quem realiza (${quemFaz.length})`} icone={<UserRound className="size-4" />} i={5}>
+        {quemFaz.length ? (
+          <div className="space-y-2">
+            {quemFaz.length > 5 && <Filtro valor={qMedico} onChange={setQMedico} placeholder="Procurar médico" />}
+            {medicos.map((p) => <QuemRealiza key={p.id} p={p} />)}
+            {!medicos.length && <p className="text-sm text-suave">Nenhum médico com esse nome faz este exame.</p>}
+          </div>
+        ) : <Vazio texto="Nenhum profissional vinculado." />}
       </Secao>
     </div>
   );
@@ -246,58 +308,3 @@ function ChecadorConveniosExame({ ex, dados }: { ex: Exame; dados: DadosClinica 
     </div>
   );
 }
-
-function QuemRealizaExame({ quemFaz }: { quemFaz: Profissional[] }) {
-  const [busca, setBusca] = useState("");
-  const q = semAcento(busca.trim());
-
-  const filtrados = useMemo(() => {
-    if (!q) return quemFaz;
-    return quemFaz.filter((p) => semAcento(p.nome).includes(q));
-  }, [quemFaz, q]);
-
-  if (!quemFaz.length) return <Vazio texto="Nenhum profissional vinculado." />;
-
-  return (
-    <div className="space-y-2.5">
-      {quemFaz.length > 3 && (
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-suave" />
-          <input
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            placeholder={`Buscar entre os ${quemFaz.length} médicos...`}
-            className="h-8 w-full rounded-xl border border-borda bg-superficie pl-8 pr-7 text-xs outline-none transition focus:border-verde focus:ring-2 focus:ring-verde/15"
-          />
-          {busca && (
-            <button onClick={() => setBusca("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-suave hover:text-texto">
-              <X className="size-3" />
-            </button>
-          )}
-        </div>
-      )}
-
-      {filtrados.length ? (
-        <div className="space-y-1.5">
-          {filtrados.map((p) => (
-            <Link
-              key={p.id}
-              href={`/profissionais/${p.id}`}
-              className="pressionavel group flex w-full items-center gap-3 rounded-2xl border border-borda px-3 py-2 text-left hover:border-verde/30 hover:bg-verde-claro/50"
-            >
-              <Avatar nome={p.nome} />
-              <span className="flex-1 min-w-0">
-                <span className="block truncate font-semibold text-sm">{p.nome}</span>
-                <span className="block truncate text-xs text-suave">{resumoHorarios(p.horarios)}</span>
-              </span>
-              <ChevronRight className="size-4 text-suave transition-transform group-hover:translate-x-0.5" />
-            </Link>
-          ))}
-        </div>
-      ) : (
-        <p className="text-xs text-suave py-2">Nenhum profissional corresponde a &quot;{busca}&quot;.</p>
-      )}
-    </div>
-  );
-}
-

@@ -40,6 +40,7 @@ export type Exame = {
   preparo: string[];
   documentos?: string;
   valor?: string;
+  observacoes?: string;
   subtipos: string[];
 };
 // `atende` mapeia subtipo → "c" (consulta), "e" (exame) ou "ce" (ambos)

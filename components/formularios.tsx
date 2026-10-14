@@ -937,6 +937,7 @@ function FormExame({ id }: { id?: string }) {
       nome,
       preparo: linhas(f.get("preparo")),
       valor: String(f.get("valor") ?? "").trim(),
+      observacoes: String(f.get("observacoes") ?? "").trim(),
       subtipos: dados.convenios.flatMap((c) => c.subtipos).filter((s) => f.get(`s:${s.id}`)).map((s) => s.id),
     };
     const profsIds = dados.profissionais.filter((p) => f.get(`prof:${p.id}`)).map((p) => p.id);
@@ -948,11 +949,14 @@ function FormExame({ id }: { id?: string }) {
   return (
     <Moldura titulo={ex ? "Editar exame" : "Novo exame"} onSalvar={salvar}>
       <Campo rotulo="Nome do exame"><input name="nome" defaultValue={ex?.nome} className={campo} /></Campo>
-      <Campo rotulo="Preparo" dica="Um passo por linha.">
-        <textarea name="preparo" rows={5} defaultValue={ex?.preparo.join("\n")} className={campo} />
+      <Campo rotulo="Preparo" dica="Um passo por linha. Inclua o que o paciente deve trazer no dia.">
+        <textarea name="preparo" rows={5} defaultValue={ex?.preparo.join("\n")} placeholder={"Jejum de 4 horas\nTrazer exames anteriores e pedido médico"} className={campo} />
       </Campo>
-      <Campo rotulo="Valor do exame" dica="Ex.: R$ 150,00 ou Sob consulta">
+      <Campo rotulo="Valor particular" dica="Só o valor sem convênio. O que o convênio paga fica com o faturamento.">
         <input name="valor" defaultValue={ex?.valor} placeholder="Ex.: R$ 150,00" className={campo} />
+      </Campo>
+      <Campo rotulo="Observações" dica="Avisos para a central, ex.: só às terças, agendar com 7 dias de antecedência.">
+        <textarea name="observacoes" rows={3} defaultValue={ex?.observacoes} className={campo} />
       </Campo>
       <div>
         <span className="mb-2 block text-sm font-semibold">Profissionais que realizam este exame</span>
@@ -1022,7 +1026,7 @@ function FormConvenio({ id }: { id?: string }) {
       .filter(Boolean);
 
     // Tipos de rede para vinculação de profissionais e exames
-    const redesManuais = String(f.get("subtipos") ?? "").split(",").map((x) => x.trim()).filter(Boolean);
+    const redesManuais = String(f.get("subtipos") ?? "").split(/[\n,]/).map((x) => x.trim()).filter(Boolean);
     const nomesRedes = redesManuais.length > 0
       ? redesManuais
       : Array.from(new Set([...planosAtende, ...planosSomente]));
@@ -1056,7 +1060,7 @@ function FormConvenio({ id }: { id?: string }) {
       <div className="border-t border-borda pt-4 space-y-4">
         <h4 className="text-sm font-bold text-texto">Regras de Atendimento e Planos da Carteirinha</h4>
 
-        <Campo rotulo="● Atende consultas e exames" dica="Nomes dos planos separados por vírgula.">
+        <Campo rotulo="● Atende consultas e exames" dica="Separe por vírgula ou cole a coluna da planilha (um por linha).">
           <textarea
             name="planosAtende"
             rows={2}
@@ -1067,7 +1071,7 @@ function FormConvenio({ id }: { id?: string }) {
         </Campo>
 
         <div className="space-y-2">
-          <Campo rotulo="● Somente exames" dica="Nomes dos planos separados por vírgula.">
+          <Campo rotulo="● Somente exames" dica="Separe por vírgula ou cole a coluna da planilha (um por linha).">
             <textarea
               name="planosSomente"
               rows={2}
@@ -1086,9 +1090,10 @@ function FormConvenio({ id }: { id?: string }) {
           </Campo>
         </div>
 
-        <Campo rotulo="● Não atendemos" dica="Nomes dos planos que a clínica recusa (separados por vírgula).">
-          <input
+        <Campo rotulo="● Não atendemos" dica="Planos que a clínica recusa. Vírgula ou um por linha.">
+          <textarea
             name="planosNao"
+            rows={2}
             defaultValue={gNao?.planos.join(", ") ?? ""}
             placeholder="Ex.: Life, Ser, Dental"
             className={campo}
@@ -1109,7 +1114,7 @@ function FormConvenio({ id }: { id?: string }) {
           <summary className="cursor-pointer font-semibold hover:text-texto">Avançado: Redes técnicas para médicos</summary>
           <div className="mt-2">
             <Campo rotulo="Redes manuais" dica="Opcional. Se vazio, sincroniza com os planos de consulta e exames.">
-              <input name="subtipos" defaultValue={c?.subtipos.map((s) => s.nome).join(", ")} className={campo} />
+              <textarea name="subtipos" rows={2} defaultValue={c?.subtipos.map((s) => s.nome).join(", ")} className={campo} />
             </Campo>
           </div>
         </details>
