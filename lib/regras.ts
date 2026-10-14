@@ -148,10 +148,25 @@ export function observacoesDoConvenio(c: Convenio): string[] {
   return [];
 }
 
-
 // planos em "Não atendemos" que também são redes com médico ou exame vinculado
 export function conflitosPlanos(c: Convenio, d: DadosClinica): string[] {
   const usadas = new Set([...d.profissionais.flatMap((p) => Object.keys(p.atende)), ...d.exames.flatMap((e) => e.subtipos)]);
   const nomesUsados = new Set(c.subtipos.filter((s) => usadas.has(s.id)).map((s) => slug(s.nome)));
   return (c.gruposPlanos ?? []).filter((g) => g.status === "nao_atende").flatMap((g) => g.planos).filter((p) => nomesUsados.has(slug(p)));
+}
+
+// Redes do convênio ao salvar o formulário: as que ficaram (mesmo id), as novas da caixa e, só se
+// o convênio nunca teve rede, os planos como ponto de partida.
+export function montarRedes(convenioId: string, antes: Subtipo[], editadas: { id: string; nome: string }[], novas: string[], fallbackPlanos: string[]): { redes: Subtipo[] } | { erro: string } {
+  const vistos = new Map<string, string>();
+  const ficam: Subtipo[] = [];
+  for (const r of editadas) {
+    const nome = r.nome.trim().replace(/\s+/g, " ") || antes.find((s) => s.id === r.id)?.nome || r.nome;
+    const chave = slug(nome);
+    if (vistos.has(chave)) return { erro: `Duas redes com o mesmo nome: ${nome}. Mude uma delas.` };
+    vistos.set(chave, nome);
+    ficam.push({ id: r.id, nome });
+  }
+  const usarPlanos = !antes.length && !ficam.length && !novas.length;
+  return { redes: juntarRedes(convenioId, ficam, usarPlanos ? fallbackPlanos : novas) };
 }

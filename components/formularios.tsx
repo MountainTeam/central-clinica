@@ -6,7 +6,7 @@ import { ChevronDown, Search, X } from "lucide-react";
 import { useStore, type Formulario } from "@/lib/store";
 import { DIAS, type Convenio, type DadosClinica, type Exame, type GrupoPlano, type Horario, type Papel, type Profissional } from "@/lib/modelo";
 import { PAPEIS } from "@/lib/permissoes";
-import { combina, corDoIndice, gruposPlanosDoConvenio, juntarRedes, novoId, observacoesDoConvenio, slug } from "@/lib/regras";
+import { combina, corDoIndice, gruposPlanosDoConvenio, juntarRedes, montarRedes, novoId, observacoesDoConvenio, slug } from "@/lib/regras";
 import { salvarClinica, salvarConvenio, salvarEspecialidade, salvarExame, salvarExameComProfissionais, salvarOrganizacao, salvarProfissional, salvarUsuario } from "@/lib/repositorio";
 import { Botao, EnvioLogo, Gaveta, LogoMarca, useFecharGaveta } from "./ui";
 
@@ -1010,11 +1010,12 @@ function FormConvenio({ id }: { id?: string }) {
   const c = dados.convenios.find((x) => x.id === id);
   const [logo, setLogo] = useState(c?.logo);
   const [nomeAtual, setNomeAtual] = useState(c?.nome ?? "");
+  const [convId] = useState(() => c?.id ?? novoId("conv"));
   const [redes, setRedes] = useState(c?.subtipos ?? []);
   const [novasRedes, setNovasRedes] = useState("");
   const [removendo, setRemovendo] = useState<string | null>(null);
   const linhasNovas = novasRedes.split(/[\n,]/).map((x) => x.trim()).filter(Boolean);
-  const qtdNovas = juntarRedes(c?.id ?? "", redes, linhasNovas).length - redes.length;
+  const qtdNovas = juntarRedes(convId, redes, linhasNovas).length - redes.length;
   const usoDaRede = (rid: string) => ({
     medicos: dados.profissionais.filter((p) => p.atende[rid]).length,
     exames: dados.exames.filter((e) => e.subtipos.includes(rid)).length,
@@ -1030,7 +1031,6 @@ function FormConvenio({ id }: { id?: string }) {
     const nome = String(f.get("nome")).trim();
     if (!nome) return avisar("Informe o nome do convênio", true);
     if (!clinica) return;
-    const convId = c?.id ?? novoId("conv");
 
     const planosAtende = String(f.get("planosAtende") ?? "")
       .split(/[\n,]/)
@@ -1054,16 +1054,11 @@ function FormConvenio({ id }: { id?: string }) {
       .filter(Boolean);
 
     // redes que ficaram mantêm o id (com o nome editado); as novas ganham id a partir da caixa
-    const existentes: typeof redes = [];
-    const vistas = new Set<string>();
-    for (const r of redes) {
-      const n = String(f.get(`rede:${r.id}`) ?? r.nome).trim();
-      if (!n || vistas.has(slug(n))) continue;
-      vistas.add(slug(n));
-      existentes.push({ ...r, nome: n });
-    }
+    const editadas = redes.map((r) => ({ id: r.id, nome: String(f.get(`rede:${r.id}`) ?? r.nome) }));
     const nomesCaixa = String(f.get("novasRedes") ?? "").split(/[\n,]/).map((x) => x.trim()).filter(Boolean);
-    const subtipos = juntarRedes(convId, existentes, nomesCaixa.length || existentes.length ? nomesCaixa : Array.from(new Set([...planosAtende, ...planosSomente])));
+    const montadas = montarRedes(convId, c?.subtipos ?? [], editadas, nomesCaixa, Array.from(new Set([...planosAtende, ...planosSomente])));
+    if ("erro" in montadas) return avisar(montadas.erro, true);
+    const subtipos = montadas.redes;
 
     const novosGrupos: GrupoPlano[] = [
       { status: "atende", titulo: "Atende consultas e exames", planos: planosAtende },
@@ -1145,7 +1140,7 @@ function FormConvenio({ id }: { id?: string }) {
 
         <div className="space-y-2">
           <h5 className="text-sm font-semibold">Redes (usadas nos médicos e exames)</h5>
-          {redes.length === 0 && <p className="text-xs text-suave">Nenhuma rede ainda. Se deixar vazio, usa os planos acima.</p>}
+          {redes.length === 0 && !c?.subtipos.length && <p className="text-xs text-suave">Nenhuma rede ainda. Em convênio novo, se deixar vazio, usa os planos acima.</p>}
           {redes.map((r) => {
             const uso = usoDaRede(r.id);
             return (
