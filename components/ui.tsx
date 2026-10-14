@@ -4,9 +4,9 @@ import { reduzirImagem } from "@/lib/logo";
 import Link from "next/link";
 import { createContext, useContext, useEffect, useId, useMemo, useRef, useState } from "react";
 import * as Icones from "lucide-react";
-import { X } from "lucide-react";
+import { Activity, Baby, Bone, Brain, Ear, Eye, Heart, HeartPulse, Microscope, Pill, ScanLine, Smile, Stethoscope, Syringe, X, type LucideIcon } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { DIAS_PARA_REVISAR, combina, iniciais, resumoHorarios, subtipoInfo, tempoDesde, trechosDestaque } from "@/lib/regras";
+import { DIAS_PARA_REVISAR, combina, gruposHorarios, iniciais, subtipoInfo, tempoDesde, trechosDestaque } from "@/lib/regras";
 import type { DadosClinica, Profissional, Tipo } from "@/lib/modelo";
 
 export function Logo({ claro = false }: { claro?: boolean }) {
@@ -22,16 +22,18 @@ export function Logo({ claro = false }: { claro?: boolean }) {
   );
 }
 
+// Ícones de especialidade: mapa explícito (importar tudo do lucide pesa); nome desconhecido cai no estetoscópio
+const ICONES_ESPECIALIDADE: Record<string, LucideIcon> = {
+  Stethoscope, Activity, Baby, Bone, Brain, Ear, Eye, Heart, HeartPulse, Microscope, Pill, ScanLine, Smile, Syringe,
+};
 export function Icone({ nome, className }: { nome: string; className?: string }) {
-  const C = (Icones as unknown as Record<string, Icones.LucideIcon>)[nome] ?? Icones.Stethoscope;
+  const C = ICONES_ESPECIALIDADE[nome] ?? Stethoscope;
   return <C className={className} />;
 }
 
-const tons = ["from-teal-400 to-emerald-500", "from-sky-400 to-blue-600", "from-emerald-400 to-teal-600", "from-blue-400 to-indigo-500", "from-cyan-400 to-sky-600"];
 export function Avatar({ nome, grande = false }: { nome: string; grande?: boolean }) {
-  const tom = tons[[...nome].reduce((s, c) => s + c.charCodeAt(0), 0) % tons.length];
   return (
-    <div className={`grid shrink-0 place-items-center rounded-2xl bg-gradient-to-br font-semibold text-white ${tom} ${grande ? "size-16 text-xl" : "size-11 text-sm"}`}>
+    <div className={`grid shrink-0 place-items-center rounded-xl bg-verde-claro font-semibold text-verde ${grande ? "size-16 text-xl" : "size-11 text-sm"}`}>
       {iniciais(nome)}
     </div>
   );
@@ -50,7 +52,7 @@ export function Botao({ children, onClick, variante = "primario", type = "button
   children: React.ReactNode; onClick?: () => void; variante?: "primario" | "secundario"; type?: "button" | "submit";
 }) {
   const estilo = variante === "primario"
-    ? "gradiente-marca text-white shadow-card hover:brightness-105"
+    ? "bg-verde text-white shadow-card hover:bg-[#0b8573]"
     : "bg-superficie text-texto border border-borda hover:bg-fundo";
   return (
     <button type={type} onClick={onClick} className={`pressionavel inline-flex h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold ${estilo}`}>
@@ -70,7 +72,7 @@ export function Chip({ children, tom = "neutro" }: { children: React.ReactNode; 
 }
 
 export function Atualizado({ em, por }: { em?: string; por?: string }) {
-  if (!em) return null;
+  if (!em || !tempoDesde(em)) return null;
   const velho = (Date.now() - Date.parse(em)) / 86400000 > DIAS_PARA_REVISAR;
   return (
     <Chip tom={velho ? "alerta" : "neutro"}>
@@ -216,7 +218,7 @@ export function SeletorBusca({ valor, onChange, vazio, placeholder, atual, opcoe
               const marcado = o.id === valor;
               return (
                 <div key={o.id || "vazio"}>
-                  {titulo && <div className="mt-1 flex items-center gap-2 rounded-lg bg-fundo/40 px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-suave/80">{titulo}</div>}
+                  {titulo && <div className="mt-1 flex items-center gap-2 rounded-lg bg-fundo/40 px-2 py-1 text-xs font-bold uppercase tracking-wider text-suave">{titulo}</div>}
                   <div
                     id={`${base}-${n}`}
                     role="option"
@@ -284,6 +286,13 @@ export function Gaveta({ aberta, onFechar, alterado = false, largura = "max-w-xl
   tentarRef.current = () => (descartando ? setDescartando(false) : tentar());
   const barra = useRef<HTMLDivElement>(null);
   useEffect(() => { if (!aberta) setDescartando(false); }, [aberta]);
+  const corpo = useRef<HTMLDivElement>(null);
+  // ao abrir, o foco vai ao primeiro campo editável
+  useEffect(() => {
+    if (!aberta) return;
+    const t = setTimeout(() => corpo.current?.querySelector<HTMLElement>("input:not([type=hidden]):not([disabled]),textarea:not([disabled]),select:not([disabled])")?.focus({ preventScroll: true }), 60);
+    return () => clearTimeout(t);
+  }, [aberta]);
   useEffect(() => { if (descartando) barra.current?.querySelector("button")?.focus(); }, [descartando]);
   useEffect(() => {
     if (!aberta) return;
@@ -301,7 +310,7 @@ export function Gaveta({ aberta, onFechar, alterado = false, largura = "max-w-xl
           <X className="size-5" />
         </button>
         <FecharGaveta.Provider value={tentar}>
-          <div className="flex-1 overflow-y-auto">{children}</div>
+          <div ref={corpo} className="flex-1 overflow-y-auto">{children}</div>
         </FecharGaveta.Provider>
         {descartando && (
           <div ref={barra} role="alertdialog" aria-label="Descartar as alterações?"
@@ -394,13 +403,16 @@ export function CartaoProfissional({ p, especialidade, destaque, i, q = "", onAb
       <div className="flex items-center gap-3">
         <Avatar nome={p.nome} />
         <div className="min-w-0 flex-1">
-          <p className="truncate font-semibold"><Destaque texto={p.nome} q={q} /></p>
+          <p className="line-clamp-2 font-semibold"><Destaque texto={p.nome} q={q} /></p>
           {especialidade && <p className="text-sm text-suave">{especialidade}</p>}
         </div>
         <Icones.ChevronRight className="size-5 text-suave/50 transition-transform group-hover:translate-x-0.5 group-hover:text-verde" />
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <span className="flex items-center gap-1.5 text-sm text-suave"><Icones.CalendarDays className="size-4 shrink-0" />{resumoHorarios(p.horarios)}</span>
+        <div className="flex items-start gap-1.5 text-sm text-suave">
+          <Icones.CalendarDays className="mt-0.5 size-4 shrink-0" />
+          <div>{p.horarios.length ? gruposHorarios(p.horarios).map((g) => <p key={g}>{g}</p>) : "Horários não informados"}</div>
+        </div>
         {p.restricoes.length > 0 && <Chip tom="alerta"><Icones.TriangleAlert className="size-3.5" />{p.restricoes.length === 1 ? "1 restrição" : `${p.restricoes.length} restrições`}</Chip>}
       </div>
       {destaque}
@@ -412,7 +424,7 @@ export function CartaoProfissional({ p, especialidade, destaque, i, q = "", onAb
 export function LogoMarca({ nome, logo, cor = "#0d9b86", tamanho = "md" }: {
   nome: string; logo?: string; cor?: string; tamanho?: "sm" | "md" | "lg" | "xl";
 }) {
-  const t = { sm: "size-6 rounded-md text-[10px]", md: "size-9 rounded-xl text-xs", lg: "size-14 rounded-2xl text-base", xl: "h-20 w-44 rounded-2xl text-xl" }[tamanho];
+  const t = { sm: "size-6 rounded-md text-xs", md: "size-9 rounded-xl text-xs", lg: "size-14 rounded-2xl text-base", xl: "h-20 w-44 rounded-2xl text-xl" }[tamanho];
   return logo
     // eslint-disable-next-line @next/next/no-img-element -- data URL local, sem otimização do Next
     ? <img src={logo} alt={`Logo ${nome}`} className={`${t} shrink-0 bg-white object-contain p-0.5 ring-1 ring-borda`} />

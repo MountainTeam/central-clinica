@@ -83,7 +83,7 @@ export default function Convenios() {
             <div className="flex flex-wrap items-center gap-2">
               {dados.convenios.length === 0 && (
                 <Botao variante="secundario" onClick={criarConvenioModelo}>
-                  <Sparkles className="size-4 text-emerald-600" />
+                  <Sparkles className="size-4 text-verde" />
                   Carregar modelo (Saúde Mais)
                 </Botao>
               )}
@@ -136,12 +136,12 @@ export default function Convenios() {
                   <h2 className="text-xl font-bold tracking-tight text-texto group-hover:text-verde transition-colors">
                     {conv.nome}
                   </h2>
-                  <p className="mt-1 text-xs text-suave">Manual e regras da carteirinha</p>
+                  <p className="mt-1 text-[13px] text-suave">Manual e regras da carteirinha</p>
 
-                  <div className="mt-5 space-y-2 border-t border-borda/60 pt-4 text-xs font-medium">
+                  <div className="mt-5 space-y-2 border-t border-borda/60 pt-4 text-[13px] font-medium">
                     <div className="flex items-center justify-between text-texto">
                       <span className="flex items-center gap-2">
-                        <span className="size-2 rounded-full bg-emerald-500" />
+                        <span className="size-2 rounded-full bg-verde" />
                         Consultas e exames
                       </span>
                       <span className={`font-bold ${countAtende ? "text-texto" : "text-suave"}`}>{countAtende} planos</span>
@@ -149,7 +149,7 @@ export default function Convenios() {
 
                     <div className="flex items-center justify-between text-texto">
                       <span className="flex items-center gap-2">
-                        <span className="size-2 rounded-full bg-amber-500" />
+                        <span className="size-2 rounded-full bg-alerta" />
                         Somente exames
                       </span>
                       <span className={`font-bold ${countSomente ? "text-texto" : "text-suave"}`}>{countSomente} planos</span>
@@ -158,7 +158,7 @@ export default function Convenios() {
                     {countNao > 0 && (
                       <div className="flex items-center justify-between text-texto">
                         <span className="flex items-center gap-2">
-                          <span className="size-2 rounded-full bg-rose-500" />
+                          <span className="size-2 rounded-full bg-perigo" />
                           Não atendidos
                         </span>
                         <span className="font-bold text-texto">{countNao} planos</span>
@@ -168,7 +168,7 @@ export default function Convenios() {
                     {obs.length > 0 && (
                       <div className="flex items-center justify-between text-suave pt-1">
                         <span className="flex items-center gap-1.5">
-                          <ShieldAlert className="size-3.5 text-amber-600" />
+                          <ShieldAlert className="size-3.5 text-alerta" />
                           Regras operacionais
                         </span>
                         <span className="font-semibold text-texto">{obs.length} ativas</span>

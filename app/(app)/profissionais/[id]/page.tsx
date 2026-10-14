@@ -65,7 +65,7 @@ function Ficha({ p }: { p: Profissional }) {
       </button>
 
       <header className={`entrar ${cartao} relative mb-6 flex flex-wrap items-center gap-5 overflow-hidden`} style={{ "--i": 1 } as React.CSSProperties}>
-        <div className="gradiente-marca pointer-events-none absolute inset-x-0 top-0 h-1" />
+        <div className="pointer-events-none bg-verde absolute inset-x-0 top-0 h-1" />
         <Avatar nome={p.nome} grande />
         <div className="min-w-0 flex-1">
           <h1 className="text-[28px] font-bold leading-tight tracking-tight">{p.nome}</h1>
@@ -103,7 +103,7 @@ function Ficha({ p }: { p: Profissional }) {
           )}
 
           <div className={cartao}>
-            <Secao titulo="Consulta de Convênios" icone={<ShieldCheck className="size-4" />} i={3}>
+            <Secao titulo="Consulta de convênios" icone={<ShieldCheck className="size-4" />} i={3}>
               <ChecadorConveniosProfissional dados={dados} p={p} />
             </Secao>
           </div>
@@ -117,7 +117,7 @@ function Ficha({ p }: { p: Profissional }) {
           </div>
 
           <div className={cartao}>
-            <Secao titulo="Exames Realizados" icone={<FlaskConical className="size-4" />} i={5}>
+            <Secao titulo="Exames realizados" icone={<FlaskConical className="size-4" />} i={5}>
               <SecaoExamesProfissional examesIds={p.exames} dados={dados} abrirExame={(eid) => abrir({ tipo: "exame", id: eid })} />
             </Secao>
           </div>
@@ -139,12 +139,12 @@ function Ficha({ p }: { p: Profissional }) {
                   return (
                     <li key={dia} style={{ "--i": k + 3 } as React.CSSProperties}
                       className={`entrar flex items-center justify-between rounded-xl px-3 py-2 ${dia === hoje ? "bg-verde-claro ring-1 ring-verde/25" : ""}`}>
-                      <span className={`font-semibold ${h ? "" : "text-suave/70"}`}>
-                        {dia}{dia === hoje && <span className="ml-2 text-xs font-medium text-verde">hoje</span>}
+                      <span className={`font-semibold ${h ? "" : "text-suave"}`}>
+                        {dia}{dia === hoje && <span className="ml-2 text-[13px] font-medium text-verde">hoje</span>}
                       </span>
                       {h
                         ? <span className="rounded-lg bg-superficie px-2.5 py-1 text-sm font-semibold tabular-nums text-verde ring-1 ring-verde/20">{h.inicio} – {h.fim}</span>
-                        : <span className="text-sm text-suave/70">Não atende</span>}
+                        : <span className="text-sm text-suave">Não atende</span>}
                     </li>
                   );
                 })}
@@ -238,8 +238,8 @@ function ChecadorConveniosProfissional({ dados, p }: { dados: DadosClinica; p: P
   }
 
   const marca = (ok: boolean) => ok
-    ? <span className="inline-flex items-center gap-1 rounded-full bg-verde-claro px-2.5 py-0.5 text-xs font-semibold text-verde"><Check className="size-3" strokeWidth={3} /> Atende</span>
-    : <span className="inline-flex items-center gap-1 rounded-full bg-fundo px-2 py-0.5 text-xs font-medium text-suave/70"><Minus className="size-3" /> Não</span>;
+    ? <span className="inline-flex items-center gap-1 rounded-full bg-verde-claro px-2.5 py-0.5 text-[13px] font-semibold text-verde"><Check className="size-3" strokeWidth={3} /> Atende</span>
+    : <span className="inline-flex items-center gap-1 rounded-full bg-fundo px-2 py-0.5 text-[13px] font-medium text-suave"><Minus className="size-3" /> Não</span>;
 
   return (
     <div className="space-y-4">
@@ -249,11 +249,11 @@ function ChecadorConveniosProfissional({ dados, p }: { dados: DadosClinica; p: P
           <span className="text-sm font-semibold text-texto">
             Credenciado em <strong className="text-verde">{conveniosAtendidos.length} convênios</strong> ({totalRedes} redes)
           </span>
-          <p className="text-xs text-suave">
+          <p className="text-[13px] text-suave">
             {totalConsultas} redes com Consulta · {totalExames} redes com Exames
           </p>
         </div>
-        <div className="flex items-center gap-1.5 text-xs">
+        <div className="flex items-center gap-1.5 text-[13px]">
           <span className="rounded-lg bg-verde-claro px-2.5 py-1 font-semibold text-verde">
             {totalConsultas} Consultas
           </span>
@@ -286,13 +286,13 @@ function ChecadorConveniosProfissional({ dados, p }: { dados: DadosClinica; p: P
       {/* Pílulas de Acesso Rápido */}
       {!busca && principaisConvenios.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-          <span className="text-xs font-semibold text-suave mr-1">Consultar rápido:</span>
+          <span className="text-[13px] font-semibold text-suave mr-1">Consultar rápido:</span>
           {principaisConvenios.map(({ c }) => (
             <button
               key={c.id}
               type="button"
               onClick={() => setBusca(c.nome)}
-              className="pressionavel inline-flex items-center gap-1.5 rounded-xl border border-borda/80 bg-fundo px-2.5 py-1 text-xs font-semibold text-texto hover:border-verde/40 hover:bg-verde-claro/30 transition-colors"
+              className="pressionavel inline-flex items-center gap-1.5 rounded-xl border border-borda/80 bg-fundo px-2.5 py-1 text-[13px] font-semibold text-texto hover:border-verde/40 hover:bg-verde-claro/30 transition-colors"
             >
               <LogoMarca nome={c.nome} logo={c.logo} cor={c.cor} tamanho="sm" />
               <span>{c.nome}</span>
@@ -323,25 +323,25 @@ function ChecadorConveniosProfissional({ dados, p }: { dados: DadosClinica; p: P
                         <LogoMarca nome={c.nome} logo={c.logo} cor={c.cor} tamanho="sm" />
                         <div>
                           <span className="font-bold text-[15px] text-texto">{c.nome}</span>
-                          <span className="ml-2 rounded-full bg-verde px-2 py-0.5 text-[11px] font-semibold text-white">
+                          <span className="ml-2 rounded-full bg-verde px-2 py-0.5 text-xs font-semibold text-white">
                             Credenciado
                           </span>
                         </div>
                       </div>
-                      <span className="text-xs font-medium text-verde">
+                      <span className="text-[13px] font-medium text-verde">
                         {subs.length} rede(s) encontrada(s)
                       </span>
                     </div>
 
                     {restricoesConvenio.length > 0 && (
-                      <div className="border-t border-alerta/30 bg-alerta-claro/40 px-4 py-2 text-xs text-alerta flex items-center gap-2">
+                      <div className="border-t border-alerta/30 bg-alerta-claro/40 px-4 py-2 text-[13px] text-alerta flex items-center gap-2">
                         <TriangleAlert className="size-3.5 shrink-0" />
                         <span>Aviso deste profissional para {c.nome}: {restricoesConvenio.map((r) => r.texto).join(" | ")}</span>
                       </div>
                     )}
 
                     <div className="border-t border-borda/60 divide-y divide-borda/40">
-                      <div className="grid grid-cols-[1fr_90px_90px] bg-fundo/40 px-4 py-2 text-xs font-semibold text-suave">
+                      <div className="grid grid-cols-[1fr_90px_90px] bg-fundo/40 px-4 py-2 text-[13px] font-semibold text-suave">
                         <span>Rede / Plano</span>
                         <span className="text-center">Consulta</span>
                         <span className="text-center">Exame</span>
@@ -374,7 +374,7 @@ function ChecadorConveniosProfissional({ dados, p }: { dados: DadosClinica; p: P
                     <LogoMarca nome={c.nome} logo={c.logo} cor={c.cor} tamanho="sm" />
                     <div>
                       <span className="font-semibold text-texto">{c.nome}</span>
-                      {naoCobre.length > 0 && <p className="text-xs text-suave">Convênio atendido, mas não nesta rede</p>}
+                      {naoCobre.length > 0 && <p className="text-[13px] text-suave">Convênio atendido, mas não nesta rede</p>}
                       {naoCobre.length > 0 && (
                         <div className="mt-1.5 flex flex-wrap gap-1">
                           {naoCobre.map((s) => <Chip key={s.id} tom="alerta">{s.nome} · não cobre</Chip>)}
@@ -382,7 +382,7 @@ function ChecadorConveniosProfissional({ dados, p }: { dados: DadosClinica; p: P
                       )}
                     </div>
                   </div>
-                  <span className="rounded-lg bg-borda/50 px-2.5 py-1 text-xs font-semibold text-suave">
+                  <span className="rounded-lg bg-borda/50 px-2.5 py-1 text-[13px] font-semibold text-suave">
                     Não atende
                   </span>
                 </div>
@@ -398,7 +398,7 @@ function ChecadorConveniosProfissional({ dados, p }: { dados: DadosClinica; p: P
           <button
             type="button"
             onClick={() => setExpandido(!expandido)}
-            className="pressionavel flex w-full items-center justify-between rounded-2xl border border-borda bg-fundo/50 px-4 py-2.5 text-xs font-semibold text-texto hover:bg-fundo hover:border-verde/40 transition-colors"
+            className="pressionavel flex w-full items-center justify-between rounded-2xl border border-borda bg-fundo/50 px-4 py-2.5 text-[13px] font-semibold text-texto hover:bg-fundo hover:border-verde/40 transition-colors"
           >
             <span>{expandido ? "Ocultar lista de convênios" : `Ver todas as ${totalRedes} redes credenciadas (${conveniosAtendidos.length} convênios)`}</span>
             <ChevronDown className={`size-4 text-suave transition-transform duration-200 ${expandido ? "rotate-180" : ""}`} />
@@ -417,7 +417,7 @@ function ChecadorConveniosProfissional({ dados, p }: { dados: DadosClinica; p: P
                         <LogoMarca nome={c.nome} logo={c.logo} cor={c.cor} tamanho="sm" />
                         <span className="font-bold text-[14px] text-texto">{c.nome}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-xs">
+                      <div className="flex items-center gap-2 text-[13px]">
                         {todasConsultas && todosExames ? (
                           <span className="rounded-lg bg-verde-claro px-2.5 py-0.5 font-semibold text-verde">
                             Consulta e Exame ({subs.length} redes)
@@ -433,20 +433,20 @@ function ChecadorConveniosProfissional({ dados, p }: { dados: DadosClinica; p: P
                     <div className="border-t border-borda/60 divide-y divide-borda/40">
                       {subs.map((s) => (
                         <div key={s.id} className="flex items-center justify-between px-4 py-2 text-sm hover:bg-fundo/20">
-                          <span className="font-medium text-texto text-xs sm:text-sm">{s.nome}</span>
+                          <span className="font-medium text-texto text-[13px] sm:text-sm">{s.nome}</span>
                           <div className="flex items-center gap-3">
-                            <span className="text-xs">
+                            <span className="text-[13px]">
                               {p.atende[s.id]?.includes("c") ? (
                                 <span className="font-semibold text-verde">✓ Consulta</span>
                               ) : (
-                                <span className="text-suave/60">- Consulta</span>
+                                <span className="text-suave">- Consulta</span>
                               )}
                             </span>
-                            <span className="text-xs">
+                            <span className="text-[13px]">
                               {p.atende[s.id]?.includes("e") ? (
                                 <span className="font-semibold text-azul">✓ Exame</span>
                               ) : (
-                                <span className="text-suave/60">- Exame</span>
+                                <span className="text-suave">- Exame</span>
                               )}
                             </span>
                           </div>
@@ -498,7 +498,7 @@ function SecaoExamesProfissional({
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             placeholder={`Buscar entre os ${lista.length} exames...`}
-            className="h-9 w-full rounded-xl border border-borda bg-superficie pl-9 pr-8 text-xs outline-none transition focus:border-verde focus:ring-2 focus:ring-verde/15"
+            className="h-9 w-full rounded-xl border border-borda bg-superficie pl-9 pr-8 text-sm outline-none transition focus:border-verde focus:ring-2 focus:ring-verde/15"
           />
           {busca && (
             <button onClick={() => setBusca("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-suave hover:text-texto">
@@ -526,7 +526,7 @@ function SecaoExamesProfissional({
           ))}
         </div>
       ) : (
-        <p className="text-xs text-suave py-2">Nenhum exame corresponde à busca &quot;{busca}&quot;.</p>
+        <p className="text-[13px] text-suave py-2">Nenhum exame corresponde à busca &quot;{busca}&quot;.</p>
       )}
     </div>
   );

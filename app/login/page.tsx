@@ -8,7 +8,7 @@ import { PAPEIS } from "@/lib/permissoes";
 import { useStore } from "@/lib/store";
 import { Logo } from "@/components/ui";
 
-const campo = "h-12 w-full rounded-xl border border-borda bg-superficie px-4 text-[15px] outline-none transition placeholder:text-suave/60 focus:border-verde focus:ring-4 focus:ring-verde/15";
+const campo = "h-12 w-full rounded-xl border border-borda bg-superficie px-4 text-[15px] outline-none transition placeholder:text-suave focus:border-verde focus:ring-4 focus:ring-verde/15";
 
 export default function Login() {
   const { entrar, banco } = useStore();
@@ -22,8 +22,8 @@ export default function Login() {
     <div className="grid min-h-screen lg:grid-cols-[1.1fr_1fr]">
       {/* Painel da marca */}
       <div className="gradiente-marca relative hidden min-h-screen items-center justify-center overflow-hidden p-12 text-white lg:flex">
-        <div className="bolha absolute -left-24 top-1/4 size-96 rounded-full bg-emerald-300/30 blur-3xl" />
-        <div className="bolha absolute -right-16 bottom-10 size-80 rounded-full bg-sky-300/30 blur-3xl" style={{ animationDelay: "-7s" }} />
+        <div className="bolha absolute -left-24 top-1/4 size-96 rounded-full bg-verde/20 blur-3xl" />
+        <div className="bolha absolute -right-16 bottom-10 size-80 rounded-full bg-azul/20 blur-3xl" style={{ animationDelay: "-7s" }} />
         <div className="entrar absolute left-10 top-10 z-30"><Logo claro /></div>
         {/* eslint-disable-next-line @next/next/no-img-element -- imagem estática decorativa */}
         <img src="/Fundo%20Login.png" alt="" className="entrar relative z-10 max-h-[75vh] w-full max-w-[880px] object-contain p-6 drop-shadow-[0_16px_40px_rgb(0_0_0/0.22)]" />
@@ -52,7 +52,7 @@ export default function Login() {
                     <input type="radio" name="usuario" value={u.id} checked={u.id === escolhido.id} onChange={() => setUsuarioId(u.id)} className="size-4 accent-verde" />
                     <span className="min-w-0">
                       <span className="block text-sm font-semibold">{u.nome}</span>
-                      <span className="block truncate text-xs text-suave">{alcance(u)}</span>
+                      <span className="block truncate text-[13px] text-suave">{alcance(u)}</span>
                     </span>
                   </label>
                 ))}
@@ -60,7 +60,7 @@ export default function Login() {
             </fieldset>
           </div>
 
-          <button type="submit" className="entrar pressionavel gradiente-marca group mt-8 flex h-12 w-full items-center justify-center gap-2 rounded-xl font-semibold text-white shadow-card hover:brightness-105" style={{ "--i": 4 } as React.CSSProperties}>
+          <button type="submit" className="entrar pressionavel group mt-8 bg-verde hover:bg-[#0b8573] flex h-12 w-full items-center justify-center gap-2 rounded-xl font-semibold text-white shadow-card" style={{ "--i": 4 } as React.CSSProperties}>
             Entrar <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
           </button>
         </form>

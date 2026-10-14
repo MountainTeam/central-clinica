@@ -44,7 +44,7 @@ export default function Usuarios() {
         {banco.usuarios.map((u, i) => (
           <div key={u.id} style={{ "--i": Math.min(i, 10) } as React.CSSProperties}
             className={`entrar flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4 ${i ? "border-t border-borda" : ""}`}>
-            <span className={`grid size-10 place-items-center rounded-xl ${u.clinicas.length ? "bg-verde-claro text-verde" : "gradiente-marca text-white"}`}>
+            <span className={`grid size-10 place-items-center rounded-xl ${u.clinicas.length ? "bg-verde-claro text-verde" : "bg-verde text-white"}`}>
               {u.clinicas.length ? <UserRound className="size-5" /> : <ShieldCheck className="size-5" />}
             </span>
             <span className="min-w-0 flex-1">

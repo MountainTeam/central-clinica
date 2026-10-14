@@ -7,13 +7,15 @@
   --color-superficie: #ffffff;
   --color-borda: #e2eaee;
   --color-texto: #0f2a33;
-  --color-suave: #5d7682;
+  --color-suave: #4b6470;
   --color-verde: #0d9b86;
   --color-verde-claro: #e5f5f1;
   --color-azul: #2d6be0;
   --color-azul-claro: #e9f0fd;
   --color-alerta: #a85b06;
   --color-alerta-claro: #fff6e5;
+  --color-perigo: #b42336;
+  --color-perigo-claro: #fdecee;
 
   --ease-saida: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-gaveta: cubic-bezier(0.32, 0.72, 0, 1);

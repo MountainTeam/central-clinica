@@ -182,7 +182,7 @@ function BuscaRapida() {
                 onChange={(e) => setTexto(e.target.value)}
                 autoFocus
                 placeholder="Buscar por médico, especialidade, plano de convênio ou exame..."
-                className="h-14 w-full rounded-2xl bg-fundo pl-12 pr-24 text-[17px] outline-none ring-1 ring-transparent transition placeholder:text-suave/70 focus:bg-superficie focus:ring-verde/40 focus:shadow-[0_0_0_4px_rgb(13_155_134/0.12)]"
+                className="h-14 w-full rounded-2xl bg-fundo pl-12 pr-24 text-[17px] outline-none ring-1 ring-transparent transition placeholder:text-suave focus:bg-superficie focus:ring-verde/40 focus:shadow-[0_0_0_4px_rgb(13_155_134/0.12)]"
               />
               {texto ? (
                 <button
@@ -311,7 +311,7 @@ function BuscaRapida() {
               }`}
             >
               {a.rotulo}
-              <span className={`tabular-nums ${ativo ? "text-verde" : "text-suave/80"}`}>{contagem[a.id]}</span>
+              <span className={`tabular-nums ${ativo ? "text-verde" : "text-suave"}`}>{contagem[a.id]}</span>
             </button>
           );
         })}
@@ -326,7 +326,7 @@ function BuscaRapida() {
               <h2 className="text-xl font-bold text-texto">
                 {filtrando ? `Especialidades filtradas (${especialidadesFiltradas.length})` : "Todas as Especialidades"}
               </h2>
-              <Link href="/especialidades" className="text-xs font-semibold text-verde hover:underline flex items-center gap-1">
+              <Link href="/especialidades" className="text-[13px] font-semibold text-verde hover:underline flex items-center gap-1">
                 Ver tela completa de Especialidades <ArrowRight className="size-3.5" />
               </Link>
             </div>
@@ -346,7 +346,7 @@ function BuscaRapida() {
                           <span className="grid size-12 place-items-center rounded-2xl bg-verde-claro text-verde transition-colors group-hover:bg-verde group-hover:text-white">
                             <Icone nome={e.icone} className="size-6" />
                           </span>
-                          <span className="rounded-xl bg-fundo px-2.5 py-1 text-xs font-semibold text-suave">
+                          <span className="rounded-xl bg-fundo px-2.5 py-1 text-[13px] font-semibold text-suave">
                             {medicosDesta.length} {medicosDesta.length === 1 ? "médico" : "médicos"}
                           </span>
                         </div>
@@ -357,22 +357,22 @@ function BuscaRapida() {
                         {medicosDesta.length > 0 ? (
                           <div className="mt-2.5 flex flex-wrap gap-1.5">
                             {medicosDesta.slice(0, 3).map((m) => (
-                              <span key={m.id} className="rounded-md bg-fundo px-2 py-0.5 text-xs font-medium text-suave">
+                              <span key={m.id} className="rounded-md bg-fundo px-2 py-0.5 text-[13px] font-medium text-suave">
                                 {m.nome}
                               </span>
                             ))}
                             {medicosDesta.length > 3 && (
-                              <span className="rounded-md bg-fundo px-2 py-0.5 text-xs font-medium text-suave">
+                              <span className="rounded-md bg-fundo px-2 py-0.5 text-[13px] font-medium text-suave">
                                 +{medicosDesta.length - 3} mais
                               </span>
                             )}
                           </div>
                         ) : (
-                          <p className="mt-2.5 text-xs text-suave">Nenhum profissional vinculado.</p>
+                          <p className="mt-2.5 text-[13px] text-suave">Nenhum profissional vinculado.</p>
                         )}
                       </div>
 
-                      <div className="mt-5 flex items-center justify-between border-t border-borda/60 pt-3 text-xs font-semibold">
+                      <div className="mt-5 flex items-center justify-between border-t border-borda/60 pt-3 text-[13px] font-semibold">
                         <button
                           type="button"
                           onClick={() => {
@@ -399,7 +399,7 @@ function BuscaRapida() {
           <div className="entrar space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold text-texto">
-                {filtrando ? `Profissionais encontrados (${profissionaisFiltrados.length})` : "Todos os Profissionais"}
+                {filtrando ? `Profissionais encontrados (${profissionaisFiltrados.length})` : "Todos os profissionais"}
               </h2>
             </div>
 
@@ -421,7 +421,7 @@ function BuscaRapida() {
                       destaque={
                         (bateuProc.length > 0 || bateuExames.length > 0) && (
                           <div className="border-t border-borda pt-3">
-                            <p className="text-[11px] font-semibold uppercase tracking-wider text-suave">Atende nesta unidade</p>
+                            <p className="text-xs font-semibold uppercase tracking-wider text-suave">Atende nesta unidade</p>
                             <div className="mt-1.5 flex flex-wrap gap-1.5">
                               {bateuProc.map((x) => (
                                 <Chip key={x}>{x}</Chip>
@@ -452,7 +452,7 @@ function BuscaRapida() {
               <h2 className="text-xl font-bold text-texto">
                 {filtrando ? `Convênios encontrados (${conveniosFiltrados.length})` : "Todos os Convênios"}
               </h2>
-              <Link href="/convenios" className="text-xs font-semibold text-verde hover:underline flex items-center gap-1">
+              <Link href="/convenios" className="text-[13px] font-semibold text-verde hover:underline flex items-center gap-1">
                 Ver diretório de convênios <ArrowRight className="size-3.5" />
               </Link>
             </div>
@@ -479,7 +479,7 @@ function BuscaRapida() {
                       <div>
                         <div className="mb-4 flex items-center justify-between">
                           <LogoMarca nome={c.nome} logo={c.logo} cor={c.cor} tamanho="lg" />
-                          <span className="rounded-xl bg-fundo px-3 py-1 text-xs font-semibold text-suave">
+                          <span className="rounded-xl bg-fundo px-3 py-1 text-[13px] font-semibold text-suave">
                             {c.subtipos.length} {c.subtipos.length === 1 ? "rede" : "redes"}
                           </span>
                         </div>
@@ -487,33 +487,33 @@ function BuscaRapida() {
                         <h3 className="text-xl font-bold tracking-tight text-texto group-hover:text-verde transition-colors">
                           <Destaque texto={c.nome} q={q} />
                         </h3>
-                        <p className="mt-1 text-xs text-suave">Regras e planos da carteirinha</p>
+                        <p className="mt-1 text-[13px] text-suave">Regras e planos da carteirinha</p>
 
-                        <div className="mt-4 space-y-2 border-t border-borda/60 pt-3 text-xs">
+                        <div className="mt-4 space-y-2 border-t border-borda/60 pt-3 text-[13px]">
                           <div className="flex items-center justify-between">
                             <span className="flex items-center gap-1.5 text-texto">
-                              <span className="size-2 rounded-full bg-emerald-500" /> Consultas e exames
+                              <span className="size-2 rounded-full bg-verde" /> Consultas e exames
                             </span>
-                            <span className="font-bold text-emerald-700">{countAtende} planos</span>
+                            <span className="font-bold text-verde">{countAtende} planos</span>
                           </div>
                           <div className="flex items-center justify-between">
                             <span className="flex items-center gap-1.5 text-texto">
-                              <span className="size-2 rounded-full bg-amber-500" /> Somente exames
+                              <span className="size-2 rounded-full bg-alerta" /> Somente exames
                             </span>
-                            <span className="font-bold text-amber-700">{countSomente} planos</span>
+                            <span className="font-bold text-alerta">{countSomente} planos</span>
                           </div>
                           {countNao > 0 && (
                             <div className="flex items-center justify-between">
                               <span className="flex items-center gap-1.5 text-texto">
-                                <span className="size-2 rounded-full bg-rose-500" /> Não atendidos
+                                <span className="size-2 rounded-full bg-perigo" /> Não atendidos
                               </span>
-                              <span className="font-bold text-rose-700">{countNao} planos</span>
+                              <span className="font-bold text-perigo">{countNao} planos</span>
                             </div>
                           )}
                           {obs.length > 0 && (
                             <div className="flex items-center justify-between text-suave pt-0.5">
                               <span className="flex items-center gap-1">
-                                <ShieldAlert className="size-3.5 text-amber-600" /> Regras operacionais
+                                <ShieldAlert className="size-3.5 text-alerta" /> Regras operacionais
                               </span>
                               <span className="font-semibold text-texto">{obs.length} ativas</span>
                             </div>
@@ -521,7 +521,7 @@ function BuscaRapida() {
                         </div>
                       </div>
 
-                      <div className="mt-5 flex items-center justify-between border-t border-borda/60 pt-3 text-xs font-bold text-verde">
+                      <div className="mt-5 flex items-center justify-between border-t border-borda/60 pt-3 text-[13px] font-bold text-verde">
                         <Link href={`/convenios/${c.id}`} className="hover:underline flex items-center gap-1.5">
                           <BookOpen className="size-3.5" />
                           Manual de regras
@@ -553,7 +553,7 @@ function BuscaRapida() {
               <h2 className="text-xl font-bold text-texto">
                 {filtrando ? `Exames encontrados (${examesFiltrados.length})` : "Todos os Exames"}
               </h2>
-              <Link href="/exames" className="text-xs font-semibold text-verde hover:underline flex items-center gap-1">
+              <Link href="/exames" className="text-[13px] font-semibold text-verde hover:underline flex items-center gap-1">
                 Ver tela completa de Exames <ArrowRight className="size-3.5" />
               </Link>
             </div>
@@ -576,7 +576,7 @@ function BuscaRapida() {
                           <span className="grid size-12 place-items-center rounded-2xl bg-azul-claro text-azul transition-colors group-hover:bg-azul group-hover:text-white">
                             <FlaskConical className="size-6" />
                           </span>
-                          <span className="rounded-xl bg-fundo px-2.5 py-1 text-xs font-semibold text-suave">
+                          <span className="rounded-xl bg-fundo px-2.5 py-1 text-[13px] font-semibold text-suave">
                             {redes} {redes === 1 ? "rede" : "redes"}
                           </span>
                         </div>
@@ -584,17 +584,17 @@ function BuscaRapida() {
                         <h3 className="mt-4 text-lg font-bold text-texto group-hover:text-azul transition-colors">
                           <Destaque texto={e.nome} q={q} />
                         </h3>
-                        <p className="mt-1 line-clamp-2 text-xs text-suave">
+                        <p className="mt-1 line-clamp-2 text-[13px] text-suave">
                           {e.preparo[0] ?? "Sem preparo específico cadastrado."}
                         </p>
 
-                        <div className="mt-4 flex items-center gap-2 text-xs text-suave border-t border-borda/60 pt-3">
+                        <div className="mt-4 flex items-center gap-2 text-[13px] text-suave border-t border-borda/60 pt-3">
                           <span className="font-semibold text-texto">{quemFaz.length}</span>{" "}
                           {quemFaz.length === 1 ? "profissional realiza" : "profissionais realizam"}
                         </div>
                       </div>
 
-                      <div className="mt-4 flex items-center justify-between text-xs font-semibold text-azul">
+                      <div className="mt-4 flex items-center justify-between text-[13px] font-semibold text-azul">
                         <span>Ver preparo e cobertura</span>
                         <ChevronRight className="size-4 transition-transform group-hover:translate-x-1" />
                       </div>

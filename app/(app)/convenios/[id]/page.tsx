@@ -246,9 +246,9 @@ export default function PaginaConvenioDetalhes() {
             {/* Coluna da Esquerda: Grupos de Status */}
             <div className="space-y-4">
               {[
-                { g: gAtende, lista: planosAtendeFiltrados, ponto: "bg-emerald-500 ring-emerald-500/20", chip: "border-borda/80 bg-fundo text-texto hover:border-verde/50 hover:bg-superficie" },
-                { g: gSomente, lista: planosSomenteFiltrados, ponto: "bg-amber-500 ring-amber-500/20", chip: "border-amber-200/80 bg-amber-50/40 text-amber-950 hover:border-amber-300" },
-                { g: gNao, lista: planosNaoFiltrados, ponto: "bg-rose-500 ring-rose-500/20", chip: "border-rose-200 bg-rose-50/80 text-rose-800 line-through decoration-rose-400 hover:border-rose-300" },
+                { g: gAtende, lista: planosAtendeFiltrados, ponto: "bg-verde ring-verde/20", chip: "border-borda/80 bg-fundo text-texto hover:border-verde/50 hover:bg-superficie" },
+                { g: gSomente, lista: planosSomenteFiltrados, ponto: "bg-alerta ring-alerta/20", chip: "border-alerta/30 bg-alerta-claro text-texto hover:border-alerta/60" },
+                { g: gNao, lista: planosNaoFiltrados, ponto: "bg-perigo ring-perigo/20", chip: "border-perigo/30 bg-perigo-claro text-perigo line-through decoration-perigo/50 hover:border-perigo/60" },
               ].map(({ g, lista, ponto, chip }) => lista.length === 0 ? (
                 <p key={g.status} className="flex items-center gap-2.5 px-2 text-sm text-suave">
                   <span className={`size-2 rounded-full ring-4 ${ponto}`} />Nenhum plano em {g.titulo}
@@ -260,11 +260,11 @@ export default function PaginaConvenioDetalhes() {
                       <span className={`size-2.5 rounded-full ring-4 ${ponto}`} />
                       <h2 className="text-base font-bold text-texto">{g.titulo}</h2>
                     </div>
-                    <span className="text-xs font-semibold text-suave">{lista.length} {lista.length === 1 ? "plano" : "planos"}</span>
+                    <span className="text-[13px] font-semibold text-suave">{lista.length} {lista.length === 1 ? "plano" : "planos"}</span>
                   </div>
                   {g.nota && (
-                    <div className="mb-3.5 flex items-center gap-2 rounded-xl bg-amber-50/70 px-3 py-1.5 text-xs font-medium text-amber-800 ring-1 ring-amber-500/20">
-                      <TriangleAlert className="size-3.5 shrink-0 text-amber-600" />
+                    <div className="mb-3.5 flex items-center gap-2 rounded-xl bg-alerta-claro px-3 py-1.5 text-[13px] font-medium text-alerta ring-1 ring-alerta/20">
+                      <TriangleAlert className="size-3.5 shrink-0 text-alerta" />
                       <span>{g.nota}</span>
                     </div>
                   )}
@@ -286,7 +286,7 @@ export default function PaginaConvenioDetalhes() {
                     <button
                       type="button"
                       onClick={() => setAdicionandoObs(true)}
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-verde hover:underline"
+                      className="inline-flex items-center gap-1 text-[13px] font-semibold text-verde hover:underline"
                     >
                       <Plus className="size-3.5" /> Adicionar
                     </button>
@@ -300,7 +300,7 @@ export default function PaginaConvenioDetalhes() {
                       onChange={(e) => setNovaObs(e.target.value)}
                       placeholder="Ex.: Biópsia: apenas autorização do procedimento..."
                       rows={2}
-                      className="w-full rounded-xl border border-borda bg-superficie p-2.5 text-xs outline-none focus:border-verde"
+                      className="w-full rounded-xl border border-borda bg-superficie p-2.5 text-[13px] outline-none focus:border-verde"
                     />
                     <div className="flex justify-end gap-2">
                       <button
@@ -309,14 +309,14 @@ export default function PaginaConvenioDetalhes() {
                           setAdicionandoObs(false);
                           setNovaObs("");
                         }}
-                        className="rounded-lg px-2.5 py-1 text-xs font-semibold text-suave hover:bg-superficie"
+                        className="rounded-lg px-2.5 py-1 text-[13px] font-semibold text-suave hover:bg-superficie"
                       >
                         Cancelar
                       </button>
                       <button
                         type="button"
                         onClick={salvarNovaObservacao}
-                        className="rounded-lg bg-verde px-3 py-1 text-xs font-semibold text-white hover:brightness-105"
+                        className="rounded-lg bg-verde px-3 py-1 text-[13px] font-semibold text-white hover:brightness-105"
                       >
                         Salvar
                       </button>
@@ -331,7 +331,7 @@ export default function PaginaConvenioDetalhes() {
                         key={i}
                         className="group flex items-start gap-3 rounded-2xl border border-borda/60 bg-fundo/70 p-3.5 transition hover:bg-fundo"
                       >
-                        <TriangleAlert className="mt-0.5 size-4 shrink-0 text-amber-600" />
+                        <TriangleAlert className="mt-0.5 size-4 shrink-0 text-alerta" />
                         <span className="flex-1 text-sm font-medium leading-relaxed text-texto">{obs}</span>
                         {podeEditarAtual && (
                           <button

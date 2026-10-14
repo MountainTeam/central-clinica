@@ -10,7 +10,7 @@ import { combina, corDoIndice, gruposPlanosDoConvenio, juntarRedes, montarRedes,
 import { excluirConvenio, excluirEspecialidade, excluirExame, excluirProfissional, excluirUsuario, salvarClinica, salvarConvenio, salvarEspecialidade, salvarExame, salvarExameComProfissionais, salvarOrganizacao, salvarProfissional, salvarUsuario } from "@/lib/repositorio";
 import { Botao, EnvioLogo, Gaveta, LogoMarca, SeletorConvenio, useFecharGaveta } from "./ui";
 
-export const campo = "w-full rounded-xl border border-borda bg-superficie px-3 py-2.5 text-[15px] outline-none transition placeholder:text-suave/60 focus:border-verde focus:ring-4 focus:ring-verde/15";
+export const campo = "w-full rounded-xl border border-borda bg-superficie px-3 py-2.5 text-[15px] outline-none transition placeholder:text-suave focus:border-verde focus:ring-4 focus:ring-verde/15";
 const linhas = (t: FormDataEntryValue | null) => String(t ?? "").split("\n").map((x) => x.trim()).filter(Boolean);
 
 export function Campo({ rotulo, children, dica }: { rotulo: string; children: React.ReactNode; dica?: string }) {
@@ -18,7 +18,7 @@ export function Campo({ rotulo, children, dica }: { rotulo: string; children: Re
     <label className="block">
       <span className="mb-1.5 block text-sm font-semibold">{rotulo}</span>
       {children}
-      {dica && <span className="mt-1 block text-xs text-suave">{dica}</span>}
+      {dica && <span className="mt-1 block text-[13px] text-suave">{dica}</span>}
     </label>
   );
 }
@@ -92,14 +92,14 @@ export function Moldura({ titulo, onSalvar, onExcluir, rotuloExcluir, children }
       </div>
       <div className="flex-1 space-y-6 p-6 sm:p-8">{children}</div>
       {excluindo && onExcluir ? (
-        <div className="entrar sticky bottom-0 flex flex-wrap items-center justify-end gap-2 border-t border-borda bg-alerta-claro p-4">
-          <p className="flex-1 text-sm font-semibold text-alerta">Excluir {rotuloExcluir}? Esta ação some da cartilha para todos.</p>
+        <div className="entrar sticky bottom-0 flex flex-wrap items-center justify-end gap-2 border-t border-borda bg-perigo-claro p-4">
+          <p className="flex-1 text-sm font-semibold text-perigo">Excluir {rotuloExcluir}? Esta ação some da cartilha para todos.</p>
           <Botao variante="secundario" onClick={() => setExcluindo(false)}>Cancelar</Botao>
-          <button type="button" onClick={onExcluir} className="pressionavel inline-flex h-10 items-center rounded-xl bg-alerta px-4 text-sm font-semibold text-white hover:brightness-110">Excluir</button>
+          <button type="button" onClick={onExcluir} className="pressionavel inline-flex h-10 items-center rounded-xl bg-perigo px-4 text-sm font-semibold text-white hover:brightness-110">Excluir</button>
         </div>
       ) : (
         <div className="sticky bottom-0 flex items-center justify-end gap-2 border-t border-borda bg-superficie/90 p-4 backdrop-blur">
-          {onExcluir && <button type="button" onClick={() => setExcluindo(true)} className="pressionavel mr-auto rounded-lg px-2 py-1 text-sm font-semibold text-alerta hover:bg-alerta-claro">Excluir</button>}
+          {onExcluir && <button type="button" onClick={() => setExcluindo(true)} className="pressionavel mr-auto rounded-lg px-2 py-1 text-sm font-semibold text-perigo hover:bg-perigo-claro">Excluir</button>}
           <Botao variante="secundario" onClick={fechar}>Cancelar</Botao>
           <Botao type="submit">Salvar</Botao>
         </div>
@@ -227,7 +227,7 @@ function MatrizConvenios({ dados, atende }: { dados: DadosClinica; atende: Recor
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             placeholder="Buscar entre os 50+ convênios ou redes..."
-            className="h-10 w-full rounded-xl border border-borda bg-superficie pl-9 pr-8 text-xs sm:text-sm outline-none transition focus:border-verde focus:ring-2 focus:ring-verde/15"
+            className="h-10 w-full rounded-xl border border-borda bg-superficie pl-9 pr-8 text-sm outline-none transition focus:border-verde focus:ring-2 focus:ring-verde/15"
           />
           {busca && (
             <button type="button" onClick={() => setBusca("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-suave hover:text-texto">
@@ -236,7 +236,7 @@ function MatrizConvenios({ dados, atende }: { dados: DadosClinica; atende: Recor
           )}
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-[13px]">
           <div className="flex items-center gap-1">
             <button
               type="button"
@@ -293,12 +293,12 @@ function MatrizConvenios({ dados, atende }: { dados: DadosClinica; atende: Recor
                   >
                     <LogoMarca nome={c.nome} logo={c.logo} cor={c.cor} tamanho="sm" />
                     <span>{c.nome}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-md font-medium ${temMarcado ? "bg-verde-claro text-verde" : "bg-borda/40 text-suave"}`}>
+                    <span className={`text-[13px] px-2 py-0.5 rounded-md font-medium ${temMarcado ? "bg-verde-claro text-verde" : "bg-borda/40 text-suave"}`}>
                       {temMarcado ? `${qtdC} consult. · ${qtdE} exam.` : "Não atende"}
                     </span>
                   </button>
 
-                  <div className="flex items-center gap-1.5 text-xs font-semibold">
+                  <div className="flex items-center gap-1.5 text-[13px] font-semibold">
                     <button
                       type="button"
                       onClick={() => marcarTodos(c, "c", qtdC !== c.subtipos.length)}
@@ -336,7 +336,7 @@ function MatrizConvenios({ dados, atende }: { dados: DadosClinica; atende: Recor
                 </div>
 
                 <div className={aberto ? "block border-t border-borda/60 divide-y divide-borda/40 bg-superficie" : "hidden"}>
-                  <div className="grid grid-cols-[1fr_80px_80px] bg-fundo/40 px-4 py-2 text-xs font-semibold text-suave">
+                  <div className="grid grid-cols-[1fr_80px_80px] bg-fundo/40 px-4 py-2 text-[13px] font-semibold text-suave">
                     <span>Rede / Plano</span>
                     <span className="text-center">Consulta</span>
                     <span className="text-center">Exame</span>
@@ -373,7 +373,7 @@ function MatrizConvenios({ dados, atende }: { dados: DadosClinica; atende: Recor
             );
           })
         ) : (
-          <p className="rounded-xl border border-dashed border-borda py-4 text-center text-xs text-suave">
+          <p className="rounded-xl border border-dashed border-borda py-4 text-center text-[13px] text-suave">
             Nenhum convênio encontrado para &quot;{busca}&quot;.
           </p>
         )}
@@ -561,7 +561,7 @@ function SeletorExamesProfissional({
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             placeholder="Buscar exame pelo nome..."
-            className="h-9 w-full rounded-xl border border-borda bg-superficie pl-8 pr-7 text-xs outline-none transition focus:border-azul focus:ring-2 focus:ring-azul/15"
+            className="h-9 w-full rounded-xl border border-borda bg-superficie pl-8 pr-7 text-sm outline-none transition focus:border-azul focus:ring-2 focus:ring-azul/15"
           />
           {busca && (
             <button type="button" onClick={() => setBusca("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-suave hover:text-texto">
@@ -570,7 +570,7 @@ function SeletorExamesProfissional({
           )}
         </div>
 
-        <div className="flex items-center gap-1.5 text-xs">
+        <div className="flex items-center gap-1.5 text-[13px]">
           <button
             type="button"
             onClick={() => setFiltro("todos")}
@@ -588,7 +588,7 @@ function SeletorExamesProfissional({
         </div>
       </div>
 
-      <div className="flex items-center justify-between text-xs text-suave">
+      <div className="flex items-center justify-between text-[13px] text-suave">
         <span>{selecionados.size} de {dados.exames.length} exames vinculados</span>
         <div className="flex items-center gap-2 font-medium">
           <button
@@ -616,7 +616,7 @@ function SeletorExamesProfissional({
             return (
               <label
                 key={e.id}
-                className={`pressionavel flex cursor-pointer items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-xs transition-colors select-none ${
+                className={`pressionavel flex cursor-pointer items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-[13px] transition-colors select-none ${
                   marcado
                     ? "bg-azul-claro/50 text-azul font-semibold"
                     : "hover:bg-fundo text-texto"
@@ -632,12 +632,12 @@ function SeletorExamesProfissional({
                   />
                   <span className="truncate">{e.nome}</span>
                 </div>
-                {e.valor && <span className="text-[11px] font-normal text-suave">{e.valor}</span>}
+                {e.valor && <span className="text-[13px] font-normal text-suave">{e.valor}</span>}
               </label>
             );
           })
         ) : (
-          <p className="py-2 text-center text-xs text-suave">Nenhum exame encontrado para &quot;{busca}&quot;.</p>
+          <p className="py-2 text-center text-[13px] text-suave">Nenhum exame encontrado para &quot;{busca}&quot;.</p>
         )}
       </div>
     </div>
@@ -731,7 +731,7 @@ function SeletorConveniosExame({
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             placeholder="Buscar entre os 50+ convênios ou redes..."
-            className="h-9 w-full rounded-xl border border-borda bg-superficie pl-9 pr-8 text-xs outline-none transition focus:border-azul focus:ring-2 focus:ring-azul/15"
+            className="h-9 w-full rounded-xl border border-borda bg-superficie pl-9 pr-8 text-sm outline-none transition focus:border-azul focus:ring-2 focus:ring-azul/15"
           />
           {busca && (
             <button type="button" onClick={() => setBusca("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-suave hover:text-texto">
@@ -740,7 +740,7 @@ function SeletorConveniosExame({
           )}
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-[13px]">
           <div className="flex items-center gap-1">
             <button
               type="button"
@@ -780,12 +780,12 @@ function SeletorConveniosExame({
                   >
                     <LogoMarca nome={c.nome} logo={c.logo} cor={c.cor} tamanho="sm" />
                     <span>{c.nome}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-md font-medium ${marcados > 0 ? "bg-azul-claro text-azul" : "bg-borda/40 text-suave"}`}>
+                    <span className={`text-[13px] px-2 py-0.5 rounded-md font-medium ${marcados > 0 ? "bg-azul-claro text-azul" : "bg-borda/40 text-suave"}`}>
                       {todosMarcados ? `Todas (${c.subtipos.length})` : `${marcados} de ${c.subtipos.length} redes`}
                     </span>
                   </button>
 
-                  <div className="flex items-center gap-1.5 text-xs font-semibold">
+                  <div className="flex items-center gap-1.5 text-[13px] font-semibold">
                     <button
                       type="button"
                       onClick={() => selecionarTodosDoConvenio(c)}
@@ -840,14 +840,14 @@ function SeletorConveniosExame({
                       })}
                     </div>
                   ) : (
-                    <p className="text-xs text-suave">Nenhuma rede cadastrada para este convênio.</p>
+                    <p className="text-[13px] text-suave">Nenhuma rede cadastrada para este convênio.</p>
                   )}
                 </div>
               </div>
             );
           })
         ) : (
-          <p className="rounded-xl border border-dashed border-borda py-4 text-center text-xs text-suave">
+          <p className="rounded-xl border border-dashed border-borda py-4 text-center text-[13px] text-suave">
             Nenhum convênio encontrado para &quot;{busca}&quot;.
           </p>
         )}
@@ -924,7 +924,7 @@ function SeletorProfissionaisExame({ dados, exameId }: { dados: DadosClinica; ex
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             placeholder="Buscar por médico ou especialidade..."
-            className="h-9 w-full rounded-xl border border-borda bg-fundo pl-8 pr-7 text-xs outline-none transition focus:border-verde focus:ring-2 focus:ring-verde/15"
+            className="h-9 w-full rounded-xl border border-borda bg-fundo pl-8 pr-7 text-sm outline-none transition focus:border-verde focus:ring-2 focus:ring-verde/15"
           />
           {busca && (
             <button type="button" onClick={() => setBusca("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-suave hover:text-texto">
@@ -932,7 +932,7 @@ function SeletorProfissionaisExame({ dados, exameId }: { dados: DadosClinica; ex
             </button>
           )}
         </div>
-        <div className="flex items-center gap-1.5 text-xs font-semibold">
+        <div className="flex items-center gap-1.5 text-[13px] font-semibold">
           <button
             type="button"
             onClick={selecionarTodos}
@@ -977,17 +977,17 @@ function SeletorProfissionaisExame({ dados, exameId }: { dados: DadosClinica; ex
                   />
                   <div className="min-w-0">
                     <span className="block truncate text-sm font-semibold text-texto">{p.nome}</span>
-                    {espNome && <span className="block text-xs text-suave">{espNome}</span>}
+                    {espNome && <span className="block text-[13px] text-suave">{espNome}</span>}
                   </div>
                 </div>
-                <span className={`text-xs font-medium px-2 py-0.5 rounded ${marcado ? "bg-verde-claro text-verde" : "text-suave"}`}>
+                <span className={`text-[13px] font-medium px-2 py-0.5 rounded ${marcado ? "bg-verde-claro text-verde" : "text-suave"}`}>
                   {marcado ? "Realiza" : "Não realiza"}
                 </span>
               </label>
             );
           })
         ) : (
-          <p className="py-3 text-center text-xs text-suave">Nenhum médico encontrado para &quot;{busca}&quot;.</p>
+          <p className="py-3 text-center text-[13px] text-suave">Nenhum médico encontrado para &quot;{busca}&quot;.</p>
         )}
       </div>
     </div>
@@ -1207,7 +1207,7 @@ function FormConvenio({ id }: { id?: string }) {
 
         <div className="space-y-2">
           <h5 className="text-sm font-semibold">Redes (usadas nos médicos e exames)</h5>
-          {redes.length === 0 && !c?.subtipos.length && <p className="text-xs text-suave">Nenhuma rede ainda. Em convênio novo, se deixar vazio, usa os planos acima.</p>}
+          {redes.length === 0 && !c?.subtipos.length && <p className="text-[13px] text-suave">Nenhuma rede ainda. Em convênio novo, se deixar vazio, usa os planos acima.</p>}
           {redes.map((r) => {
             const uso = usoDaRede(r.id);
             return (
@@ -1236,7 +1236,7 @@ function FormConvenio({ id }: { id?: string }) {
             <textarea name="novasRedes" rows={2} value={novasRedes} onChange={(e) => setNovasRedes(e.target.value)} className={campo} />
           </Campo>
           {linhasNovas.length > 0 && (
-            <p className="text-xs text-suave">
+            <p className="text-[13px] text-suave">
               {qtdNovas} {qtdNovas === 1 ? "rede nova" : "redes novas"}; {linhasNovas.length - qtdNovas} já {linhasNovas.length - qtdNovas === 1 ? "existe" : "existem"}.
             </p>
           )}
@@ -1321,7 +1321,7 @@ function FormUsuario({ id }: { id?: string }) {
               <input type="radio" name="papel" checked={papel === p} onChange={() => setPapel(p)} className="mt-1 size-4 accent-verde" />
               <span>
                 <span className="block text-sm font-semibold">{PAPEIS[p].rotulo}</span>
-                <span className="block text-xs text-suave">{PAPEIS[p].descricao}</span>
+                <span className="block text-[13px] text-suave">{PAPEIS[p].descricao}</span>
               </span>
             </label>
           ))}

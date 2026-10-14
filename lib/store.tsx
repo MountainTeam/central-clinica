@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { Banco, Clinica, DadosClinica, Tipo, Usuario } from "./modelo";
 import { subtipoInfo } from "./regras";
 import { podeEditar, podeVer } from "./permissoes";
@@ -188,16 +188,20 @@ export function Provider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const dados = clinica ? dadosDaClinica(banco, clinica.id, usuario ?? undefined) : VAZIO;
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- clinica entra pelo id
+  const dados = useMemo(() => (clinica ? dadosDaClinica(banco, clinica.id, usuario ?? undefined) : VAZIO), [banco, clinica?.id, usuario]);
+
+  // as funções fecham sobre estas variáveis; trocando uma delas o objeto é refeito
+  const valor = useMemo<Store>(() => ({
+    banco, usuario, carregado, clinicas, clinica, dados,
+    // rede apagada depois de escolhida deixa de valer
+    plano: plano && subtipoInfo(dados, plano.subtipoId) ? plano : null, escolherPlano, novaLigacao,
+    podeEditarAtual: !!usuario && !!clinica && podeEditar(usuario, clinica.id),
+    escolherClinica, entrar, sair, executar, painel, abrir, form, abrirForm, aviso, avisar,
+  }), [banco, usuario, carregado, clinicaId, clinica?.id, dados, plano, painel, form, aviso, protegido]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <Ctx.Provider value={{
-      banco, usuario, carregado, clinicas, clinica, dados,
-      // rede apagada depois de escolhida deixa de valer
-      plano: plano && subtipoInfo(dados, plano.subtipoId) ? plano : null, escolherPlano, novaLigacao,
-      podeEditarAtual: !!usuario && !!clinica && podeEditar(usuario, clinica.id),
-      escolherClinica, entrar, sair, executar, painel, abrir, form, abrirForm, aviso, avisar,
-    }}>
+    <Ctx.Provider value={valor}>
       {children}
     </Ctx.Provider>
   );

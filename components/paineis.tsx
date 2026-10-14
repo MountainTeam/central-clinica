@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Check, ChevronDown, ChevronRight, ClipboardList, Copy, FlaskConical, Info, Pencil, Search, ShieldCheck, TriangleAlert, UserRound, X } from "lucide-react";
 import { useStore, type Painel } from "@/lib/store";
-import { coberturaDaBusca, combina, resumoHorarios, subtipoInfo } from "@/lib/regras";
+import { coberturaDaBusca, combina, gruposHorarios, subtipoInfo } from "@/lib/regras";
 import type { DadosClinica, Exame, Profissional } from "@/lib/modelo";
 import { Atualizado, Avatar, Botao, Chip, Janela, LogoMarca, ObservacaoInterna, Secao, Vazio } from "./ui";
 
@@ -45,10 +45,10 @@ function QuemRealiza({ p }: { p: Profissional }) {
         <Avatar nome={p.nome} />
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-2 font-semibold">
-            <span className="truncate">{p.nome}</span>
+            <span className="line-clamp-2">{p.nome}</span>
             {p.restricoes.length > 0 && <TriangleAlert className="size-3.5 shrink-0 text-alerta" aria-label="Tem restrições" />}
           </span>
-          <span className="block truncate text-sm text-suave">{resumoHorarios(p.horarios)}</span>
+          <span className="block text-sm text-suave">{p.horarios.length ? gruposHorarios(p.horarios).map((g) => <span key={g} className="block">{g}</span>) : "Horários não informados"}</span>
         </span>
         <ChevronDown className={`size-4 shrink-0 text-suave transition-transform duration-200 ${aberto ? "rotate-180" : ""}`} />
       </button>
@@ -110,7 +110,7 @@ function FichaExame({ id }: { id: string }) {
         </div>
       )}
       <header className="entrar flex items-start gap-4">
-        <div className="grid size-16 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-sky-400 to-blue-600 text-white"><FlaskConical className="size-7" /></div>
+        <div className="grid size-16 shrink-0 place-items-center rounded-2xl bg-azul-claro text-azul"><FlaskConical className="size-7" /></div>
         <div className="min-w-0 flex-1">
           {/* a resposta mais pedida na ligação: quanto custa sem convênio */}
           <p className="text-sm text-suave">
@@ -141,7 +141,7 @@ function FichaExame({ id }: { id: string }) {
           <ol className="space-y-2">
             {ex.preparo.map((passo, k) => (
               <li key={k} className="flex gap-3 rounded-2xl border border-borda px-4 py-3 text-[15px]">
-                <span className="grid size-6 shrink-0 place-items-center rounded-full gradiente-marca text-xs font-bold text-white">{k + 1}</span>
+                <span className="grid size-6 shrink-0 place-items-center rounded-full bg-verde text-xs font-bold text-white">{k + 1}</span>
                 {passo}
               </li>
             ))}
@@ -211,7 +211,7 @@ function ChecadorConveniosExame({ ex, dados }: { ex: Exame; dados: DadosClinica 
                 </div>
                 {cobre.length > 0 && <div className="flex flex-wrap gap-1">{cobre.map((s) => <Chip key={s.id} tom="verde">{s.nome}</Chip>)}</div>}
                 {naoCobre.length > 0 && <div className="flex flex-wrap gap-1">{naoCobre.map((s) => <Chip key={s.id} tom="alerta">{s.nome} · não cobre</Chip>)}</div>}
-                {!cobre.length && !naoCobre.length && <p className="text-xs text-suave">Sem redes cadastradas</p>}
+                {!cobre.length && !naoCobre.length && <p className="text-[13px] text-suave">Sem redes cadastradas</p>}
               </div>
             ))}
           </div>

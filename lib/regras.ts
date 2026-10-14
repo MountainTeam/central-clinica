@@ -174,6 +174,7 @@ export function montarRedes(convenioId: string, antes: Subtipo[], editadas: { id
 export const DIAS_PARA_REVISAR = 90;
 
 export function tempoDesde(iso: string, agora = new Date()): string {
+  if (Number.isNaN(Date.parse(iso))) return "";
   const dias = Math.max(0, Math.floor((agora.getTime() - Date.parse(iso)) / 86400000));
   if (dias === 0) return "hoje";
   if (dias === 1) return "ontem";
