@@ -27,7 +27,7 @@ export default function PaginaConvenioDetalhes() {
   const { dados, clinica, podeEditarAtual, abrirForm, abrir, executar, avisar } = useStore();
 
   const conv = dados.convenios.find((c) => c.id === id);
-  const { semAcesso } = useItemDeOutraUnidade("convenios", id);
+  const { semAcesso, trocando } = useItemDeOutraUnidade("convenios", id);
 
   const [aba, setAba] = useState<"planos" | "corpo">("planos");
   const [buscaPlano, setBuscaPlano] = useState("");
@@ -56,6 +56,7 @@ export default function PaginaConvenioDetalhes() {
     try { await navigator.clipboard.writeText(texto); avisar("Regras copiadas"); } catch { avisar("Não foi possível copiar", true); }
   };
 
+  if (!conv && trocando) return null;
   if (!conv) {
     return (
       <div className="entrar space-y-4">

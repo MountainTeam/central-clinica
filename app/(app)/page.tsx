@@ -56,8 +56,8 @@ function CartaoOrganizacao({ org, lista, indice }: { org: Organizacao; lista: Cl
 export default function UnidadesPage() {
   const { banco, usuario, clinicas, escolherClinica } = useStore();
   const router = useRouter();
-  const unica = clinicas.length === 1 ? clinicas[0] : null;
-  // com uma unidade só não há o que escolher: vai direto para a busca
+  const unica = clinicas.length === 1 && usuario && !podeGerenciarUnidades(usuario) ? clinicas[0] : null;
+  // Central e Recepção com uma unidade só não têm o que escolher: vão direto para a busca
   useEffect(() => {
     if (!unica) return;
     escolherClinica(unica.id);

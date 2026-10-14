@@ -218,5 +218,5 @@ export function useItemDeOutraUnidade(lista: "profissionais" | "convenios", id: 
   const liberado = !!fora && !!usuario && podeVer(usuario, fora.clinicaId);
   const destino = liberado ? fora!.clinicaId : null;
   useEffect(() => { if (destino) escolherClinica(destino); }, [destino]); // eslint-disable-line react-hooks/exhaustive-deps
-  return { semAcesso: !!fora && !liberado };
+  return { semAcesso: !!fora && !liberado, trocando: liberado };
 }

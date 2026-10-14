@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { Building2, Check, CheckCircle2, ChevronsUpDown, FlaskConical, LayoutGrid, Lock, LogOut, PhoneCall, Search, ShieldCheck, TriangleAlert, Users } from "lucide-react";
 import type { Usuario } from "@/lib/modelo";
-import { PAPEIS, podeCriarUsuario } from "@/lib/permissoes";
+import { PAPEIS, podeCriarUsuario, podeGerenciarUnidades } from "@/lib/permissoes";
 import { subtipoInfo } from "@/lib/regras";
 import { useStore } from "@/lib/store";
 import { Logo, LogoMarca, SeletorConvenio, Vazio } from "@/components/ui";
@@ -17,11 +17,11 @@ type ItemMenu = {
   rotulo: string;
   icone: typeof Search;
   requerClinica?: boolean;
-  mostrar?: (u: Usuario) => boolean;
+  mostrar?: (u: Usuario, unidades: number) => boolean;
 };
 
 const menu: ItemMenu[] = [
-  { href: "/", rotulo: "Unidades", icone: Building2 },
+  { href: "/", rotulo: "Unidades", icone: Building2, mostrar: (u, n) => n !== 1 || podeGerenciarUnidades(u) },
   { href: "/busca", rotulo: "Busca rápida", icone: Search, requerClinica: true },
   { href: "/especialidades", rotulo: "Especialidades", icone: LayoutGrid, requerClinica: true },
   { href: "/convenios", rotulo: "Convênios", icone: ShieldCheck, requerClinica: true },
@@ -30,7 +30,7 @@ const menu: ItemMenu[] = [
 ];
 
 export function Estrutura({ children }: { children: React.ReactNode }) {
-  const { usuario, carregado, sair, aviso, avisar, clinica, form, abrir } = useStore();
+  const { usuario, carregado, sair, aviso, avisar, clinica, clinicas, form, abrir } = useStore();
   const router = useRouter();
   const rota = usePathname();
   // telas que funcionam sem unidade escolhida
@@ -64,7 +64,7 @@ export function Estrutura({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("keydown", tecla);
   }, [clinica, form, rota, router, abrir]);
 
-  const itens = menu.filter((m) => !m.mostrar || (usuario && m.mostrar(usuario)));
+  const itens = menu.filter((m) => !m.mostrar || (usuario && m.mostrar(usuario, clinicas.length)));
   const ativo = itens.findIndex((m) => (m.href === "/" ? rota === "/" : rota.startsWith(m.href)));
   const deslogar = () => { sair(); router.replace("/login"); };
 

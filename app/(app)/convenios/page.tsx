@@ -161,7 +161,7 @@ export default function Convenios() {
                           <span className="size-2 rounded-full bg-rose-500" />
                           Não atendidos
                         </span>
-                        <span className={`font-bold ${countNao ? "text-texto" : "text-suave"}`}>{countNao} planos</span>
+                        <span className="font-bold text-texto">{countNao} planos</span>
                       </div>
                     )}
 

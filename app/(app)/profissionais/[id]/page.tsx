@@ -16,9 +16,10 @@ const cartao = "rounded-3xl border border-borda bg-superficie p-5 shadow-card sm
 export default function PaginaProfissional() {
   const { id } = useParams<{ id: string }>();
   const { dados } = useStore();
-  const { semAcesso } = useItemDeOutraUnidade("profissionais", id);
+  const { semAcesso, trocando } = useItemDeOutraUnidade("profissionais", id);
   const p = dados.profissionais.find((x) => x.id === id);
   // a ficha só monta com o médico carregado (ela usa hooks depois da leitura)
+  if (!p && trocando) return null;
   if (!p) {
     return (
       <div className="entrar space-y-4">
