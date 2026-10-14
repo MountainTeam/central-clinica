@@ -1,5 +1,5 @@
 import type { Convenio, DadosClinica } from "./modelo.ts";
-import { combina, slug } from "./regras.ts";
+import { palavras, slug, unirAtendimento } from "./regras.ts";
 
 export type Atendimento = "c" | "e" | "ce";
 
@@ -56,14 +56,23 @@ function lerAtendimento(texto: string): Atendimento {
   return t.startsWith("consulta") ? "c" : t.startsWith("exame") ? "e" : "ce";
 }
 
+// sem tolerância a erro de digitação: "Bruno" não pode ligar à Bruna; cada palavra da célula começa uma palavra do nome
+const ehOMedico = (nome: string, celula: string) => {
+  const ws = palavras(celula), ts = palavras(nome);
+  return ws.length > 0 && ws.every((w) => ts.some((t) => t.startsWith(w)));
+};
+
 export function planejarRedesPorMedico(d: DadosClinica, linhas: string[][]) {
-  const itens: { profissionalId: string; medico: string; rede: string; atendimento: Atendimento }[] = [];
+  const itens: { profissionalId: string; medico: string; nomePlanilha: string; rede: string; atendimento: Atendimento }[] = [];
   const semMedico: string[] = [];
   for (const [medico = "", rede = "", atendimento = ""] of linhas) {
     if (!medico || !rede) continue;
-    const achados = d.profissionais.filter((p) => combina(p.nome, medico));
+    const achados = d.profissionais.filter((p) => ehOMedico(p.nome, medico));
     if (achados.length !== 1) { if (!semMedico.includes(medico)) semMedico.push(medico); continue; }
-    itens.push({ profissionalId: achados[0].id, medico: achados[0].nome, rede, atendimento: lerAtendimento(atendimento) });
+    // mesmo médico + mesma rede repetidos na planilha: um vínculo só, unindo consulta e exame
+    const igual = itens.find((i) => i.profissionalId === achados[0].id && slug(i.rede) === slug(rede));
+    if (igual) { igual.atendimento = unirAtendimento(igual.atendimento, lerAtendimento(atendimento)); continue; }
+    itens.push({ profissionalId: achados[0].id, medico: achados[0].nome, nomePlanilha: medico, rede, atendimento: lerAtendimento(atendimento) });
   }
   return { itens, semMedico };
 }

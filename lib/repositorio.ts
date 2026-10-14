@@ -3,7 +3,7 @@
 import { VERSAO, type Banco, type Clinica, type Convenio, type DadosClinica, type Especialidade, type Exame, type Organizacao, type Profissional, type Usuario } from "./modelo.ts";
 import { podeCriarClinica, podeCriarUsuario, podeEditar, podeVer, podeVerInterno } from "./permissoes.ts";
 import { pontoZero } from "./semente.ts";
-import { juntarRedes, slug } from "./regras.ts";
+import { juntarRedes, slug, unirAtendimento } from "./regras.ts";
 
 export const CHAVE = "cartilha:v1";
 
@@ -35,6 +35,10 @@ export function migrar(b: unknown): Banco | null {
   if (!b || typeof b !== "object") return null;
   let banco = b as Banco;
   if (!LISTAS.every((l) => Array.isArray(banco[l]))) return null;
+  // ficha sem as listas que as telas leem quebraria a busca: melhor recusar a cópia
+  const listas = (x: object, campos: string[]) => campos.every((c) => Array.isArray((x as Record<string, unknown>)[c]));
+  if (!banco.profissionais.every((p) => p && typeof p.atende === "object" && p.atende !== null && listas(p, ["horarios", "exames", "procedimentos", "restricoes"]))) return null;
+  if (!banco.convenios.every((c) => c && listas(c, ["subtipos"]))) return null;
   // versão 3 → 4: a central de atendimento ganha papel próprio
   if (banco.versao === 3) banco = { ...banco, versao: 4, usuarios: banco.usuarios.map((u) => u.id === "central-comn" && u.papel === "recepcao" ? { ...u, papel: "central" } : u) };
   return banco.versao === VERSAO ? banco : null;
@@ -76,7 +80,7 @@ export function importarBackup(_b: Banco, u: Usuario, texto: string): Banco {
   let novo: Banco | null = null;
   try { novo = migrar(JSON.parse(texto)); } catch {}
   exigir(!!novo, "Esse arquivo não é uma cópia da cartilha.");
-  return novo!;
+  return comAdministrador(novo!);
 }
 
 export function gravar(b: Banco): boolean {
@@ -257,7 +261,10 @@ export function importarRedesPorMedico(b: Banco, u: Usuario, convenioId: string,
   const porMedico = new Map<string, Record<string, "c" | "e" | "ce">>();
   for (const i of itens) {
     const id = idDe(i.rede); // nome que o juntarRedes descarta (vazio, só símbolos) é ignorado
-    if (id) porMedico.set(i.profissionalId, { ...porMedico.get(i.profissionalId), [id]: i.atendimento });
+    if (!id) continue;
+    const mapa = porMedico.get(i.profissionalId) ?? {};
+    mapa[id] = unirAtendimento(mapa[id], i.atendimento);
+    porMedico.set(i.profissionalId, mapa);
   }
   let novo = salvarConvenio(b, u, { ...c, subtipos });
   for (const [id, mapa] of porMedico) {

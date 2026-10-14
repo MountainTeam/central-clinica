@@ -5,6 +5,10 @@ export function atende(p: Profissional, subtipoId: string, tipo: Tipo) {
   return (p.atende[subtipoId] ?? "").includes(tipo === "consulta" ? "c" : "e");
 }
 
+// "c" + "e" → "ce"; sem o anterior, fica o novo
+export const unirAtendimento = (a: "c" | "e" | "ce" | undefined, b: "c" | "e" | "ce"): "c" | "e" | "ce" =>
+  !a || a === b ? b : "ce";
+
 export function subtipoInfo(d: DadosClinica, subtipoId: string) {
   for (const convenio of d.convenios) {
     const subtipo = convenio.subtipos.find((s) => s.id === subtipoId);

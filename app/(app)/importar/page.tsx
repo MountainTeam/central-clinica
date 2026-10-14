@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FileUp } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { importarRedes, importarRedesPorMedico } from "@/lib/repositorio";
+import { slug } from "@/lib/regras";
 import { decodificarCsv, lerTabela, planejarRedes, planejarRedesPorMedico, semCabecalho } from "@/lib/importar";
 import { Botao, CabecalhoPagina, Chip, LogoMarca, SeletorBusca, Vazio } from "@/components/ui";
 
@@ -35,8 +36,8 @@ export default function Importar() {
   const importar = () => {
     if (!convenio || !total) return;
     const ok = planoRedes
-      ? executar((b, u) => importarRedes(b, u, convenio.id, planoRedes.novas), `${total} ${unidade(total, true)}`, { desfazer: true })
-      : executar((b, u) => importarRedesPorMedico(b, u, convenio.id, planoMedico!.itens), `${total} ${unidade(total, true)}`, { desfazer: true });
+      ? executar((b, u) => importarRedes(b, u, convenio.id, planoRedes.novas), `${total} ${unidade(total, true)}`, { desfazer: true, desfeito: "Importação desfeita" })
+      : executar((b, u) => importarRedesPorMedico(b, u, convenio.id, planoMedico!.itens), `${total} ${unidade(total, true)}`, { desfazer: true, desfeito: "Importação desfeita" });
     if (ok) { setTexto(""); router.push("/convenios"); }
   };
 
@@ -94,7 +95,7 @@ export default function Importar() {
                   <table className="w-full text-left text-sm">
                     <thead><tr className="text-[13px] text-suave"><th className="py-1 pr-3 font-medium">Médico</th><th className="py-1 pr-3 font-medium">Rede</th><th className="py-1 font-medium">Atendimento</th></tr></thead>
                     <tbody>{planoMedico.itens.map((i, k) => (
-                      <tr key={k} className="border-t border-borda"><td className="py-1.5 pr-3">{i.medico}</td><td className="py-1.5 pr-3">{i.rede}</td><td className="py-1.5">{ROTULO[i.atendimento]}</td></tr>
+                      <tr key={k} className="border-t border-borda"><td className="py-1.5 pr-3">{i.nomePlanilha === i.medico ? i.medico : <span className={slug(i.nomePlanilha) === slug(i.medico) ? "" : "text-alerta"}>{i.nomePlanilha} → {i.medico}</span>}</td><td className="py-1.5 pr-3">{i.rede}</td><td className="py-1.5">{ROTULO[i.atendimento]}</td></tr>
                     ))}</tbody>
                   </table>
                 )}
