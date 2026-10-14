@@ -32,6 +32,8 @@ export type Convenio = {
   subtipos: Subtipo[];
   gruposPlanos?: GrupoPlano[];
   observacoesGerais?: string[];
+  atualizadoEm?: string;
+  atualizadoPor?: string;
 };
 export type Exame = {
   id: string;
@@ -43,6 +45,8 @@ export type Exame = {
   observacoes?: string;
   observacoesInternas?: string;
   subtipos: string[];
+  atualizadoEm?: string;
+  atualizadoPor?: string;
 };
 // `atende` mapeia subtipo → "c" (consulta), "e" (exame) ou "ce" (ambos)
 export type Profissional = {
@@ -58,6 +62,8 @@ export type Profissional = {
   restricoes: Restricao[];
   observacoes: string;
   observacoesInternas?: string;
+  atualizadoEm?: string;
+  atualizadoPor?: string;
 };
 
 // Sobe quando o formato muda; dado guardado com outra versão é descartado

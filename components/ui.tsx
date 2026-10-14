@@ -6,7 +6,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState } from 
 import * as Icones from "lucide-react";
 import { X } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { combina, iniciais, resumoHorarios } from "@/lib/regras";
+import { DIAS_PARA_REVISAR, combina, iniciais, resumoHorarios, tempoDesde } from "@/lib/regras";
 import type { DadosClinica, Profissional, Tipo } from "@/lib/modelo";
 
 export function Logo({ claro = false }: { claro?: boolean }) {
@@ -67,6 +67,16 @@ export function Chip({ children, tom = "neutro" }: { children: React.ReactNode; 
     alerta: "bg-alerta-claro text-alerta border-transparent",
   }[tom];
   return <span className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[13px] font-medium ${t}`}>{children}</span>;
+}
+
+export function Atualizado({ em, por }: { em?: string; por?: string }) {
+  if (!em) return null;
+  const velho = (Date.now() - Date.parse(em)) / 86400000 > DIAS_PARA_REVISAR;
+  return (
+    <Chip tom={velho ? "alerta" : "neutro"}>
+      Atualizado {tempoDesde(em)}{por && ` por ${por}`}{velho && " · pode estar desatualizado"}
+    </Chip>
+  );
 }
 
 // Só chega aqui quando o usuário pode ver (a recepção recebe os dados sem este campo)

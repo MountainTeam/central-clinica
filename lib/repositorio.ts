@@ -107,19 +107,21 @@ export function dadosDaClinica(b: Banco, clinicaId: string, u?: Usuario): DadosC
 
 // --- gravação: sempre confere a permissão antes ---
 
+const carimbo = (u: Usuario) => ({ atualizadoEm: new Date().toISOString(), atualizadoPor: u.nome });
+
 export function salvarProfissional(b: Banco, u: Usuario, p: Profissional): Banco {
   conferirClinica(u, p, b.profissionais.find((x) => x.id === p.id));
-  return { ...b, profissionais: gravarEm(b.profissionais, p) };
+  return { ...b, profissionais: gravarEm(b.profissionais, { ...p, ...carimbo(u) }) };
 }
 
 export function salvarExame(b: Banco, u: Usuario, e: Exame): Banco {
   conferirClinica(u, e, b.exames.find((x) => x.id === e.id));
-  return { ...b, exames: gravarEm(b.exames, e) };
+  return { ...b, exames: gravarEm(b.exames, { ...e, ...carimbo(u) }) };
 }
 
 export function salvarExameComProfissionais(b: Banco, u: Usuario, e: Exame, profsIds: string[]): Banco {
   conferirClinica(u, e, b.exames.find((x) => x.id === e.id));
-  const examesAtualizados = gravarEm(b.exames, e);
+  const examesAtualizados = gravarEm(b.exames, { ...e, ...carimbo(u) });
   const profissionaisAtualizados = b.profissionais.map((p) => {
     if (p.clinicaId !== e.clinicaId) return p;
     const selecionado = profsIds.includes(p.id);
@@ -154,7 +156,7 @@ export function salvarConvenio(b: Banco, u: Usuario, c: Convenio): Banco {
   conferirClinica(u, c, antes);
   const ficam = new Set(c.subtipos.map((s) => s.id));
   const sairam = new Set((antes?.subtipos ?? []).map((s) => s.id).filter((id) => !ficam.has(id)));
-  return limparRedes({ ...b, convenios: gravarEm(b.convenios, c) }, c.clinicaId, sairam);
+  return limparRedes({ ...b, convenios: gravarEm(b.convenios, { ...c, ...carimbo(u) }) }, c.clinicaId, sairam);
 }
 
 export function salvarEspecialidade(b: Banco, u: Usuario, e: Especialidade): Banco {

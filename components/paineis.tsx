@@ -6,7 +6,7 @@ import { ChevronDown, ChevronRight, ClipboardList, Copy, FlaskConical, Info, Pen
 import { useStore, type Painel } from "@/lib/store";
 import { coberturaDaBusca, combina, resumoHorarios, subtipoInfo } from "@/lib/regras";
 import type { DadosClinica, Exame, Profissional } from "@/lib/modelo";
-import { Avatar, Botao, Chip, Janela, LogoMarca, ObservacaoInterna, Secao, Vazio } from "./ui";
+import { Atualizado, Avatar, Botao, Chip, Janela, LogoMarca, ObservacaoInterna, Secao, Vazio } from "./ui";
 
 export function Paineis() {
   const { painel, abrir, dados } = useStore();
@@ -103,6 +103,7 @@ function FichaExame({ id }: { id: string }) {
           <p className="mt-1 text-sm text-suave">
             Particular: <b className="text-lg text-verde">{ex.valor || "consulte a recepção"}</b>
           </p>
+          <div className="mt-2"><Atualizado em={ex.atualizadoEm} por={ex.atualizadoPor} /></div>
         </div>
       </header>
 

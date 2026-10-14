@@ -170,3 +170,15 @@ export function montarRedes(convenioId: string, antes: Subtipo[], editadas: { id
   const usarPlanos = !antes.length && !ficam.length && !novas.length;
   return { redes: juntarRedes(convenioId, ficam, usarPlanos ? fallbackPlanos : novas) };
 }
+
+export const DIAS_PARA_REVISAR = 90;
+
+export function tempoDesde(iso: string, agora = new Date()): string {
+  const dias = Math.max(0, Math.floor((agora.getTime() - Date.parse(iso)) / 86400000));
+  if (dias === 0) return "hoje";
+  if (dias === 1) return "ontem";
+  if (dias <= 30) return `há ${dias} dias`;
+  if (dias > 365) return "há mais de um ano";
+  const meses = Math.floor(dias / 30);
+  return meses === 1 ? "há 1 mês" : `há ${meses} meses`;
+}

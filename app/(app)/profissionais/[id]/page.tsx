@@ -3,19 +3,19 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Check, ChevronDown, ChevronRight, ClipboardList, Clock, FlaskConical, Minus, NotebookPen, Pencil, Search, ShieldCheck, TriangleAlert, X } from "lucide-react";
+import { ArrowLeft, Check, Copy, ChevronDown, ChevronRight, ClipboardList, Clock, FlaskConical, Minus, NotebookPen, Pencil, Search, ShieldCheck, TriangleAlert, X } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { DIAS, type DadosClinica, type Profissional } from "@/lib/modelo";
-import { coberturaDaBusca, combina, subtipoInfo } from "@/lib/regras";
+import { coberturaDaBusca, combina, gruposHorarios, subtipoInfo } from "@/lib/regras";
 import { salvarProfissional } from "@/lib/repositorio";
-import { Avatar, Botao, Chip, Icone, LogoMarca, ObservacaoInterna, Secao, Vazio } from "@/components/ui";
+import { Atualizado, Avatar, Botao, Chip, Icone, LogoMarca, ObservacaoInterna, Secao, Vazio } from "@/components/ui";
 import { EditorHorarios, lerHorarios } from "@/components/formularios";
 
 const cartao = "rounded-3xl border border-borda bg-superficie p-5 shadow-card sm:p-6";
 
 export default function PaginaProfissional() {
   const { id } = useParams<{ id: string }>();
-  const { dados, podeEditarAtual, abrir, abrirForm, executar } = useStore();
+  const { dados, podeEditarAtual, abrir, abrirForm, executar, avisar } = useStore();
   const [editando, setEditando] = useState<"horarios" | "obs" | null>(null);
   // dia da semana só no navegador, para não divergir do HTML do servidor
   const [hoje, setHoje] = useState<string | null>(null);
@@ -34,6 +34,18 @@ export default function PaginaProfissional() {
   const admin = podeEditarAtual; // pode editar esta clínica
   const salvar = (mudanca: Partial<Profissional>, msg: string) => {
     if (executar((b, u) => salvarProfissional(b, u, { ...p, ...mudanca }), msg)) setEditando(null);
+  };
+  // nunca inclui observações internas
+  const copiar = async () => {
+    const texto = [
+      p.nome,
+      esp?.nome,
+      p.horarios.length ? `Horários:\n${gruposHorarios(p.horarios).join("\n")}` : "",
+      p.restricoes.length ? `Restrições:\n${p.restricoes.map((r) => `- ${r.texto}`).join("\n")}` : "",
+      p.observacoes ? `Observações: ${p.observacoes}` : "",
+      p.procedimentos.length ? `Procedimentos: ${p.procedimentos.join(", ")}` : "",
+    ].filter(Boolean).join("\n\n");
+    try { await navigator.clipboard.writeText(texto); avisar("Ficha copiada"); } catch { avisar("Não foi possível copiar", true); }
   };
   const atendeHoje = hoje && p.horarios.find((h) => h.dia === hoje);
 
@@ -55,7 +67,9 @@ export default function PaginaProfissional() {
               ? <Chip tom="verde"><span className="pulso size-1.5 rounded-full bg-verde" />Atende hoje · {atendeHoje.inicio}–{atendeHoje.fim}</Chip>
               : <Chip>Não atende hoje</Chip>)}
           </div>
+          <div className="mt-2"><Atualizado em={p.atualizadoEm} por={p.atualizadoPor} /></div>
         </div>
+        <Botao variante="secundario" onClick={copiar}><Copy className="size-4" />Copiar</Botao>
         {admin && <Botao variante="secundario" onClick={() => abrirForm({ tipo: "profissional", id: p.id })}><Pencil className="size-4" />Editar ficha</Botao>}
       </header>
 

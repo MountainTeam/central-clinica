@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import {
   ArrowLeft,
   ChevronRight,
+  Copy,
   FlaskConical,
   Pencil,
   Plus,
@@ -18,7 +19,7 @@ import { useStore } from "@/lib/store";
 import { atende, combina, conflitosPlanos, gruposPlanosDoConvenio, observacoesDoConvenio } from "@/lib/regras";
 import { salvarConvenio } from "@/lib/repositorio";
 import type { GrupoPlano, GrupoPlanoStatus, Profissional, Tipo } from "@/lib/modelo";
-import { Avatar, Botao, LogoMarca, Segmentado, Vazio } from "@/components/ui";
+import { Atualizado, Avatar, Botao, LogoMarca, Segmentado, Vazio } from "@/components/ui";
 
 export default function PaginaConvenioDetalhes() {
   const { id } = useParams<{ id: string }>();
@@ -42,6 +43,17 @@ export default function PaginaConvenioDetalhes() {
   const quem = (tipo: Tipo) => dados.profissionais.filter((p) => atende(p, subId, tipo));
   const exames = dados.exames.filter((e) => e.subtipos.includes(subId));
   const esp = (p: Profissional) => dados.especialidades.find((e) => e.id === p.especialidadeId)?.nome;
+
+  // texto para colar no atendimento: nome, observações gerais e grupos de planos
+  const copiarRegras = async () => {
+    if (!conv) return;
+    const texto = [
+      conv.nome,
+      observacoes.length ? `Observações:\n${observacoes.map((o) => `- ${o}`).join("\n")}` : "",
+      ...grupos.filter((g) => g.planos.length).map((g) => `${g.titulo}${g.nota ? ` (${g.nota})` : ""}:\n${g.planos.join(", ")}`),
+    ].filter(Boolean).join("\n\n");
+    try { await navigator.clipboard.writeText(texto); avisar("Regras copiadas"); } catch { avisar("Não foi possível copiar", true); }
+  };
 
   if (!conv) {
     return (
@@ -172,14 +184,18 @@ export default function PaginaConvenioDetalhes() {
               <p className="mt-0.5 text-sm font-medium text-suave">
                 Regras válidas para a unidade {clinica?.nome ?? "COMN"}
               </p>
+              <div className="mt-2"><Atualizado em={conv.atualizadoEm} por={conv.atualizadoPor} /></div>
             </div>
           </div>
-          {podeEditarAtual && (
-            <Botao variante="secundario" onClick={() => abrirForm({ tipo: "convenio", id: conv.id })}>
-              <Pencil className="size-4" />
-              Editar convênio
-            </Botao>
-          )}
+          <div className="flex flex-wrap gap-2">
+            <Botao variante="secundario" onClick={copiarRegras}><Copy className="size-4" />Copiar regras</Botao>
+            {podeEditarAtual && (
+              <Botao variante="secundario" onClick={() => abrirForm({ tipo: "convenio", id: conv.id })}>
+                <Pencil className="size-4" />
+                Editar convênio
+              </Botao>
+            )}
+          </div>
         </div>
       </header>
 
