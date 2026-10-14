@@ -96,6 +96,7 @@ export function Moldura({ titulo, onSalvar, children }: { titulo: string; onSalv
 }
 
 function MatrizConvenios({ dados, atende }: { dados: DadosClinica; atende: Record<string, string> }) {
+  const marcar = useContext(MarcarAlterado);
   const [busca, setBusca] = useState("");
   const [filtro, setFiltro] = useState<"todos" | "atendidos" | "nao_atendidos">("todos");
   const [estado, setEstado] = useState<Record<string, { c: boolean; e: boolean }>>(() => {
@@ -118,6 +119,7 @@ function MatrizConvenios({ dados, atende }: { dados: DadosClinica; atende: Recor
   });
 
   const toggleCheck = (subId: string, tipo: "c" | "e") => {
+    marcar();
     setEstado((ant) => ({
       ...ant,
       [subId]: {
@@ -128,6 +130,7 @@ function MatrizConvenios({ dados, atende }: { dados: DadosClinica; atende: Recor
   };
 
   const marcarTodos = (c: Convenio, tipo: "c" | "e", valor: boolean) => {
+    marcar();
     setEstado((ant) => {
       const prox = { ...ant };
       for (const s of c.subtipos) {
@@ -142,6 +145,7 @@ function MatrizConvenios({ dados, atende }: { dados: DadosClinica; atende: Recor
   };
 
   const limparConvenio = (c: Convenio) => {
+    marcar();
     setEstado((ant) => {
       const prox = { ...ant };
       for (const s of c.subtipos) {
@@ -440,6 +444,7 @@ function SeletorExamesProfissional({
   dados: DadosClinica;
   examesIniciais: string[];
 }) {
+  const marcar = useContext(MarcarAlterado);
   const [busca, setBusca] = useState("");
   const [selecionados, setSelecionados] = useState<Set<string>>(() => new Set(examesIniciais));
   const [filtro, setFiltro] = useState<"todos" | "selecionados">("todos");
@@ -447,6 +452,7 @@ function SeletorExamesProfissional({
   const q = busca.trim();
 
   const toggle = (id: string) => {
+    marcar();
     setSelecionados((ant) => {
       const prox = new Set(ant);
       if (prox.has(id)) prox.delete(id);
@@ -456,6 +462,7 @@ function SeletorExamesProfissional({
   };
 
   const selecionarTodosFiltrados = (lista: Exame[]) => {
+    marcar();
     setSelecionados((ant) => {
       const prox = new Set(ant);
       for (const e of lista) prox.add(e.id);
@@ -464,6 +471,7 @@ function SeletorExamesProfissional({
   };
 
   const desmarcarTodosFiltrados = (lista: Exame[]) => {
+    marcar();
     setSelecionados((ant) => {
       const prox = new Set(ant);
       for (const e of lista) prox.delete(e.id);
@@ -592,6 +600,7 @@ function SeletorConveniosExame({
   dados: DadosClinica;
   selecionadosIniciais: string[];
 }) {
+  const marcar = useContext(MarcarAlterado);
   const [busca, setBusca] = useState("");
   const [filtro, setFiltro] = useState<"todos" | "selecionados">("todos");
   const [selecionados, setSelecionados] = useState<Set<string>>(() => new Set(selecionadosIniciais));
@@ -606,6 +615,7 @@ function SeletorConveniosExame({
   const q = busca.trim();
 
   const toggleSub = (subId: string) => {
+    marcar();
     setSelecionados((ant) => {
       const prox = new Set(ant);
       if (prox.has(subId)) prox.delete(subId);
@@ -615,6 +625,7 @@ function SeletorConveniosExame({
   };
 
   const selecionarTodosDoConvenio = (c: Convenio) => {
+    marcar();
     setSelecionados((ant) => {
       const prox = new Set(ant);
       for (const s of c.subtipos) prox.add(s.id);
@@ -624,6 +635,7 @@ function SeletorConveniosExame({
   };
 
   const desmarcarTodosDoConvenio = (c: Convenio) => {
+    marcar();
     setSelecionados((ant) => {
       const prox = new Set(ant);
       for (const s of c.subtipos) prox.delete(s.id);
@@ -795,6 +807,7 @@ function SeletorConveniosExame({
 }
 
 function SeletorProfissionaisExame({ dados, exameId }: { dados: DadosClinica; exameId?: string }) {
+  const marcar = useContext(MarcarAlterado);
   const [busca, setBusca] = useState("");
   const [selecionados, setSelecionados] = useState<Set<string>>(() => {
     if (!exameId) return new Set();
@@ -812,6 +825,7 @@ function SeletorProfissionaisExame({ dados, exameId }: { dados: DadosClinica; ex
   }, [dados.profissionais, dados.especialidades, q]);
 
   const toggle = (id: string) => {
+    marcar();
     setSelecionados((ant) => {
       const prox = new Set(ant);
       if (prox.has(id)) prox.delete(id);
@@ -821,6 +835,7 @@ function SeletorProfissionaisExame({ dados, exameId }: { dados: DadosClinica; ex
   };
 
   const selecionarTodos = () => {
+    marcar();
     setSelecionados((ant) => {
       const prox = new Set(ant);
       for (const p of filtrados) prox.add(p.id);
@@ -829,6 +844,7 @@ function SeletorProfissionaisExame({ dados, exameId }: { dados: DadosClinica; ex
   };
 
   const desmarcarTodos = () => {
+    marcar();
     setSelecionados((ant) => {
       const prox = new Set(ant);
       for (const p of filtrados) prox.delete(p.id);
@@ -993,6 +1009,7 @@ function FormEspecialidade() {
 }
 
 function FormConvenio({ id }: { id?: string }) {
+  const marcar = useContext(MarcarAlterado);
   const { dados, clinica, executar, abrirForm, avisar } = useStore();
   const c = dados.convenios.find((x) => x.id === id);
   const [logo, setLogo] = useState(c?.logo);
@@ -1058,7 +1075,7 @@ function FormConvenio({ id }: { id?: string }) {
   };
   return (
     <Moldura titulo={c ? "Editar convênio" : "Novo convênio"} onSalvar={salvar}>
-      <EnvioLogo nome={nomeAtual} cor={c?.cor ?? corDoIndice(dados.convenios.length)} valor={logo} onChange={setLogo} />
+      <EnvioLogo nome={nomeAtual} cor={c?.cor ?? corDoIndice(dados.convenios.length)} valor={logo} onChange={(l) => { marcar(); setLogo(l); }} />
       <Campo rotulo="Nome do convênio">
         <input name="nome" defaultValue={c?.nome} onChange={(e) => setNomeAtual(e.target.value)} placeholder="Ex.: Unimed" className={campo} />
       </Campo>
@@ -1144,6 +1161,7 @@ function FormOrganizacao() {
 }
 
 function FormClinica({ id }: { id?: string }) {
+  const marcar = useContext(MarcarAlterado);
   const { banco, executar, abrirForm, avisar } = useStore();
   const c = banco.clinicas.find((x) => x.id === id);
   const [logo, setLogo] = useState(c?.logo);
@@ -1157,7 +1175,7 @@ function FormClinica({ id }: { id?: string }) {
   };
   return (
     <Moldura titulo={c ? "Editar clínica" : "Nova clínica"} onSalvar={salvar}>
-      <EnvioLogo nome={nomeAtual} valor={logo} onChange={setLogo} />
+      <EnvioLogo nome={nomeAtual} valor={logo} onChange={(l) => { marcar(); setLogo(l); }} />
       {!c && (
         <Campo rotulo="Organização">
           <select name="organizacao" className={campo}>
