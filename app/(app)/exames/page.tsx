@@ -3,13 +3,14 @@
 import { useState } from "react";
 import { ArrowUpRight, FlaskConical, Plus, Search } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { semAcento } from "@/lib/regras";
+import { combina, idsDeRedes, pontuacao } from "@/lib/regras";
 import { Botao, CabecalhoPagina, Vazio } from "@/components/ui";
 
 export default function Exames() {
   const { dados, podeEditarAtual, abrir, abrirForm } = useStore();
   const [q, setQ] = useState("");
-  const lista = dados.exames.filter((e) => semAcento(e.nome).includes(semAcento(q.trim())));
+  const validos = idsDeRedes(dados);
+  const lista = dados.exames.filter((e) => combina(e.nome, q)).sort((a, b) => pontuacao(b.nome, q) - pontuacao(a.nome, q));
 
   return (
     <div>
@@ -24,7 +25,7 @@ export default function Exames() {
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {lista.map((e, i) => {
-          const redes = e.subtipos.length;
+          const redes = e.subtipos.filter((id) => validos.has(id)).length;
           const quem = dados.profissionais.filter((p) => p.exames.includes(e.id)).length;
           return (
             <button key={e.id} onClick={() => abrir({ tipo: "exame", id: e.id })} style={{ "--i": Math.min(i, 10) } as React.CSSProperties}

@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as Icones from "lucide-react";
 import { X } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { iniciais, resumoHorarios, semAcento } from "@/lib/regras";
+import { combina, iniciais, resumoHorarios } from "@/lib/regras";
 import type { DadosClinica, Profissional, Tipo } from "@/lib/modelo";
 
 export function Logo({ claro = false }: { claro?: boolean }) {
@@ -120,14 +120,13 @@ export function SeletorConvenio({ dados, valor, onChange }: { dados: DadosClinic
     return null;
   }, [dados.convenios, valor]);
 
-  const q = semAcento(busca.trim());
+  const q = busca.trim();
 
   const filtrados = useMemo(() => {
     if (!q) return dados.convenios;
     return dados.convenios
       .map((c) => {
-        const nomeC = semAcento(c.nome);
-        const subs = c.subtipos.filter((s) => nomeC.includes(q) || semAcento(s.nome).includes(q));
+        const subs = c.subtipos.filter((s) => combina(`${c.nome} ${s.nome}`, q));
         return { ...c, subtipos: subs };
       })
       .filter((c) => c.subtipos.length > 0);

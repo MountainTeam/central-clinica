@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, ClipboardList, Copy, FlaskConical, Info, Pencil, Search, ShieldCheck, TriangleAlert, UserRound, X } from "lucide-react";
 import { useStore, type Painel } from "@/lib/store";
-import { resumoHorarios, semAcento } from "@/lib/regras";
+import { coberturaDaBusca, combina, resumoHorarios } from "@/lib/regras";
 import type { DadosClinica, Exame, Profissional } from "@/lib/modelo";
 import { Avatar, Botao, Chip, Janela, LogoMarca, Secao, Vazio } from "./ui";
 
@@ -22,8 +22,6 @@ export function Paineis() {
     </Janela>
   );
 }
-
-const temTexto = (t: string, q: string) => semAcento(t).includes(semAcento(q.trim()));
 
 function Filtro({ valor, onChange, placeholder }: { valor: string; onChange: (v: string) => void; placeholder: string }) {
   return (
@@ -76,7 +74,7 @@ function FichaExame({ id }: { id: string }) {
   const ex = dados.exames.find((e) => e.id === id);
   if (!ex) return null;
   const quemFaz = dados.profissionais.filter((p) => p.exames.includes(ex.id));
-  const medicos = quemFaz.filter((p) => temTexto(p.nome, qMedico));
+  const medicos = quemFaz.filter((p) => combina(p.nome, qMedico));
 
   const copiar = async () => {
     const texto = [
@@ -153,35 +151,11 @@ function ChecadorConveniosExame({ ex, dados }: { ex: Exame; dados: DadosClinica 
   }, [dados.convenios, ex.subtipos]);
 
   const totalRedes = porConvenio.reduce((acc, curr) => acc + curr.subs.length, 0);
-  const q = semAcento(busca.trim());
-
-  const resultadoBusca = useMemo(() => {
-    if (!q) return null;
-
-    const matchesClinica = dados.convenios.filter((c) => {
-      const nomeC = semAcento(c.nome);
-      const redes = c.subtipos.map((s) => semAcento(s.nome));
-      return nomeC.includes(q) || redes.some((r) => r.includes(q));
-    });
-
-    const cobertosNoMatch = matchesClinica
-      .map((c) => {
-        const subsCobertos = c.subtipos.filter((s) => {
-          const cobre = ex.subtipos.includes(s.id);
-          if (!cobre) return false;
-          return semAcento(c.nome).includes(q) || semAcento(s.nome).includes(q);
-        });
-        return { c, subs: subsCobertos };
-      })
-      .filter((x) => x.subs.length > 0);
-
-    const naoCobertosNoMatch = matchesClinica.filter((c) => {
-      const cobreAlgum = c.subtipos.some((s) => ex.subtipos.includes(s.id));
-      return !cobreAlgum;
-    });
-
-    return { cobertosNoMatch, naoCobertosNoMatch, totalEncontrados: matchesClinica.length };
-  }, [dados.convenios, ex.subtipos, q]);
+  const q = busca.trim();
+  const resultadoBusca = useMemo(
+    () => (q ? coberturaDaBusca(dados.convenios, (s) => ex.subtipos.includes(s.id), q) : null),
+    [dados.convenios, ex.subtipos, q],
+  );
 
   if (!dados.convenios.length) {
     return <Vazio texto="Nenhum convênio cadastrado nesta clínica." />;
@@ -227,43 +201,35 @@ function ChecadorConveniosExame({ ex, dados }: { ex: Exame; dados: DadosClinica 
       {/* RESULTADO DA BUSCA SOB DEMANDA */}
       {busca && resultadoBusca ? (
         <div className="space-y-2 pt-1">
-          {resultadoBusca.totalEncontrados === 0 ? (
+          {resultadoBusca.length === 0 ? (
             <div className="rounded-xl border border-dashed border-borda p-3.5 text-center">
-              <p className="text-xs text-suave">Nenhum convênio encontrado para &quot;{busca}&quot; nesta unidade.</p>
+              <p className="text-xs text-suave">Nenhum convênio ou rede com &ldquo;{busca}&rdquo; nesta unidade.</p>
             </div>
           ) : (
-            <>
-              {resultadoBusca.cobertosNoMatch.map(({ c, subs }) => (
-                <div key={c.id} className="rounded-2xl border border-azul/40 bg-superficie p-3.5 space-y-2 shadow-sm ring-1 ring-azul/10">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="flex items-center gap-2 font-bold text-sm text-texto">
-                      <LogoMarca nome={c.nome} logo={c.logo} cor={c.cor} tamanho="sm" />
-                      {c.nome}
-                    </span>
-                    <span className="rounded-md bg-azul-claro px-2.5 py-0.5 text-xs font-bold text-azul">
-                      ✓ Coberto ({subs.length} rede{subs.length > 1 ? "s" : ""})
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-1 pt-1.5 border-t border-borda/40">
-                    {subs.map((s) => (
-                      <Chip key={s.id} tom="azul">{s.nome}</Chip>
-                    ))}
-                  </div>
-                </div>
-              ))}
-
-              {resultadoBusca.naoCobertosNoMatch.map((c) => (
-                <div key={c.id} className="flex items-center justify-between rounded-xl border border-borda bg-fundo/40 p-2.5 text-xs">
-                  <div className="flex items-center gap-2 opacity-60">
+            resultadoBusca.map(({ convenio: c, cobre, naoCobre }) => (
+              <div key={c.id} className={`space-y-2 rounded-2xl border bg-superficie p-3.5 shadow-sm ${cobre.length ? "border-azul/40 ring-1 ring-azul/10" : "border-borda"}`}>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-2 text-sm font-bold text-texto">
                     <LogoMarca nome={c.nome} logo={c.logo} cor={c.cor} tamanho="sm" />
-                    <span className="font-medium text-texto">{c.nome}</span>
-                  </div>
-                  <span className="rounded bg-borda/50 px-2 py-0.5 font-medium text-suave">
-                    Não cobre este exame
+                    {c.nome}
                   </span>
+                  {cobre.length > 0 && (
+                    <span className="rounded-md bg-azul-claro px-2.5 py-0.5 text-xs font-bold text-azul">✓ Coberto</span>
+                  )}
                 </div>
-              ))}
-            </>
+                {cobre.length > 0 && (
+                  <div className="flex flex-wrap gap-1 border-t border-borda/40 pt-1.5">
+                    {cobre.map((s) => <Chip key={s.id} tom="azul">{s.nome}</Chip>)}
+                  </div>
+                )}
+                {naoCobre.length > 0 && (
+                  <div className="flex flex-wrap gap-1 border-t border-borda/40 pt-1.5">
+                    {naoCobre.map((s) => <Chip key={s.id} tom="alerta">{s.nome} · não cobre</Chip>)}
+                  </div>
+                )}
+                {!cobre.length && !naoCobre.length && <p className="text-xs text-suave">Sem redes cadastradas</p>}
+              </div>
+            ))
           )}
         </div>
       ) : (

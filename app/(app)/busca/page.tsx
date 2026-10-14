@@ -18,7 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { atende, gruposPlanosDoConvenio, observacoesDoConvenio, resumoHorarios, semAcento, subtipoInfo } from "@/lib/regras";
+import { atende, combina, gruposPlanosDoConvenio, idsDeRedes, observacoesDoConvenio, pontuacao, resumoHorarios, subtipoInfo } from "@/lib/regras";
 import type { DadosClinica, Tipo } from "@/lib/modelo";
 import { Avatar, CartaoProfissional, Chip, Icone, LogoMarca, Segmentado, SeletorConvenio, TipoBadge, Vazio } from "@/components/ui";
 
@@ -62,43 +62,48 @@ export default function BuscaRapida() {
     return () => window.removeEventListener("keydown", tecla);
   }, []);
 
-  const q = semAcento(texto.trim());
+  const q = texto.trim();
+  const validos = idsDeRedes(dados);
+  const ordenar = <T,>(lista: T[], textoDe: (x: T) => string) =>
+    q ? [...lista].sort((a, b) => pontuacao(textoDe(b), q) - pontuacao(textoDe(a), q)) : lista;
   const nomeEsp = (id: string) => dados.especialidades.find((e) => e.id === id)?.nome ?? "";
 
   // 1. Filtro de Profissionais
-  const profissionaisFiltrados = dados.profissionais.filter((p) => {
-    if (esp && p.especialidadeId !== esp) return false;
-    if (subtipo && !atende(p, subtipo, tipo)) return false;
-    if (!q) return true;
+  const textoProfissional = (p: (typeof dados.profissionais)[number]) => {
     const exames = p.exames.map((id) => dados.exames.find((e) => e.id === id)?.nome ?? "");
-    return semAcento([p.nome, nomeEsp(p.especialidadeId), ...p.procedimentos, ...exames].join(" ")).includes(q);
-  });
+    return [p.nome, nomeEsp(p.especialidadeId), ...p.procedimentos, ...exames].join(" ");
+  };
+  const profissionaisFiltrados = ordenar(
+    dados.profissionais.filter((p) => {
+      if (esp && p.especialidadeId !== esp) return false;
+      if (subtipo && !atende(p, subtipo, tipo)) return false;
+      return combina(textoProfissional(p), q);
+    }),
+    textoProfissional,
+  );
 
   // 2. Filtro de Especialidades
-  const especialidadesFiltradas = dados.especialidades.filter((e) => {
-    if (esp && e.id !== esp) return false;
-    if (!q) return true;
-    const medicosDesta = dados.profissionais.filter((p) => p.especialidadeId === e.id).map((p) => p.nome);
-    return semAcento([e.nome, ...medicosDesta].join(" ")).includes(q);
-  });
+  const textoEspecialidade = (e: (typeof dados.especialidades)[number]) =>
+    [e.nome, ...dados.profissionais.filter((p) => p.especialidadeId === e.id).map((p) => p.nome)].join(" ");
+  const especialidadesFiltradas = ordenar(
+    dados.especialidades.filter((e) => (!esp || e.id === esp) && combina(textoEspecialidade(e), q)),
+    textoEspecialidade,
+  );
 
   // 3. Filtro de Convênios
-  const conveniosFiltrados = dados.convenios.filter((c) => {
-    if (!q) return true;
-    const grupos = gruposPlanosDoConvenio(c);
-    const planos = grupos.flatMap((g) => g.planos);
-    const redes = c.subtipos.map((s) => s.nome);
-    const obs = observacoesDoConvenio(c);
-    return semAcento([c.nome, ...redes, ...planos, ...obs].join(" ")).includes(q);
-  });
+  const textoConvenio = (c: (typeof dados.convenios)[number]) => {
+    const planos = gruposPlanosDoConvenio(c).flatMap((g) => g.planos);
+    return [c.nome, ...c.subtipos.map((s) => s.nome), ...planos, ...observacoesDoConvenio(c)].join(" ");
+  };
+  const conveniosFiltrados = ordenar(dados.convenios.filter((c) => combina(textoConvenio(c), q)), (c) => `${c.nome} ${c.subtipos.map((s) => s.nome).join(" ")}`);
 
   // 4. Filtro de Exames
-  const examesFiltrados = dados.exames.filter((e) => {
-    if (subtipo && !e.subtipos.includes(subtipo)) return false;
-    if (!q) return true;
-    const medicosQueFazem = dados.profissionais.filter((p) => p.exames.includes(e.id)).map((p) => p.nome);
-    return semAcento([e.nome, ...e.preparo, e.documentos, ...medicosQueFazem].join(" ")).includes(q);
-  });
+  const textoExame = (e: (typeof dados.exames)[number]) =>
+    [e.nome, ...e.preparo, e.documentos, ...dados.profissionais.filter((p) => p.exames.includes(e.id)).map((p) => p.nome)].join(" ");
+  const examesFiltrados = ordenar(
+    dados.exames.filter((e) => (!subtipo || e.subtipos.includes(subtipo)) && combina(textoExame(e), q)),
+    (e) => e.nome,
+  );
 
   const info = subtipo ? subtipoInfo(dados, subtipo) : undefined;
   const filtrando = !!(q || subtipo || esp);
@@ -340,8 +345,8 @@ export default function BuscaRapida() {
                 {profissionaisFiltrados.map((p, i) => {
                   const medEsp = nomeEsp(p.especialidadeId);
                   const medExames = p.exames.map((id) => dados.exames.find((e) => e.id === id)?.nome ?? "").filter(Boolean);
-                  const bateuProc = q ? p.procedimentos.filter((x) => semAcento(x).includes(q)) : [];
-                  const bateuExames = q ? medExames.filter((x) => semAcento(x).includes(q)) : [];
+                  const bateuProc = q ? p.procedimentos.filter((x) => combina(x, q)) : [];
+                  const bateuExames = q ? medExames.filter((x) => combina(x, q)) : [];
                   return (
                     <CartaoProfissional
                       key={p.id}
@@ -509,7 +514,7 @@ export default function BuscaRapida() {
                             <FlaskConical className="size-6" />
                           </span>
                           <span className="rounded-xl bg-fundo px-2.5 py-1 text-xs font-semibold text-suave">
-                            {e.subtipos.length} {e.subtipos.length === 1 ? "rede" : "redes"}
+                            {e.subtipos.filter((id) => validos.has(id)).length} {e.subtipos.filter((id) => validos.has(id)).length === 1 ? "rede" : "redes"}
                           </span>
                         </div>
 

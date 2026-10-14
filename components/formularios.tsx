@@ -6,7 +6,7 @@ import { ChevronDown, Search, X } from "lucide-react";
 import { useStore, type Formulario } from "@/lib/store";
 import { DIAS, type Convenio, type DadosClinica, type Exame, type GrupoPlano, type Horario, type Papel, type Profissional } from "@/lib/modelo";
 import { PAPEIS } from "@/lib/permissoes";
-import { corDoIndice, gruposPlanosDoConvenio, novoId, observacoesDoConvenio, semAcento, slug } from "@/lib/regras";
+import { combina, corDoIndice, gruposPlanosDoConvenio, novoId, observacoesDoConvenio, slug } from "@/lib/regras";
 import { salvarClinica, salvarConvenio, salvarEspecialidade, salvarExame, salvarExameComProfissionais, salvarOrganizacao, salvarProfissional, salvarUsuario } from "@/lib/repositorio";
 import { Botao, EnvioLogo, Gaveta, LogoMarca } from "./ui";
 
@@ -155,7 +155,7 @@ function MatrizConvenios({ dados, atende }: { dados: DadosClinica; atende: Recor
     setExpandidos({});
   };
 
-  const q = semAcento(busca.trim());
+  const q = busca.trim();
 
   // Estatísticas gerais
   const totalSubtipos = dados.convenios.flatMap((c) => c.subtipos);
@@ -169,9 +169,7 @@ function MatrizConvenios({ dados, atende }: { dados: DadosClinica; atende: Recor
       if (filtro === "nao_atendidos" && temAtendimento) return false;
 
       if (!q) return true;
-      const nomeC = semAcento(c.nome);
-      const redes = c.subtipos.map((s) => semAcento(s.nome));
-      return nomeC.includes(q) || redes.some((r) => r.includes(q));
+      return combina(`${c.nome} ${c.subtipos.map((s) => s.nome).join(" ")}`, q);
     });
   }, [dados.convenios, estado, filtro, q]);
 
@@ -436,7 +434,7 @@ function SeletorExamesProfissional({
   const [selecionados, setSelecionados] = useState<Set<string>>(() => new Set(examesIniciais));
   const [filtro, setFiltro] = useState<"todos" | "selecionados">("todos");
 
-  const q = semAcento(busca.trim());
+  const q = busca.trim();
 
   const toggle = (id: string) => {
     setSelecionados((ant) => {
@@ -467,7 +465,7 @@ function SeletorExamesProfissional({
     return dados.exames.filter((e) => {
       if (filtro === "selecionados" && !selecionados.has(e.id)) return false;
       if (!q) return true;
-      return semAcento(e.nome).includes(q);
+      return combina(e.nome, q);
     });
   }, [dados.exames, selecionados, filtro, q]);
 
@@ -595,7 +593,7 @@ function SeletorConveniosExame({
     return init;
   });
 
-  const q = semAcento(busca.trim());
+  const q = busca.trim();
 
   const toggleSub = (subId: string) => {
     setSelecionados((ant) => {
@@ -632,9 +630,7 @@ function SeletorConveniosExame({
       const marcados = c.subtipos.filter((s) => selecionados.has(s.id)).length;
       if (filtro === "selecionados" && marcados === 0) return false;
       if (!q) return true;
-      const nomeC = semAcento(c.nome);
-      const redes = c.subtipos.map((s) => semAcento(s.nome));
-      return nomeC.includes(q) || redes.some((r) => r.includes(q));
+      return combina(`${c.nome} ${c.subtipos.map((s) => s.nome).join(" ")}`, q);
     });
   }, [dados.convenios, selecionados, filtro, q]);
 
@@ -795,13 +791,13 @@ function SeletorProfissionaisExame({ dados, exameId }: { dados: DadosClinica; ex
     return new Set(dados.profissionais.filter((p) => p.exames.includes(exameId)).map((p) => p.id));
   });
 
-  const q = semAcento(busca.trim());
+  const q = busca.trim();
 
   const filtrados = useMemo(() => {
     return dados.profissionais.filter((p) => {
       if (!q) return true;
       const espNome = dados.especialidades.find((e) => e.id === p.especialidadeId)?.nome ?? "";
-      return semAcento(p.nome).includes(q) || semAcento(espNome).includes(q);
+      return combina(`${p.nome} ${espNome}`, q);
     });
   }, [dados.profissionais, dados.especialidades, q]);
 

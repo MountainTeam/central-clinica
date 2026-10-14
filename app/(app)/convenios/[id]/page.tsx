@@ -15,7 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { atende, gruposPlanosDoConvenio, observacoesDoConvenio, semAcento } from "@/lib/regras";
+import { atende, combina, gruposPlanosDoConvenio, observacoesDoConvenio } from "@/lib/regras";
 import { salvarConvenio } from "@/lib/repositorio";
 import type { GrupoPlano, GrupoPlanoStatus, Profissional, Tipo } from "@/lib/modelo";
 import { Avatar, Botao, LogoMarca, Segmentado, Vazio } from "@/components/ui";
@@ -53,11 +53,10 @@ export default function PaginaConvenioDetalhes() {
     );
   }
 
-  const termo = semAcento(buscaPlano.trim());
+  const termo = buscaPlano.trim();
 
   const filtrarPlanos = (planos: string[]) => {
-    if (!termo) return planos;
-    return planos.filter((p) => semAcento(p).includes(termo));
+    return planos.filter((p) => combina(p, buscaPlano));
   };
 
   const gAtende = grupos.find((g) => g.status === "atende") ?? {

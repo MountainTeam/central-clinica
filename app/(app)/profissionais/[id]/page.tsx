@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Check, ChevronDown, ChevronRight, ClipboardList, Clock, FlaskConical, Minus, NotebookPen, Pencil, Search, ShieldCheck, TriangleAlert, X } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { DIAS, type DadosClinica, type Profissional } from "@/lib/modelo";
-import { semAcento, subtipoInfo } from "@/lib/regras";
+import { coberturaDaBusca, combina, subtipoInfo } from "@/lib/regras";
 import { salvarProfissional } from "@/lib/repositorio";
 import { Avatar, Botao, Chip, Icone, LogoMarca, Secao, Vazio } from "@/components/ui";
 import { EditorHorarios, lerHorarios } from "@/components/formularios";
@@ -193,39 +193,17 @@ function ChecadorConveniosProfissional({ dados, p }: { dados: DadosClinica; p: P
   const totalConsultas = conveniosAtendidos.reduce((acc, curr) => acc + curr.subs.filter((s) => p.atende[s.id]?.includes("c")).length, 0);
   const totalExames = conveniosAtendidos.reduce((acc, curr) => acc + curr.subs.filter((s) => p.atende[s.id]?.includes("e")).length, 0);
 
-  const q = semAcento(busca.trim());
+  const q = busca.trim();
 
   const principaisConvenios = useMemo(() => {
     return [...conveniosAtendidos].sort((a, b) => b.subs.length - a.subs.length).slice(0, 4);
   }, [conveniosAtendidos]);
 
-  const resultadoBusca = useMemo(() => {
-    if (!q) return null;
-
-    const matchesClinica = dados.convenios.filter((c) => {
-      const nomeC = semAcento(c.nome);
-      const redes = c.subtipos.map((s) => semAcento(s.nome));
-      return nomeC.includes(q) || redes.some((r) => r.includes(q));
-    });
-
-    const atendidosNoMatch = matchesClinica
-      .map((c) => {
-        const subsAtendidos = c.subtipos.filter((s) => {
-          const atendeSub = !!p.atende[s.id];
-          if (!atendeSub) return false;
-          return semAcento(c.nome).includes(q) || semAcento(s.nome).includes(q);
-        });
-        return { c, subs: subsAtendidos };
-      })
-      .filter((x) => x.subs.length > 0);
-
-    const naoAtendidosNoMatch = matchesClinica.filter((c) => {
-      const temAlgumAtendido = c.subtipos.some((s) => p.atende[s.id]);
-      return !temAlgumAtendido;
-    });
-
-    return { atendidosNoMatch, naoAtendidosNoMatch, totalEncontrados: matchesClinica.length };
-  }, [dados.convenios, p.atende, q]);
+  // Sem seletor Consulta/Exame nesta tela: a rede cobre quando atende consulta ou exame
+  const resultadoBusca = useMemo(
+    () => (q ? coberturaDaBusca(dados.convenios, (s) => (p.atende[s.id] ?? "") !== "", q) : null),
+    [dados.convenios, p.atende, q],
+  );
 
   if (!dados.convenios.length) {
     return <Vazio texto="Nenhum convênio cadastrado nesta clínica." />;
@@ -302,14 +280,14 @@ function ChecadorConveniosProfissional({ dados, p }: { dados: DadosClinica; p: P
       {/* RESULTADO DA BUSCA ATIVA */}
       {busca && resultadoBusca && (
         <div className="space-y-3 pt-1">
-          {resultadoBusca.totalEncontrados === 0 ? (
+          {resultadoBusca.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-borda p-4 text-center">
-              <p className="text-sm text-suave">Nenhum convênio encontrado para &quot;{busca}&quot; nesta unidade.</p>
+              <p className="text-sm text-suave">Nenhum convênio ou rede com &ldquo;{busca}&rdquo; nesta unidade.</p>
             </div>
           ) : (
             <>
               {/* Convênios que o médico atende */}
-              {resultadoBusca.atendidosNoMatch.map(({ c, subs }) => {
+              {resultadoBusca.filter((r) => r.cobre.length).map(({ convenio: c, cobre: subs, naoCobre }) => {
                 const restricoesConvenio = p.restricoes.filter((r) =>
                   r.subtipoId ? c.subtipos.some((s) => s.id === r.subtipoId) : false
                 );
@@ -356,18 +334,30 @@ function ChecadorConveniosProfissional({ dados, p }: { dados: DadosClinica; p: P
                         );
                       })}
                     </div>
+                    {naoCobre.length > 0 && (
+                      <div className="flex flex-wrap gap-1 border-t border-borda/60 px-4 py-2.5">
+                        {naoCobre.map((s) => <Chip key={s.id} tom="alerta">{s.nome} · não cobre</Chip>)}
+                      </div>
+                    )}
                   </div>
                 );
               })}
 
               {/* Convênios da clínica que este médico NÃO atende */}
-              {resultadoBusca.naoAtendidosNoMatch.map((c) => (
+              {resultadoBusca.filter((r) => !r.cobre.length).map(({ convenio: c, naoCobre }) => (
                 <div key={c.id} className="flex items-center justify-between rounded-2xl border border-borda bg-fundo/40 p-3.5 text-sm">
                   <div className="flex items-center gap-2.5 opacity-70">
                     <LogoMarca nome={c.nome} logo={c.logo} cor={c.cor} tamanho="sm" />
                     <div>
                       <span className="font-semibold text-texto">{c.nome}</span>
-                      <p className="text-xs text-suave">Disponível na clínica em outras especialidades</p>
+                      <p className="text-xs text-suave">
+                        {naoCobre.length ? "Convênio atendido, mas não nesta rede" : "Disponível na clínica em outras especialidades"}
+                      </p>
+                      {naoCobre.length > 0 && (
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          {naoCobre.map((s) => <Chip key={s.id} tom="alerta">{s.nome} · não cobre</Chip>)}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <span className="rounded-lg bg-borda/50 px-2.5 py-1 text-xs font-semibold text-suave">
@@ -462,7 +452,7 @@ function SecaoExamesProfissional({
   abrirExame: (id: string) => void;
 }) {
   const [busca, setBusca] = useState("");
-  const q = semAcento(busca.trim());
+  const q = busca.trim();
 
   const lista = useMemo(() => {
     return examesIds
@@ -472,7 +462,7 @@ function SecaoExamesProfissional({
 
   const filtrados = useMemo(() => {
     if (!q) return lista;
-    return lista.filter((e) => semAcento(e.nome).includes(q));
+    return lista.filter((e) => combina(e.nome, q));
   }, [lista, q]);
 
   if (!lista.length) return <Vazio texto="Nenhum exame realizado por este profissional." />;

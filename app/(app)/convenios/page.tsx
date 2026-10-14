@@ -11,7 +11,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { gruposPlanosDoConvenio, novoId, observacoesDoConvenio, semAcento } from "@/lib/regras";
+import { combina, gruposPlanosDoConvenio, novoId, observacoesDoConvenio } from "@/lib/regras";
 import { salvarConvenio } from "@/lib/repositorio";
 import type { Convenio } from "@/lib/modelo";
 import { Botao, CabecalhoPagina, LogoMarca, Vazio } from "@/components/ui";
@@ -21,7 +21,7 @@ export default function Convenios() {
   const [busca, setBusca] = useState("");
 
   const conveniosFiltrados = dados.convenios.filter((c) =>
-    semAcento(c.nome).includes(semAcento(busca.trim()))
+    combina(c.nome, busca)
   );
 
   const criarConvenioModelo = () => {
