@@ -201,3 +201,14 @@ export function trechosDestaque(texto: string, q: string) {
 export type Recente = { tipo: "profissional" | "exame"; id: string };
 export const lembrarRecente = (lista: Recente[], r: Recente, max = 8) =>
   [r, ...lista.filter((x) => x.tipo !== r.tipo || x.id !== r.id)].slice(0, max);
+
+// O item cujo próprio nome mais combina com a busca, para mostrar acima das abas
+export function resultadoPrincipal<T extends { nome: string }>(itens: T[], q: string): T | undefined {
+  let melhor: T | undefined;
+  let p = 0;
+  for (const x of itens) {
+    const n = pontuacao(x.nome, q);
+    if (n > p) { p = n; melhor = x; }
+  }
+  return melhor;
+}

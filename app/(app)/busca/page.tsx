@@ -9,13 +9,15 @@ import {
   ChevronRight,
   FlaskConical,
   Search,
+  LayoutGrid,
   ShieldAlert,
+  ShieldCheck,
   UserRound,
   X,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import {
-  type Recente, combina, gruposPlanosDoConvenio, idsDeRedes, lembrarRecente, observacoesDoConvenio, pontuacao, sugestoesDePlano, atende,
+  type Recente, combina, gruposPlanosDoConvenio, idsDeRedes, lembrarRecente, observacoesDoConvenio, pontuacao, resultadoPrincipal, sugestoesDePlano, atende,
 } from "@/lib/regras";
 import { CartaoProfissional, Chip, Destaque, Icone, LogoMarca, Segmentado, SeletorConvenio, SeletorEspecialidade, Vazio } from "@/components/ui";
 
@@ -138,6 +140,15 @@ function BuscaRapida() {
     if (contagem[melhor.id] > 0) setSecaoAtiva(melhor.id);
   }, [q, chaveContagem, secaoAtiva]);
 
+  // o item cujo nome mais combina, quando ele não está na aba aberta ("mamo" → Mamografia com Profissionais aberto)
+  const principal = q ? resultadoPrincipal([
+    ...profissionaisFiltrados.map((x) => ({ aba: "profissionais" as const, id: x.id, nome: x.nome })),
+    ...examesFiltrados.map((x) => ({ aba: "exames" as const, id: x.id, nome: x.nome })),
+    ...conveniosFiltrados.map((x) => ({ aba: "convenios" as const, id: x.id, nome: x.nome })),
+    ...especialidadesFiltradas.map((x) => ({ aba: "especialidades" as const, id: x.id, nome: x.nome })),
+  ], q) : undefined;
+  const mostrarPrincipal = principal && principal.aba !== secaoAtiva ? principal : undefined;
+
   const sugestoes = q.length >= 2 ? sugestoesDePlano(dados.convenios, q).filter((x) => x.subtipo.id !== subtipo) : [];
   const abertos = q ? [] : recentes.flatMap((r) => {
     if (r.tipo === "profissional") {
@@ -147,6 +158,17 @@ function BuscaRapida() {
     const e = dados.exames.find((x) => x.id === r.id);
     return e ? [{ r, nome: e.nome }] : [];
   });
+
+  // ←/→ movem o foco e ativam a aba vizinha
+  const teclaAbas = (e: React.KeyboardEvent) => {
+    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+    e.preventDefault();
+    const i = ABAS.findIndex((a) => a.id === secaoAtiva);
+    const prox = ABAS[(i + (e.key === "ArrowRight" ? 1 : ABAS.length - 1)) % ABAS.length].id;
+    clicouAba.current = true;
+    setSecaoAtiva(prox);
+    document.getElementById(`aba-${prox}`)?.focus();
+  };
 
   return (
     <div className="space-y-6">
@@ -242,7 +264,36 @@ function BuscaRapida() {
         </div>
       )}
 
-      <div role="tablist" aria-label="Resultados" className="flex gap-1 overflow-x-auto rounded-2xl border border-borda bg-superficie p-1">
+      {mostrarPrincipal && (() => {
+        const { aba, id, nome } = mostrarPrincipal;
+        const visual = {
+          profissionais: { icone: UserRound, tipo: "Profissional", acao: "Ver ficha" },
+          exames: { icone: FlaskConical, tipo: "Exame", acao: "Abrir" },
+          convenios: { icone: ShieldCheck, tipo: "Convênio", acao: "Ver regras" },
+          especialidades: { icone: LayoutGrid, tipo: "Especialidade", acao: "Ver médicos" },
+        }[aba];
+        const conteudo = (
+          <>
+            <span className="text-xs font-semibold uppercase tracking-wider text-suave">Resultado principal</span>
+            <visual.icone className="size-4 shrink-0 text-verde" />
+            <span className="min-w-0 flex-1 truncate font-semibold text-texto"><Destaque texto={nome} q={q} /> <span className="font-normal text-suave">· {visual.tipo}</span></span>
+            <span className="flex items-center gap-1 text-verde">{visual.acao}<ChevronRight className="size-4" /></span>
+          </>
+        );
+        const classe = "entrar pressionavel flex w-full items-center gap-3 rounded-2xl border border-verde/30 bg-superficie px-4 py-2.5 text-left text-sm hover:border-verde/60";
+        if (aba === "profissionais") return <Link href={`/profissionais/${id}`} onClick={() => lembrar({ tipo: "profissional", id })} className={classe}>{conteudo}</Link>;
+        if (aba === "convenios") return <Link href={`/convenios/${id}`} className={classe}>{conteudo}</Link>;
+        return (
+          <button type="button" className={classe} onClick={() => {
+            if (aba === "exames") { lembrar({ tipo: "exame", id }); abrir({ tipo: "exame", id }); return; }
+            clicouAba.current = true;
+            setEsp(id);
+            setSecaoAtiva("profissionais");
+          }}>{conteudo}</button>
+        );
+      })()}
+
+      <div role="tablist" aria-label="Resultados" onKeyDown={teclaAbas} className="flex gap-1 overflow-x-auto rounded-2xl border border-borda bg-superficie p-1">
         {ABAS.map((a) => {
           const ativo = secaoAtiva === a.id;
           return (
@@ -252,6 +303,7 @@ function BuscaRapida() {
               type="button"
               role="tab"
               aria-selected={ativo}
+              tabIndex={ativo ? 0 : -1}
               aria-controls="resultados-busca"
               onClick={() => { clicouAba.current = true; setSecaoAtiva(a.id); }}
               className={`pressionavel flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${
