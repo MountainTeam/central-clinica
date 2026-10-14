@@ -6,7 +6,7 @@ import { ChevronDown, Search, X } from "lucide-react";
 import { useStore, type Formulario } from "@/lib/store";
 import { DIAS, type Convenio, type DadosClinica, type Exame, type GrupoPlano, type Horario, type Papel, type Profissional } from "@/lib/modelo";
 import { PAPEIS } from "@/lib/permissoes";
-import { combina, corDoIndice, gruposPlanosDoConvenio, novoId, observacoesDoConvenio, slug } from "@/lib/regras";
+import { combina, corDoIndice, gruposPlanosDoConvenio, juntarRedes, novoId, observacoesDoConvenio, slug } from "@/lib/regras";
 import { salvarClinica, salvarConvenio, salvarEspecialidade, salvarExame, salvarExameComProfissionais, salvarOrganizacao, salvarProfissional, salvarUsuario } from "@/lib/repositorio";
 import { Botao, EnvioLogo, Gaveta, LogoMarca, useFecharGaveta } from "./ui";
 
@@ -1010,6 +1010,15 @@ function FormConvenio({ id }: { id?: string }) {
   const c = dados.convenios.find((x) => x.id === id);
   const [logo, setLogo] = useState(c?.logo);
   const [nomeAtual, setNomeAtual] = useState(c?.nome ?? "");
+  const [redes, setRedes] = useState(c?.subtipos ?? []);
+  const [novasRedes, setNovasRedes] = useState("");
+  const [removendo, setRemovendo] = useState<string | null>(null);
+  const linhasNovas = novasRedes.split(/[\n,]/).map((x) => x.trim()).filter(Boolean);
+  const qtdNovas = juntarRedes(c?.id ?? "", redes, linhasNovas).length - redes.length;
+  const usoDaRede = (rid: string) => ({
+    medicos: dados.profissionais.filter((p) => p.atende[rid]).length,
+    exames: dados.exames.filter((e) => e.subtipos.includes(rid)).length,
+  });
 
   const grupos = c ? gruposPlanosDoConvenio(c) : [];
   const gAtende = grupos.find((g) => g.status === "atende");
@@ -1044,11 +1053,17 @@ function FormConvenio({ id }: { id?: string }) {
       .map((x) => x.trim())
       .filter(Boolean);
 
-    // Tipos de rede para vinculação de profissionais e exames
-    const redesManuais = String(f.get("subtipos") ?? "").split(/[\n,]/).map((x) => x.trim()).filter(Boolean);
-    const nomesRedes = redesManuais.length > 0
-      ? redesManuais
-      : Array.from(new Set([...planosAtende, ...planosSomente]));
+    // redes que ficaram mantêm o id (com o nome editado); as novas ganham id a partir da caixa
+    const existentes: typeof redes = [];
+    const vistas = new Set<string>();
+    for (const r of redes) {
+      const n = String(f.get(`rede:${r.id}`) ?? r.nome).trim();
+      if (!n || vistas.has(slug(n))) continue;
+      vistas.add(slug(n));
+      existentes.push({ ...r, nome: n });
+    }
+    const nomesCaixa = String(f.get("novasRedes") ?? "").split(/[\n,]/).map((x) => x.trim()).filter(Boolean);
+    const subtipos = juntarRedes(convId, existentes, nomesCaixa.length || existentes.length ? nomesCaixa : Array.from(new Set([...planosAtende, ...planosSomente])));
 
     const novosGrupos: GrupoPlano[] = [
       { status: "atende", titulo: "Atende consultas e exames", planos: planosAtende },
@@ -1062,8 +1077,7 @@ function FormConvenio({ id }: { id?: string }) {
       nome,
       cor: c?.cor ?? corDoIndice(dados.convenios.length),
       logo,
-      // rede com o mesmo nome mantém o id, para não perder o que já foi marcado nos médicos e exames
-      subtipos: nomesRedes.map((n) => c?.subtipos.find((s) => s.nome === n) ?? { id: `${convId}-${slug(n)}`, nome: n }),
+      subtipos,
       gruposPlanos: novosGrupos,
       observacoesGerais: observacoes,
     };
@@ -1129,14 +1143,42 @@ function FormConvenio({ id }: { id?: string }) {
           />
         </Campo>
 
-        <details className="text-xs text-suave">
-          <summary className="cursor-pointer font-semibold hover:text-texto">Avançado: Redes técnicas para médicos</summary>
-          <div className="mt-2">
-            <Campo rotulo="Redes manuais" dica="Opcional. Se vazio, sincroniza com os planos de consulta e exames.">
-              <textarea name="subtipos" rows={2} defaultValue={c?.subtipos.map((s) => s.nome).join(", ")} className={campo} />
-            </Campo>
-          </div>
-        </details>
+        <div className="space-y-2">
+          <h5 className="text-sm font-semibold">Redes (usadas nos médicos e exames)</h5>
+          {redes.length === 0 && <p className="text-xs text-suave">Nenhuma rede ainda. Se deixar vazio, usa os planos acima.</p>}
+          {redes.map((r) => {
+            const uso = usoDaRede(r.id);
+            return (
+              <div key={r.id} className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <input name={`rede:${r.id}`} defaultValue={r.nome} aria-label={`Nome da rede ${r.nome}`} className={campo} />
+                  <button type="button" aria-label={`Remover rede ${r.nome}`} className="pressionavel grid size-10 shrink-0 place-items-center rounded-xl text-suave hover:bg-fundo hover:text-texto"
+                    onClick={() => {
+                      if (uso.medicos || uso.exames) setRemovendo(r.id);
+                      else { marcar(); setRedes(redes.filter((x) => x.id !== r.id)); }
+                    }}>
+                    <X className="size-4" />
+                  </button>
+                </div>
+                {removendo === r.id && (
+                  <div className="flex flex-wrap items-center gap-2 rounded-xl bg-alerta-claro px-3 py-2 text-sm text-alerta">
+                    <span className="flex-1">{r.nome} está marcada em {uso.medicos} {uso.medicos === 1 ? "médico" : "médicos"} e {uso.exames} {uso.exames === 1 ? "exame" : "exames"}. Remover mesmo assim?</span>
+                    <Botao variante="secundario" onClick={() => setRemovendo(null)}>Manter</Botao>
+                    <Botao onClick={() => { marcar(); setRemovendo(null); setRedes(redes.filter((x) => x.id !== r.id)); }}>Remover</Botao>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          <Campo rotulo="Acrescentar redes" dica="Vírgula ou uma por linha; aceita colar a coluna da planilha.">
+            <textarea name="novasRedes" rows={2} value={novasRedes} onChange={(e) => setNovasRedes(e.target.value)} className={campo} />
+          </Campo>
+          {linhasNovas.length > 0 && (
+            <p className="text-xs text-suave">
+              {qtdNovas} {qtdNovas === 1 ? "rede nova" : "redes novas"}; {linhasNovas.length - qtdNovas} já {linhasNovas.length - qtdNovas === 1 ? "existe" : "existem"}.
+            </p>
+          )}
+        </div>
       </div>
     </Moldura>
   );

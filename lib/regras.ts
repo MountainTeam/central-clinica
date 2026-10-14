@@ -148,3 +148,10 @@ export function observacoesDoConvenio(c: Convenio): string[] {
   return [];
 }
 
+
+// planos em "Não atendemos" que também são redes com médico ou exame vinculado
+export function conflitosPlanos(c: Convenio, d: DadosClinica): string[] {
+  const usadas = new Set([...d.profissionais.flatMap((p) => Object.keys(p.atende)), ...d.exames.flatMap((e) => e.subtipos)]);
+  const nomesUsados = new Set(c.subtipos.filter((s) => usadas.has(s.id)).map((s) => slug(s.nome)));
+  return (c.gruposPlanos ?? []).filter((g) => g.status === "nao_atende").flatMap((g) => g.planos).filter((p) => nomesUsados.has(slug(p)));
+}

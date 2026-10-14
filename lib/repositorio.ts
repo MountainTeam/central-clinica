@@ -126,9 +126,26 @@ export function salvarExameComProfissionais(b: Banco, u: Usuario, e: Exame, prof
   return { ...b, exames: examesAtualizados, profissionais: profissionaisAtualizados };
 }
 
+// rede que saiu do convênio não pode continuar marcada em médico nem em exame
+function limparRedes(b: Banco, clinicaId: string, ids: Set<string>): Banco {
+  if (!ids.size) return b;
+  return {
+    ...b,
+    profissionais: b.profissionais.map((p) => p.clinicaId !== clinicaId ? p : {
+      ...p,
+      atende: Object.fromEntries(Object.entries(p.atende).filter(([id]) => !ids.has(id))),
+      restricoes: p.restricoes.map((r) => r.subtipoId && ids.has(r.subtipoId) ? { texto: r.texto } : r),
+    }),
+    exames: b.exames.map((e) => e.clinicaId !== clinicaId ? e : { ...e, subtipos: e.subtipos.filter((id) => !ids.has(id)) }),
+  };
+}
+
 export function salvarConvenio(b: Banco, u: Usuario, c: Convenio): Banco {
-  conferirClinica(u, c, b.convenios.find((x) => x.id === c.id));
-  return { ...b, convenios: gravarEm(b.convenios, c) };
+  const antes = b.convenios.find((x) => x.id === c.id);
+  conferirClinica(u, c, antes);
+  const ficam = new Set(c.subtipos.map((s) => s.id));
+  const sairam = new Set((antes?.subtipos ?? []).map((s) => s.id).filter((id) => !ficam.has(id)));
+  return limparRedes({ ...b, convenios: gravarEm(b.convenios, c) }, c.clinicaId, sairam);
 }
 
 export function salvarEspecialidade(b: Banco, u: Usuario, e: Especialidade): Banco {

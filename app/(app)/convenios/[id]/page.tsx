@@ -15,7 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { atende, combina, gruposPlanosDoConvenio, observacoesDoConvenio } from "@/lib/regras";
+import { atende, combina, conflitosPlanos, gruposPlanosDoConvenio, observacoesDoConvenio } from "@/lib/regras";
 import { salvarConvenio } from "@/lib/repositorio";
 import type { GrupoPlano, GrupoPlanoStatus, Profissional, Tipo } from "@/lib/modelo";
 import { Avatar, Botao, LogoMarca, Segmentado, Vazio } from "@/components/ui";
@@ -35,6 +35,7 @@ export default function PaginaConvenioDetalhes() {
 
   const subId = conv?.subtipos.some((s) => s.id === subEscolhido) ? subEscolhido : conv?.subtipos[0]?.id ?? "";
 
+  const conflitos = conv ? conflitosPlanos(conv, dados) : [];
   const grupos = useMemo(() => (conv ? gruposPlanosDoConvenio(conv) : []), [conv]);
   const observacoes = useMemo(() => (conv ? observacoesDoConvenio(conv) : []), [conv]);
 
@@ -146,6 +147,12 @@ export default function PaginaConvenioDetalhes() {
 
   return (
     <div className="space-y-6">
+      {conflitos.length > 0 && (
+        <div role="alert" className="flex items-start gap-2 rounded-2xl bg-alerta-claro px-4 py-3 text-sm font-medium text-alerta">
+          <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+          <span>{conflitos.join(", ")} {conflitos.length === 1 ? "está" : "estão"} em “Não atendemos”, mas {conflitos.length === 1 ? "aparece" : "aparecem"} como cobertos em médicos ou exames. Confira o cadastro.</span>
+        </div>
+      )}
       {/* Migalha de Pão (Breadcrumb) */}
       <nav className="entrar flex items-center gap-2 text-sm text-suave" aria-label="Breadcrumb">
         <Link href="/convenios" className="font-medium transition-colors hover:text-texto">
