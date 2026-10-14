@@ -113,7 +113,7 @@ export default function PaginaConvenioDetalhes() {
     executar(
       (b, u) => salvarConvenio(b, u, { ...conv, observacoesGerais: novasObservacoes }),
       "Observação removida",
-      { desfazer: true }
+      { desfazer: true, desfeito: "Exclusão desfeita" }
     );
   };
 

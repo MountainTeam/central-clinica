@@ -35,7 +35,7 @@ export default function PaginaBusca() {
 }
 
 function BuscaRapida() {
-  const { dados, abrir, clinica, plano, escolherPlano } = useStore();
+  const { dados, abrir, clinica, plano, escolherPlano, carregado } = useStore();
   const router = useRouter();
   const rota = usePathname();
   const params = useSearchParams();
@@ -79,6 +79,9 @@ function BuscaRapida() {
   }, [texto, secaoAtiva, esp, params, rota, router]);
 
   const q = texto.trim();
+  // especialidade de outra unidade (ou apagada) não filtra nada; sai da URL quando os dados já carregaram
+  const espOk = dados.especialidades.some((e) => e.id === esp) ? esp : "";
+  useEffect(() => { if (carregado && clinica && esp && !espOk) setEsp(""); }, [carregado, clinica, esp, espOk]);
   const subtipo = plano?.subtipoId ?? "";
   const tipo = plano?.tipo ?? "consulta";
   const validos = idsDeRedes(dados);
@@ -93,7 +96,7 @@ function BuscaRapida() {
   };
   const profissionaisFiltrados = ordenar(
     dados.profissionais.filter((p) => {
-      if (esp && p.especialidadeId !== esp) return false;
+      if (espOk && p.especialidadeId !== espOk) return false;
       if (subtipo && !atende(p, subtipo, tipo)) return false;
       return combina(textoProfissional(p), q);
     }),
@@ -104,7 +107,7 @@ function BuscaRapida() {
   const textoEspecialidade = (e: (typeof dados.especialidades)[number]) =>
     [e.nome, ...dados.profissionais.filter((p) => p.especialidadeId === e.id).map((p) => p.nome)].join(" ");
   const especialidadesFiltradas = ordenar(
-    dados.especialidades.filter((e) => (!esp || e.id === esp) && combina(textoEspecialidade(e), q)),
+    dados.especialidades.filter((e) => (!espOk || e.id === espOk) && combina(textoEspecialidade(e), q)),
     textoEspecialidade,
   );
 
@@ -123,7 +126,7 @@ function BuscaRapida() {
     (e) => e.nome,
   );
 
-  const filtrando = !!(q || subtipo || esp);
+  const filtrando = !!(q || subtipo || espOk);
   const contagem: Record<Secao, number> = {
     profissionais: profissionaisFiltrados.length,
     exames: examesFiltrados.length,
@@ -182,7 +185,7 @@ function BuscaRapida() {
                 onChange={(e) => setTexto(e.target.value)}
                 autoFocus
                 placeholder="Buscar por médico, especialidade, plano de convênio ou exame..."
-                className="h-14 w-full rounded-2xl bg-fundo pl-12 pr-24 text-[17px] outline-none ring-1 ring-transparent transition placeholder:text-suave focus:bg-superficie focus:ring-verde/40 focus:shadow-[0_0_0_4px_rgb(13_155_134/0.12)]"
+                className="h-14 w-full rounded-2xl bg-fundo pl-12 pr-24 text-[17px] outline-none ring-1 ring-transparent transition placeholder:text-suave focus:bg-superficie focus:ring-4 focus:ring-verde/15"
               />
               {texto ? (
                 <button
@@ -205,7 +208,7 @@ function BuscaRapida() {
                   <button
                     key={s.id}
                     type="button"
-                    onClick={() => { escolherPlano({ subtipoId: s.id, tipo: "consulta" }); setTexto(""); }}
+                    onClick={() => { escolherPlano({ subtipoId: s.id, tipo: "consulta" }); setTexto(""); setSecaoAtiva("profissionais"); }}
                     className="pressionavel flex items-center gap-2 rounded-xl border border-verde/30 bg-verde-claro/40 px-3 py-1.5 text-sm font-semibold text-verde hover:bg-verde-claro"
                   >
                     <LogoMarca nome={convenio.nome} logo={convenio.logo} cor={convenio.cor} tamanho="sm" />
@@ -242,7 +245,7 @@ function BuscaRapida() {
                   />
                 </div>
               </div>
-              <SeletorEspecialidade dados={dados} valor={esp} onChange={setEsp} />
+              <SeletorEspecialidade dados={dados} valor={espOk} onChange={setEsp} />
             </div>
       </div>
 

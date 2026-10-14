@@ -9,6 +9,7 @@ import { pontoZero } from "./semente";
 
 export type Plano = { subtipoId: string; tipo: Tipo } | null;
 export type Painel = { tipo: "exame"; id: string } | null;
+type OpcoesExecutar = { desfazer?: boolean; desfeito?: string };
 type Aviso = { texto: string; erro: boolean; acao?: { rotulo: string; fazer: () => void } };
 export type Formulario =
   | { tipo: "profissional"; id?: string }
@@ -35,8 +36,8 @@ type Store = {
   entrar: (usuarioId: string) => boolean;
   sair: () => void;
   // aplica uma gravação do repositório; mostra o aviso de sucesso ou a mensagem de recusa
-  // com `desfazer`, o aviso ganha o botão "Desfazer", que restaura o banco anterior
-  executar: (op: (b: Banco, u: Usuario) => Banco, sucesso: string, opcoes?: { desfazer?: boolean }) => boolean;
+  // com `desfazer`, o aviso ganha o botão "Desfazer", que restaura o banco anterior; `desfeito` é o aviso depois disso
+  executar: (op: (b: Banco, u: Usuario) => Banco, sucesso: string, opcoes?: OpcoesExecutar) => boolean;
   painel: Painel;
   abrir: (p: Painel) => void;
   // convênio e rede do paciente na ligação atual; vale para a aba e zera ao trocar de unidade
@@ -166,8 +167,11 @@ export function Provider({ children }: { children: React.ReactNode }) {
     gravarLocal(SESSAO_USUARIO, null);
     abrir(null);
     abrirForm(null);
+    // o Desfazer da sessão anterior não pode ficar para quem entrar depois
+    excluido.current = null;
+    setAviso(null);
   };
-  const executar = (op: (b: Banco, u: Usuario) => Banco, sucesso: string, opcoes?: { desfazer?: boolean }) => {
+  const executar = (op: (b: Banco, u: Usuario) => Banco, sucesso: string, opcoes?: OpcoesExecutar) => {
     if (!usuario) return false;
     if (protegido) { avisar(DADOS_ANTIGOS, true); return false; }
     try {
@@ -179,7 +183,7 @@ export function Provider({ children }: { children: React.ReactNode }) {
         if (protegido) { avisar(DADOS_ANTIGOS, true); return; }
         if (bancoRef.current !== novo) { avisar("Não dá mais para desfazer: houve outra alteração depois.", true); return; }
         setBanco(anterior);
-        avisar("Exclusão desfeita");
+        avisar(opcoes.desfeito ?? "Alteração desfeita");
       } } : undefined);
       return true;
     } catch (e) {

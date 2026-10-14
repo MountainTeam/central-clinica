@@ -51,6 +51,7 @@ Na tela, a unidade se chama **Clínica**; a organização aparece como **Organiz
 - Leitura: `clinicasDo(usuario)`, `organizacoes()`, `dadosDaClinica(clinicaId)` (especialidades, convênios, exames, profissionais), `usuarios()`.
 - Gravação: `salvarProfissional`, `salvarExame`, `salvarConvenio`, `salvarEspecialidade`, `salvarClinica`, `salvarOrganizacao`, `salvarUsuario`, `restaurarDemonstracao`. Toda gravação recebe o usuário e confere a permissão antes; sem permissão, lança um erro com mensagem em português.
 - Permissões: `podeVer(usuario, clinicaId)`, `podeEditar(usuario, clinicaId)`, `podeCriarClinica(usuario)`, `podeCriarUsuario(usuario)`. São funções puras, testáveis, e o desenho prevê movê-las para o servidor na v1.
+- Na v1, `dadosDaClinica` roda no servidor e o banco inteiro não vai para o navegador: a ocultação de observações internas para a Recepção hoje é só de interface.
 - O `store` (`lib/store.tsx`) guarda usuário e clínica atuais, chama o repositório e redesenha. Não aplica regra de acesso por conta própria.
 - Funções síncronas: suficiente para o protótipo. Na troca pelo banco, o `store` passa a esperar as respostas; as telas continuam iguais.
 

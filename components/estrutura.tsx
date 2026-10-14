@@ -68,6 +68,11 @@ export function Estrutura({ children }: { children: React.ReactNode }) {
   const itens = menu.filter((m) => !m.mostrar || (usuario && m.mostrar(usuario, clinicas.length, podeEditarAtual)));
   const ativo = itens.findIndex((m) => (m.href === "/" ? rota === "/" : rota.startsWith(m.href)));
   const deslogar = () => { sair(); router.replace("/login"); };
+  // no celular o menu rola de lado sem barra: o item ativo precisa entrar na vista
+  const menuCelular = useRef<HTMLElement>(null);
+  useEffect(() => {
+    menuCelular.current?.querySelector('[aria-current="page"]')?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [ativo, carregado, usuario]);
 
   if (!carregado || !usuario) {
     return (
@@ -137,7 +142,7 @@ export function Estrutura({ children }: { children: React.ReactNode }) {
             <LogOut className="size-5" />
           </button>
         </div>
-        <nav className="flex gap-1 overflow-x-auto px-3 pb-2">
+        <nav ref={menuCelular} className="flex gap-1 overflow-x-auto px-3 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {itens.map((m, i) => {
             const bloqueado = m.requerClinica && !clinica;
             if (bloqueado) {
@@ -155,7 +160,7 @@ export function Estrutura({ children }: { children: React.ReactNode }) {
               );
             }
             return (
-              <Link key={m.href} href={m.href}
+              <Link key={m.href} href={m.href} aria-current={i === ativo ? "page" : undefined}
                 className={`pressionavel flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold ${i === ativo ? "bg-verde-claro text-verde" : "text-suave"}`}>
                 <m.icone className="size-4" />{m.rotulo}
               </Link>
@@ -234,11 +239,14 @@ function FaixaPlano() {
   if (!plano || !info) return null;
   return (
     <div className="entrar mb-6 flex flex-wrap items-center gap-3 rounded-2xl border border-verde/30 bg-verde-claro/40 px-3 py-2">
-      <LogoMarca nome={info.convenio.nome} logo={info.convenio.logo} cor={info.convenio.cor} tamanho="sm" />
-      <p className="min-w-0 flex-1 truncate text-sm">
-        <span className="text-suave">Paciente: </span>
-        <strong className="font-semibold text-texto">{info.convenio.nome}</strong> · {info.subtipo.nome} · {plano.tipo === "consulta" ? "Consulta" : "Exame"}
-      </p>
+      {/* no celular o plano ocupa a linha inteira e quebra; "Trocar" e "Nova ligação" descem */}
+      <div className="flex w-full min-w-0 items-center gap-3 sm:w-auto sm:flex-1">
+        <LogoMarca nome={info.convenio.nome} logo={info.convenio.logo} cor={info.convenio.cor} tamanho="sm" />
+        <p className="min-w-0 flex-1 text-sm sm:truncate">
+          <span className="text-suave">Paciente: </span>
+          <strong className="font-semibold text-texto">{info.convenio.nome}</strong> · {info.subtipo.nome} · {plano.tipo === "consulta" ? "Consulta" : "Exame"}
+        </p>
+      </div>
       {trocando ? (
         <div className="w-full sm:w-72">
           <SeletorConvenio dados={dados} valor={plano.subtipoId} abertoInicial onFechar={() => setTrocando(false)}

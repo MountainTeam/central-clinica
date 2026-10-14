@@ -61,12 +61,13 @@ export function Botao({ children, onClick, variante = "primario", type = "button
   );
 }
 
-export function Chip({ children, tom = "neutro" }: { children: React.ReactNode; tom?: "neutro" | "verde" | "azul" | "alerta" }) {
+export function Chip({ children, tom = "neutro" }: { children: React.ReactNode; tom?: "neutro" | "verde" | "azul" | "alerta" | "perigo" }) {
   const t = {
     neutro: "bg-fundo text-texto border-borda",
     verde: "bg-verde-claro text-verde border-transparent",
     azul: "bg-azul-claro text-azul border-transparent",
     alerta: "bg-alerta-claro text-alerta border-transparent",
+    perigo: "bg-perigo-claro text-perigo border-transparent",
   }[tom];
   return <span className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[13px] font-medium ${t}`}>{children}</span>;
 }
@@ -422,7 +423,7 @@ export function CartaoProfissional({ p, especialidade, destaque, i, q = "", onAb
 }
 
 // Logo da clínica ou do convênio; sem imagem, mostra as iniciais sobre a cor
-export function LogoMarca({ nome, logo, cor = "#0d9b86", tamanho = "md" }: {
+export function LogoMarca({ nome, logo, cor = "#0b7a69", tamanho = "md" }: {
   nome: string; logo?: string; cor?: string; tamanho?: "sm" | "md" | "lg" | "xl";
 }) {
   const t = { sm: "size-6 rounded-md text-xs", md: "size-9 rounded-xl text-xs", lg: "size-14 rounded-2xl text-base", xl: "h-20 w-44 rounded-2xl text-xl" }[tamanho];

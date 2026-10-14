@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Check, ChevronDown, ChevronRight, ClipboardList, Copy, FlaskConical, Info, Pencil, Search, ShieldCheck, TriangleAlert, UserRound, X } from "lucide-react";
 import { useStore, type Painel } from "@/lib/store";
-import { coberturaDaBusca, combina, gruposHorarios, subtipoInfo } from "@/lib/regras";
+import { atende, coberturaDaBusca, combina, gruposHorarios, subtipoInfo } from "@/lib/regras";
 import type { DadosClinica, Exame, Profissional } from "@/lib/modelo";
 import { Atualizado, Avatar, Botao, Chip, Janela, LogoMarca, ObservacaoInterna, Secao, Vazio } from "./ui";
 
@@ -35,7 +35,9 @@ function Filtro({ valor, onChange, placeholder }: { valor: string; onChange: (v:
 
 // Quem realiza: abre as observações e restrições do médico sem sair do exame
 function QuemRealiza({ p }: { p: Profissional }) {
-  const { dados } = useStore();
+  const { dados, plano } = useStore();
+  // com o plano do paciente escolhido, a pergunta seguinte é "este médico atende?"
+  const rede = plano ? subtipoInfo(dados, plano.subtipoId)?.subtipo : undefined;
   const [aberto, setAberto] = useState(false);
   const semNotas = !p.observacoes && !p.observacoesInternas && !p.restricoes.length && !p.idadeMinima;
   return (
@@ -48,6 +50,7 @@ function QuemRealiza({ p }: { p: Profissional }) {
             <span className="line-clamp-2">{p.nome}</span>
             {p.restricoes.length > 0 && <TriangleAlert className="size-3.5 shrink-0 text-alerta" aria-label="Tem restrições" />}
           </span>
+          {plano && rede && <span className="mt-1 block">{atende(p, plano.subtipoId, plano.tipo) ? <Chip tom="verde">Atende {rede.nome}</Chip> : <Chip tom="perigo">Não atende {rede.nome}</Chip>}</span>}
           <span className="block text-sm text-suave">{p.horarios.length ? gruposHorarios(p.horarios).map((g) => <span key={g} className="block">{g}</span>) : "Horários não informados"}</span>
         </span>
         <ChevronDown className={`size-4 shrink-0 text-suave transition-transform duration-200 ${aberto ? "rotate-180" : ""}`} />
@@ -105,7 +108,6 @@ function FichaExame({ id }: { id: string }) {
               {cobre ? <Check className="mt-1 size-5 shrink-0" /> : <X className="mt-1 size-5 shrink-0" />}
               <span>{info.convenio.nome} · {info.subtipo.nome} {cobre ? "cobre" : "não cobre"} este exame</span>
             </p>
-            {!cobre && <p className="text-sm">Particular: <b className="text-base">{ex.valor || "consulte a recepção"}</b></p>}
           </div>
         </div>
       )}

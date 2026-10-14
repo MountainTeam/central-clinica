@@ -420,7 +420,7 @@ function FormProfissional({ id }: { id?: string }) {
   return (
     <Moldura titulo={p ? "Editar profissional" : "Novo profissional"} onSalvar={salvar}
       onExcluir={p && (() => {
-        if (!executar((b, u) => excluirProfissional(b, u, p.id), `${p.nome} excluído`, { desfazer: true })) return;
+        if (!executar((b, u) => excluirProfissional(b, u, p.id), `${p.nome} excluído`, { desfazer: true, desfeito: "Exclusão desfeita" })) return;
         abrirForm(null);
         router.push("/especialidades");
       })} rotuloExcluir={p?.nome}>
@@ -1021,7 +1021,7 @@ function FormExame({ id }: { id?: string }) {
   return (
     <Moldura titulo={ex ? "Editar exame" : "Novo exame"} onSalvar={salvar}
       onExcluir={ex && (() => {
-        if (!executar((b, u) => excluirExame(b, u, ex.id), `${ex.nome} excluído`, { desfazer: true })) return;
+        if (!executar((b, u) => excluirExame(b, u, ex.id), `${ex.nome} excluído`, { desfazer: true, desfeito: "Exclusão desfeita" })) return;
         abrirForm(null);
         abrir(null);
       })} rotuloExcluir={ex?.nome}>
@@ -1062,7 +1062,7 @@ function FormEspecialidade({ id }: { id?: string }) {
   };
   return (
     <Moldura titulo={esp ? "Editar especialidade" : "Nova especialidade"} onSalvar={salvar}
-      onExcluir={esp && (() => { if (executar((b, u) => excluirEspecialidade(b, u, esp.id), `${esp.nome} excluída`, { desfazer: true })) abrirForm(null); })}
+      onExcluir={esp && (() => { if (executar((b, u) => excluirEspecialidade(b, u, esp.id), `${esp.nome} excluída`, { desfazer: true, desfeito: "Exclusão desfeita" })) abrirForm(null); })}
       rotuloExcluir={esp?.nome}>
       <Campo rotulo="Nome"><input name="nome" defaultValue={esp?.nome} placeholder="Ex.: Mastologia" className={campo} /></Campo>
     </Moldura>
@@ -1145,7 +1145,7 @@ function FormConvenio({ id }: { id?: string }) {
   };
   return (
     <Moldura titulo={c ? "Editar convênio" : "Novo convênio"} onSalvar={salvar}
-      onExcluir={c && (() => { if (executar((b, u) => excluirConvenio(b, u, c.id), `${c.nome} excluído`, { desfazer: true })) abrirForm(null); })}
+      onExcluir={c && (() => { if (executar((b, u) => excluirConvenio(b, u, c.id), `${c.nome} excluído`, { desfazer: true, desfeito: "Exclusão desfeita" })) abrirForm(null); })}
       rotuloExcluir={c?.nome}>
       <EnvioLogo nome={nomeAtual} cor={c?.cor ?? corDoIndice(dados.convenios.length)} valor={logo} onChange={(l) => { marcar(); setLogo(l); }} />
       <Campo rotulo="Nome do convênio">
@@ -1307,7 +1307,7 @@ function FormUsuario({ id }: { id?: string }) {
 
   return (
     <Moldura titulo={us ? "Editar usuário" : "Novo usuário"} onSalvar={salvar}
-      onExcluir={us && (() => { if (executar((b, u) => excluirUsuario(b, u, us.id), `${us.nome} excluído`, { desfazer: true })) abrirForm(null); })}
+      onExcluir={us && (() => { if (executar((b, u) => excluirUsuario(b, u, us.id), `${us.nome} excluído`, { desfazer: true, desfeito: "Exclusão desfeita" })) abrirForm(null); })}
       rotuloExcluir={us?.nome}>
       <div className="grid gap-4 sm:grid-cols-2">
         <Campo rotulo="Nome"><input name="nome" defaultValue={us?.nome} placeholder="Ex.: Recepção COMN tarde" className={campo} /></Campo>

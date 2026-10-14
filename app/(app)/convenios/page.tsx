@@ -29,7 +29,7 @@ export default function Convenios() {
       id: convId,
       clinicaId: clinica.id,
       nome: "Saúde Mais",
-      cor: "#0d9b86",
+      cor: "#0b7a69",
       subtipos: [
         { id: `${convId}-essencial`, nome: "Essencial" },
         { id: `${convId}-prime`, nome: "Prime" },
