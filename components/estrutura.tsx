@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
-import { Building2, Check, CheckCircle2, ChevronsUpDown, FlaskConical, LayoutGrid, Lock, LogOut, PhoneCall, Search, ShieldCheck, TriangleAlert, Users } from "lucide-react";
+import { Building2, Check, CheckCircle2, ChevronsUpDown, FileUp, FlaskConical, LayoutGrid, Lock, LogOut, PhoneCall, Search, ShieldCheck, TriangleAlert, Users } from "lucide-react";
 import type { Usuario } from "@/lib/modelo";
 import { PAPEIS, podeCriarUsuario, podeGerenciarUnidades } from "@/lib/permissoes";
 import { subtipoInfo } from "@/lib/regras";
@@ -17,7 +17,7 @@ type ItemMenu = {
   rotulo: string;
   icone: typeof Search;
   requerClinica?: boolean;
-  mostrar?: (u: Usuario, unidades: number) => boolean;
+  mostrar?: (u: Usuario, unidades: number, edita: boolean) => boolean;
 };
 
 const menu: ItemMenu[] = [
@@ -26,11 +26,12 @@ const menu: ItemMenu[] = [
   { href: "/especialidades", rotulo: "Especialidades", icone: LayoutGrid, requerClinica: true },
   { href: "/convenios", rotulo: "Convênios", icone: ShieldCheck, requerClinica: true },
   { href: "/exames", rotulo: "Exames", icone: FlaskConical, requerClinica: true },
+  { href: "/importar", rotulo: "Importar", icone: FileUp, requerClinica: true, mostrar: (_u, _n, edita) => edita },
   { href: "/usuarios", rotulo: "Usuários", icone: Users, mostrar: podeCriarUsuario },
 ];
 
 export function Estrutura({ children }: { children: React.ReactNode }) {
-  const { usuario, carregado, sair, aviso, avisar, clinica, clinicas, form, abrir } = useStore();
+  const { usuario, carregado, sair, aviso, avisar, clinica, clinicas, form, abrir, podeEditarAtual } = useStore();
   const router = useRouter();
   const rota = usePathname();
   // telas que funcionam sem unidade escolhida
@@ -64,7 +65,7 @@ export function Estrutura({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("keydown", tecla);
   }, [clinica, form, rota, router, abrir]);
 
-  const itens = menu.filter((m) => !m.mostrar || (usuario && m.mostrar(usuario, clinicas.length)));
+  const itens = menu.filter((m) => !m.mostrar || (usuario && m.mostrar(usuario, clinicas.length, podeEditarAtual)));
   const ativo = itens.findIndex((m) => (m.href === "/" ? rota === "/" : rota.startsWith(m.href)));
   const deslogar = () => { sair(); router.replace("/login"); };
 

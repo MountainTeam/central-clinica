@@ -3,6 +3,7 @@
 import { VERSAO, type Banco, type Clinica, type Convenio, type DadosClinica, type Especialidade, type Exame, type Organizacao, type Profissional, type Usuario } from "./modelo.ts";
 import { podeCriarClinica, podeCriarUsuario, podeEditar, podeVer, podeVerInterno } from "./permissoes.ts";
 import { pontoZero } from "./semente.ts";
+import { juntarRedes, slug } from "./regras.ts";
 
 export const CHAVE = "cartilha:v1";
 
@@ -239,4 +240,26 @@ export function excluirUsuario(b: Banco, u: Usuario, id: string): Banco {
 export function restaurarDemonstracao(_b: Banco, u: Usuario): Banco {
   exigir(podeCriarUsuario(u), "Só o Administrador restaura a demonstração.");
   return pontoZero();
+}
+
+// --- importar redes de planilha ---
+
+export function importarRedes(b: Banco, u: Usuario, convenioId: string, nomes: string[]): Banco {
+  const c = achar(b.convenios, u, convenioId);
+  return salvarConvenio(b, u, { ...c, subtipos: juntarRedes(c.id, c.subtipos, nomes) });
+}
+
+export function importarRedesPorMedico(b: Banco, u: Usuario, convenioId: string, itens: { profissionalId: string; rede: string; atendimento: "c" | "e" | "ce" }[]): Banco {
+  const c = achar(b.convenios, u, convenioId);
+  const subtipos = juntarRedes(c.id, c.subtipos, itens.map((i) => i.rede));
+  const idDe = (nome: string) => subtipos.find((s) => slug(s.nome) === slug(nome))!.id;
+  const porMedico = new Map<string, Record<string, "c" | "e" | "ce">>();
+  for (const i of itens) porMedico.set(i.profissionalId, { ...porMedico.get(i.profissionalId), [idDe(i.rede)]: i.atendimento });
+  let novo = salvarConvenio(b, u, { ...c, subtipos });
+  for (const [id, mapa] of porMedico) {
+    const p = achar(novo.profissionais, u, id);
+    exigir(p.clinicaId === c.clinicaId, "O médico é de outra clínica.");
+    novo = salvarProfissional(novo, u, { ...p, atende: { ...p.atende, ...mapa } });
+  }
+  return novo;
 }
