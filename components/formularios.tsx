@@ -1,14 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { createContext, useContext, useMemo, useState } from "react";
 import { ChevronDown, Search, X } from "lucide-react";
 import { useStore, type Formulario } from "@/lib/store";
 import { DIAS, type Convenio, type DadosClinica, type Exame, type GrupoPlano, type Horario, type Papel, type Profissional } from "@/lib/modelo";
 import { PAPEIS } from "@/lib/permissoes";
 import { combina, corDoIndice, gruposPlanosDoConvenio, novoId, observacoesDoConvenio, slug } from "@/lib/regras";
 import { salvarClinica, salvarConvenio, salvarEspecialidade, salvarExame, salvarExameComProfissionais, salvarOrganizacao, salvarProfissional, salvarUsuario } from "@/lib/repositorio";
-import { Botao, EnvioLogo, Gaveta, LogoMarca } from "./ui";
+import { Botao, EnvioLogo, Gaveta, LogoMarca, useFecharGaveta } from "./ui";
 
 export const campo = "w-full rounded-xl border border-borda bg-superficie px-3 py-2.5 text-[15px] outline-none transition placeholder:text-suave/60 focus:border-verde focus:ring-4 focus:ring-verde/15";
 const linhas = (t: FormDataEntryValue | null) => String(t ?? "").split("\n").map((x) => x.trim()).filter(Boolean);
@@ -48,16 +48,21 @@ export function EditorHorarios({ valor }: { valor: Horario[] }) {
 export const lerHorarios = (f: FormData): Horario[] =>
   DIAS.filter((d) => f.get(`h:${d}`)).map((dia) => ({ dia, inicio: String(f.get(`h:${dia}:inicio`)), fim: String(f.get(`h:${dia}:fim`)) }));
 
+// a Moldura avisa aqui no primeiro campo mexido; a Gaveta usa isso para pedir confirmação ao descartar
+const MarcarAlterado = createContext<() => void>(() => {});
+
 export function Formularios() {
   const { form, abrirForm } = useStore();
   // guarda o último formulário para a gaveta sair com conteúdo; `n` zera os campos a cada abertura
   const [ultimo, setUltimo] = useState<{ f: Formulario; n: number }>({ f: null, n: 0 });
-  if (form && form !== ultimo.f) setUltimo({ f: form, n: ultimo.n + 1 });
+  const [alterado, setAlterado] = useState(false);
+  if (form && form !== ultimo.f) { setUltimo({ f: form, n: ultimo.n + 1 }); setAlterado(false); }
   const atual = form ?? ultimo.f;
   const k = ultimo.n;
 
   return (
-    <Gaveta aberta={!!form} onFechar={() => abrirForm(null)} largura="max-w-2xl">
+    <Gaveta aberta={!!form} onFechar={() => abrirForm(null)} alterado={alterado} largura="max-w-2xl">
+      <MarcarAlterado.Provider value={() => setAlterado(true)}>
       {atual?.tipo === "profissional" && <FormProfissional key={k} id={atual.id} />}
       {atual?.tipo === "especialidade" && <FormEspecialidade key={k} />}
       {atual?.tipo === "convenio" && <FormConvenio key={k} id={atual.id} />}
@@ -65,20 +70,25 @@ export function Formularios() {
       {atual?.tipo === "organizacao" && <FormOrganizacao key={k} />}
       {atual?.tipo === "clinica" && <FormClinica key={k} id={atual.id} />}
       {atual?.tipo === "usuario" && <FormUsuario key={k} />}
+      </MarcarAlterado.Provider>
     </Gaveta>
   );
 }
 
 export function Moldura({ titulo, onSalvar, children }: { titulo: string; onSalvar: (f: FormData) => void; children: React.ReactNode }) {
-  const { abrirForm } = useStore();
+  const fechar = useFecharGaveta();
+  const marcar = useContext(MarcarAlterado);
   return (
-    <form className="flex min-h-full flex-col" onSubmit={(e) => { e.preventDefault(); onSalvar(new FormData(e.currentTarget)); }}>
+    <form className="flex min-h-full flex-col" onInput={marcar}
+      // Enter num campo não salva (ficha longa); no textarea continua quebrando linha
+      onKeyDown={(e) => { if (e.key === "Enter" && (e.target as HTMLElement).tagName === "INPUT") e.preventDefault(); }}
+      onSubmit={(e) => { e.preventDefault(); onSalvar(new FormData(e.currentTarget)); }}>
       <div className="entrar border-b border-borda p-6 pr-14 sm:p-8">
         <h2 className="text-2xl font-bold tracking-tight">{titulo}</h2>
       </div>
       <div className="flex-1 space-y-6 p-6 sm:p-8">{children}</div>
       <div className="sticky bottom-0 flex justify-end gap-2 border-t border-borda bg-superficie/90 p-4 backdrop-blur">
-        <Botao variante="secundario" onClick={() => abrirForm(null)}>Cancelar</Botao>
+        <Botao variante="secundario" onClick={fechar}>Cancelar</Botao>
         <Botao type="submit">Salvar</Botao>
       </div>
     </form>

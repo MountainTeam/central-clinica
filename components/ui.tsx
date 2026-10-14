@@ -2,7 +2,7 @@
 
 import { reduzirImagem } from "@/lib/logo";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import * as Icones from "lucide-react";
 import { X } from "lucide-react";
 import { useStore } from "@/lib/store";
@@ -245,25 +245,44 @@ export function SeletorConvenio({ dados, valor, onChange }: { dados: DadosClinic
   );
 }
 
-export function Gaveta({ aberta, onFechar, largura = "max-w-xl", children }: {
-  aberta: boolean; onFechar: () => void; largura?: string; children: React.ReactNode;
+// Quem está dentro da gaveta (o botão Cancelar) fecha por aqui, para passar pelo aviso de descartar
+export const FecharGaveta = createContext<() => void>(() => {});
+export const useFecharGaveta = () => useContext(FecharGaveta);
+
+export function Gaveta({ aberta, onFechar, alterado = false, largura = "max-w-xl", children }: {
+  aberta: boolean; onFechar: () => void; alterado?: boolean; largura?: string; children: React.ReactNode;
 }) {
+  const [descartando, setDescartando] = useState(false);
+  const tentar = () => (alterado ? setDescartando(true) : onFechar());
+  const tentarRef = useRef(tentar);
+  tentarRef.current = tentar;
+  useEffect(() => { if (!aberta) setDescartando(false); }, [aberta]);
   useEffect(() => {
     if (!aberta) return;
-    const esc = (e: KeyboardEvent) => e.key === "Escape" && onFechar();
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && tentarRef.current();
     window.addEventListener("keydown", esc);
     return () => window.removeEventListener("keydown", esc);
-  }, [aberta, onFechar]);
+  }, [aberta]);
   return (
     <>
-      <div data-aberta={aberta} onClick={onFechar} className="veu fixed inset-0 z-40 bg-texto/25 backdrop-blur-[2px]" />
+      <div data-aberta={aberta} onClick={tentar} className="veu fixed inset-0 z-40 bg-texto/25 backdrop-blur-[2px]" />
       <aside data-aberta={aberta} aria-hidden={!aberta} inert={!aberta}
         className={`gaveta fixed inset-y-0 right-0 z-50 flex w-full ${largura} flex-col bg-superficie shadow-elevado sm:inset-y-3 sm:right-3 sm:rounded-3xl`}>
-        <button onClick={onFechar} aria-label="Fechar"
+        <button onClick={tentar} aria-label="Fechar"
           className="pressionavel absolute right-4 top-4 z-10 grid size-9 place-items-center rounded-xl text-suave hover:bg-fundo hover:text-texto">
           <X className="size-5" />
         </button>
-        <div className="flex-1 overflow-y-auto">{children}</div>
+        <FecharGaveta.Provider value={tentar}>
+          <div className="flex-1 overflow-y-auto">{children}</div>
+        </FecharGaveta.Provider>
+        {descartando && (
+          <div role="alertdialog" aria-label="Descartar as alterações?"
+            className="entrar flex flex-wrap items-center gap-3 border-t border-borda bg-alerta-claro p-4 sm:rounded-b-3xl">
+            <p className="flex-1 text-sm font-semibold text-alerta">Descartar as alterações?</p>
+            <Botao variante="secundario" onClick={() => setDescartando(false)}>Continuar editando</Botao>
+            <Botao onClick={onFechar}>Descartar</Botao>
+          </div>
+        )}
       </aside>
     </>
   );

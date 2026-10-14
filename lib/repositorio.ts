@@ -25,14 +25,36 @@ function conferirClinica(u: Usuario, item: { clinicaId: string }, antes?: { clin
 
 // --- armazenamento ---
 
+export const CHAVE_BACKUP = "cartilha:backup";
+
+// Leva um banco guardado para a versão atual; null quando não reconhece o formato
+export function migrar(b: unknown): Banco | null {
+  if (!b || typeof b !== "object" || !Array.isArray((b as Banco).clinicas)) return null;
+  const banco = b as Banco;
+  return banco.versao === VERSAO ? banco : null;
+}
+
 export function carregar(): Banco {
+  let bruto: string | null;
+  try { bruto = localStorage.getItem(CHAVE); } catch { return pontoZero(); }
+  if (!bruto) return pontoZero();
   try {
-    const b = JSON.parse(localStorage.getItem(CHAVE) ?? "null");
-    if (b && b.versao === VERSAO) return b as Banco;
-  } catch {
-    // navegador bloqueando o armazenamento ou JSON corrompido: recomeça do ponto zero
-  }
+    const b = migrar(JSON.parse(bruto));
+    if (b) return b;
+  } catch {}
+  // formato que esta versão não entende: guarda uma cópia antes de recomeçar, para não perder cadastro
+  try { localStorage.setItem(`${CHAVE_BACKUP}:${new Date().toISOString()}`, bruto); } catch {}
   return pontoZero();
+}
+
+export const exportarBackup = (b: Banco) => JSON.stringify(b, null, 2);
+
+export function importarBackup(_b: Banco, u: Usuario, texto: string): Banco {
+  exigir(podeCriarUsuario(u), "Só o Administrador restaura uma cópia.");
+  let novo: Banco | null = null;
+  try { novo = migrar(JSON.parse(texto)); } catch {}
+  exigir(!!novo, "Esse arquivo não é uma cópia da cartilha.");
+  return novo!;
 }
 
 export function gravar(b: Banco): boolean {

@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import type { Banco, Clinica, DadosClinica, Usuario } from "./modelo";
 import { podeEditar } from "./permissoes";
-import { carregar, clinicasDo, dadosDaClinica, gravar } from "./repositorio";
+import { CHAVE, carregar, clinicasDo, dadosDaClinica, gravar } from "./repositorio";
 import { pontoZero } from "./semente";
 
 export type Painel = { tipo: "exame"; id: string } | null;
@@ -60,7 +60,6 @@ export function Provider({ children }: { children: React.ReactNode }) {
   const [form, abrirForm] = useState<Formulario>(null);
   const [aviso, setAviso] = useState<{ texto: string; erro: boolean } | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const avisouFalha = useRef(false);
 
   const avisar = useCallback((t: string, erro = false) => {
     setAviso({ texto: t, erro });
@@ -76,14 +75,18 @@ export function Provider({ children }: { children: React.ReactNode }) {
     setCarregado(true);
   }, []);
 
-  // toda mudança vai para o navegador; se não couber, o app segue em memória e avisa uma vez
+  // toda mudança vai para o navegador; se não couber, o app segue em memória e avisa a cada falha
   useEffect(() => {
     if (!carregado) return;
-    if (!gravar(banco) && !avisouFalha.current) {
-      avisouFalha.current = true;
-      avisar("Não deu para salvar. As mudanças somem ao fechar a página.", true);
-    }
+    if (!gravar(banco)) avisar("Não deu para salvar no navegador: o espaço acabou. Baixe uma cópia de segurança em Usuários.", true);
   }, [banco, carregado, avisar]);
+
+  // outra aba gravou: pega o banco novo, para esta aba não sobrescrever com dados velhos
+  useEffect(() => {
+    const ouvir = (e: StorageEvent) => { if (e.key === CHAVE) setBanco(carregar()); };
+    window.addEventListener("storage", ouvir);
+    return () => window.removeEventListener("storage", ouvir);
+  }, []);
 
   const usuario = banco.usuarios.find((u) => u.id === usuarioId) ?? null;
   const clinicas = usuario ? clinicasDo(banco, usuario) : [];
