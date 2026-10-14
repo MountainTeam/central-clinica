@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Building2, Check, CheckCircle2, ChevronsUpDown, FlaskConical, LayoutGrid, Lock, LogOut, Search, ShieldCheck, TriangleAlert, Users } from "lucide-react";
+import { Building2, Check, CheckCircle2, ChevronsUpDown, FlaskConical, LayoutGrid, Lock, LogOut, PhoneCall, Search, ShieldCheck, TriangleAlert, Users } from "lucide-react";
 import type { Usuario } from "@/lib/modelo";
 import { PAPEIS, podeCriarUsuario } from "@/lib/permissoes";
+import { subtipoInfo } from "@/lib/regras";
 import { useStore } from "@/lib/store";
-import { Logo, LogoMarca, Vazio } from "@/components/ui";
+import { Logo, LogoMarca, SeletorConvenio, Vazio } from "@/components/ui";
 import { Paineis } from "@/components/paineis";
 import { Formularios } from "@/components/formularios";
 
@@ -29,7 +30,7 @@ const menu: ItemMenu[] = [
 ];
 
 export function Estrutura({ children }: { children: React.ReactNode }) {
-  const { usuario, carregado, sair, aviso, avisar, clinica } = useStore();
+  const { usuario, carregado, sair, aviso, avisar, clinica, form } = useStore();
   const router = useRouter();
   const rota = usePathname();
   // telas que funcionam sem unidade escolhida
@@ -46,6 +47,21 @@ export function Estrutura({ children }: { children: React.ReactNode }) {
       avisar("Escolha uma unidade para acessar o sistema.", true);
     }
   }, [carregado, usuario, clinica, livre, router, avisar]);
+
+  // Ctrl+K (ou "/" fora de campo de texto) leva à busca e foca o campo
+  useEffect(() => {
+    const tecla = (e: KeyboardEvent) => {
+      const alvo = e.target as HTMLElement | null;
+      const emCampo = !!alvo && (["INPUT", "TEXTAREA", "SELECT"].includes(alvo.tagName) || alvo.isContentEditable);
+      const atalho = ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") || (e.key === "/" && !emCampo && !e.ctrlKey && !e.metaKey);
+      if (!atalho || !clinica || form) return;
+      e.preventDefault();
+      if (rota !== "/busca") router.push("/busca");
+      window.dispatchEvent(new Event("cartilha:focar-busca"));
+    };
+    window.addEventListener("keydown", tecla);
+    return () => window.removeEventListener("keydown", tecla);
+  }, [clinica, form, rota, router]);
 
   const itens = menu.filter((m) => !m.mostrar || (usuario && m.mostrar(usuario)));
   const ativo = itens.findIndex((m) => (m.href === "/" ? rota === "/" : rota.startsWith(m.href)));
@@ -147,6 +163,7 @@ export function Estrutura({ children }: { children: React.ReactNode }) {
       </header>
 
       <main key={`${rota}-${clinica?.id}`} className="mx-auto max-w-6xl px-4 py-8 sm:px-8 lg:py-12">
+        {clinica && !livre && <FaixaPlano />}
         {clinica || livre ? children : <Vazio texto="Escolha uma unidade para acessar esta opção." />}
       </main>
 
@@ -160,6 +177,36 @@ export function Estrutura({ children }: { children: React.ReactNode }) {
           {aviso.acao && <button type="button" onClick={aviso.acao.fazer} className="pressionavel ml-2 rounded-lg px-2 py-1 font-semibold text-emerald-300 hover:bg-white/10">{aviso.acao.rotulo}</button>}
         </div>
       )}
+    </div>
+  );
+}
+
+// O plano do paciente da ligação atual, visível em todas as telas da unidade
+function FaixaPlano() {
+  const { dados, plano, escolherPlano, novaLigacao } = useStore();
+  const [trocando, setTrocando] = useState(false);
+  const info = plano && subtipoInfo(dados, plano.subtipoId);
+  if (!plano || !info) return null;
+  return (
+    <div className="entrar mb-6 flex flex-wrap items-center gap-3 rounded-2xl border border-verde/30 bg-verde-claro/40 px-3 py-2">
+      <LogoMarca nome={info.convenio.nome} logo={info.convenio.logo} cor={info.convenio.cor} tamanho="sm" />
+      <p className="min-w-0 flex-1 truncate text-sm">
+        <span className="text-suave">Paciente: </span>
+        <strong className="font-semibold text-texto">{info.convenio.nome}</strong> · {info.subtipo.nome} · {plano.tipo === "consulta" ? "Consulta" : "Exame"}
+      </p>
+      {trocando ? (
+        <div className="w-full sm:w-72">
+          <SeletorConvenio dados={dados} valor={plano.subtipoId} abertoInicial onFechar={() => setTrocando(false)}
+            onChange={(v) => escolherPlano(v ? { subtipoId: v, tipo: plano.tipo } : null)} />
+        </div>
+      ) : (
+        <button type="button" onClick={() => setTrocando(true)}
+          className="pressionavel rounded-lg px-2.5 py-1.5 text-sm font-semibold text-verde hover:bg-verde-claro">Trocar</button>
+      )}
+      <button type="button" onClick={novaLigacao}
+        className="pressionavel flex items-center gap-1.5 rounded-lg bg-superficie px-2.5 py-1.5 text-sm font-semibold text-texto ring-1 ring-borda hover:ring-verde/40">
+        <PhoneCall className="size-4" />Nova ligação
+      </button>
     </div>
   );
 }

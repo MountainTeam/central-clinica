@@ -2,11 +2,11 @@
 
 import { reduzirImagem } from "@/lib/logo";
 import Link from "next/link";
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useId, useMemo, useRef, useState } from "react";
 import * as Icones from "lucide-react";
 import { X } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { DIAS_PARA_REVISAR, combina, iniciais, resumoHorarios, tempoDesde } from "@/lib/regras";
+import { DIAS_PARA_REVISAR, combina, iniciais, resumoHorarios, subtipoInfo, tempoDesde, trechosDestaque } from "@/lib/regras";
 import type { DadosClinica, Profissional, Tipo } from "@/lib/modelo";
 
 export function Logo({ claro = false }: { claro?: boolean }) {
@@ -97,8 +97,8 @@ export function TipoBadge({ tipo }: { tipo: Tipo }) {
 }
 
 // Controle segmentado com pílula deslizante
-export function Segmentado<T extends string>({ opcoes, valor, onChange }: {
-  opcoes: { valor: T; rotulo: string }[]; valor: T; onChange: (v: T) => void;
+export function Segmentado<T extends string>({ opcoes, valor, onChange, desativado = false }: {
+  opcoes: { valor: T; rotulo: string }[]; valor: T; onChange: (v: T) => void; desativado?: boolean;
 }) {
   const i = opcoes.findIndex((o) => o.valor === valor);
   return (
@@ -108,8 +108,8 @@ export function Segmentado<T extends string>({ opcoes, valor, onChange }: {
         style={{ width: `calc((100% - 0.5rem) / ${opcoes.length})`, transform: `translateX(${i * 100}%)` }}
       />
       {opcoes.map((o) => (
-        <button key={o.valor} type="button" onClick={() => onChange(o.valor)}
-          className={`relative h-9 rounded-lg px-3 text-sm font-semibold transition-colors ${o.valor === valor ? "text-texto" : "text-suave hover:text-texto"}`}>
+        <button key={o.valor} type="button" onClick={() => onChange(o.valor)} disabled={desativado}
+          className={`relative h-9 rounded-lg px-3 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${o.valor === valor ? "text-texto" : "text-suave enabled:hover:text-texto"}`}>
           {o.rotulo}
         </button>
       ))}
@@ -117,153 +117,157 @@ export function Segmentado<T extends string>({ opcoes, valor, onChange }: {
   );
 }
 
-export function SeletorConvenio({ dados, valor, onChange }: { dados: DadosClinica; valor: string; onChange: (v: string) => void }) {
-  const [aberto, setAberto] = useState(false);
-  const [busca, setBusca] = useState("");
-  const containerRef = useRef<HTMLDivElement>(null);
+type OpcaoLista = { id: string; texto: string; rotulo: React.ReactNode; grupo?: string };
 
-  useEffect(() => {
-    const cliqueFora = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setAberto(false);
-      }
-    };
-    document.addEventListener("mousedown", cliqueFora);
-    return () => document.removeEventListener("mousedown", cliqueFora);
-  }, []);
-
-  const infoAtual = useMemo(() => {
-    if (!valor) return null;
-    for (const c of dados.convenios) {
-      const s = c.subtipos.find((sub) => sub.id === valor);
-      if (s) return { c, s };
-    }
-    return null;
-  }, [dados.convenios, valor]);
+// Botão + lista com busca: Esc fecha, ↑/↓ movem a opção ativa, Enter escolhe
+function SeletorBusca({ valor, onChange, vazio, placeholder, atual, opcoes, grupos = {}, abertoInicial = false, buscaInicial = "", onFechar, largo = true }: {
+  valor: string; onChange: (v: string) => void; vazio: string; placeholder: string; atual: React.ReactNode;
+  opcoes: OpcaoLista[]; grupos?: Record<string, React.ReactNode>;
+  abertoInicial?: boolean; buscaInicial?: string; onFechar?: () => void; largo?: boolean;
+}) {
+  const [aberto, setAberto] = useState(abertoInicial);
+  const [busca, setBusca] = useState(buscaInicial);
+  const [ativa, setAtiva] = useState(0);
+  const caixa = useRef<HTMLDivElement>(null);
+  const gatilho = useRef<HTMLButtonElement>(null);
+  const base = useId();
 
   const q = busca.trim();
+  // com texto, a opção "qualquer" sai para o Enter cair no primeiro resultado
+  const lista = [...(q ? [] : [{ id: "", texto: vazio, rotulo: vazio }]), ...opcoes.filter((o) => combina(o.texto, q))];
 
-  const filtrados = useMemo(() => {
-    if (!q) return dados.convenios;
-    return dados.convenios
-      .map((c) => {
-        const subs = c.subtipos.filter((s) => combina(`${c.nome} ${s.nome}`, q));
-        return { ...c, subtipos: subs };
-      })
-      .filter((c) => c.subtipos.length > 0);
-  }, [dados.convenios, q]);
+  const fechar = (focar = false) => {
+    setAberto(false);
+    setBusca("");
+    onFechar?.();
+    if (focar) gatilho.current?.focus();
+  };
+  const escolher = (id: string) => { onChange(id); fechar(true); };
 
+  useEffect(() => {
+    if (!aberto) return;
+    const fora = (e: MouseEvent) => { if (!caixa.current?.contains(e.target as Node)) fechar(); };
+    document.addEventListener("mousedown", fora);
+    return () => document.removeEventListener("mousedown", fora);
+  });
+
+  useEffect(() => {
+    if (aberto) document.getElementById(`${base}-${ativa}`)?.scrollIntoView({ block: "nearest" });
+  }, [aberto, ativa, base]);
+
+  const alternar = () => {
+    if (aberto) return fechar();
+    setAtiva(Math.max(0, lista.findIndex((o) => o.id === valor)));
+    setAberto(true);
+  };
+
+  const tecla = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowDown") { e.preventDefault(); setAtiva((a) => Math.min(a + 1, lista.length - 1)); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setAtiva((a) => Math.max(a - 1, 0)); }
+    else if (e.key === "Enter" && lista[ativa]) { e.preventDefault(); escolher(lista[ativa].id); }
+  };
+
+  let grupoAnterior: string | undefined;
   return (
-    <div ref={containerRef} className="relative w-full">
+    <div ref={caixa} className="relative w-full"
+      onKeyDown={(e) => { if (e.key === "Escape" && aberto) { e.preventDefault(); e.stopPropagation(); fechar(true); } }}>
       <button
+        ref={gatilho}
         type="button"
-        onClick={() => setAberto(!aberto)}
-        className="flex h-11 w-full items-center justify-between rounded-xl border border-borda bg-superficie px-3 text-[14px] text-left outline-none transition focus:border-verde focus:ring-4 focus:ring-verde/15"
+        onClick={alternar}
+        aria-haspopup="listbox"
+        aria-expanded={aberto}
+        className={`flex h-11 w-full items-center rounded-xl border border-borda bg-superficie px-3 text-left text-sm outline-none transition focus:border-verde focus:ring-4 focus:ring-verde/15 ${valor ? "pr-16" : "pr-9"}`}
       >
-        <span className="truncate">
-          {infoAtual ? (
-            <span className="font-medium text-texto">
-              <strong className="font-semibold text-verde">{infoAtual.c.nome}</strong> · {infoAtual.s.nome}
-            </span>
-          ) : (
-            <span className="text-suave">Qualquer convênio</span>
-          )}
-        </span>
-        <div className="flex items-center gap-1.5 shrink-0 text-suave">
-          {valor && (
-            <span
-              role="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onChange("");
-                setBusca("");
-              }}
-              className="rounded-md p-1 hover:bg-borda/40 hover:text-texto"
-            >
-              <X className="size-3.5" />
-            </span>
-          )}
-          <Icones.ChevronDown className={`size-4 transition-transform duration-200 ${aberto ? "rotate-180" : ""}`} />
-        </div>
+        <span className="truncate">{valor ? atual : <span className="text-suave">{vazio}</span>}</span>
       </button>
+      <div className="pointer-events-none absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1 text-suave">
+        {valor && (
+          <button type="button" aria-label="Limpar" onClick={() => onChange("")}
+            className="pointer-events-auto rounded-md p-1 hover:bg-borda/40 hover:text-texto">
+            <X className="size-3.5" />
+          </button>
+        )}
+        <Icones.ChevronDown className={`size-4 transition-transform duration-200 ${aberto ? "rotate-180" : ""}`} />
+      </div>
 
       {aberto && (
-        <div className="absolute left-0 top-full z-50 mt-1.5 w-full min-w-[280px] rounded-2xl border border-borda bg-superficie p-2 shadow-elevado">
+        <div className={`absolute left-0 top-full z-50 mt-1.5 w-full ${largo ? "min-w-[280px]" : ""} rounded-2xl border border-borda bg-superficie p-2 shadow-elevado`}>
           <div className="relative mb-2">
             <Icones.Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-suave" />
             <input
               value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-              placeholder="Buscar convênio ou plano..."
+              onChange={(e) => { setBusca(e.target.value); setAtiva(0); }}
+              onKeyDown={tecla}
+              placeholder={placeholder}
               autoFocus
-              className="h-8 w-full rounded-xl border border-borda bg-fundo pl-8 pr-7 text-xs outline-none transition focus:border-verde focus:ring-2 focus:ring-verde/15"
+              role="combobox"
+              aria-expanded
+              aria-controls={`${base}-lista`}
+              aria-activedescendant={lista[ativa] ? `${base}-${ativa}` : undefined}
+              className="h-9 w-full rounded-xl border border-borda bg-fundo pl-8 pr-3 text-sm outline-none transition focus:border-verde focus:ring-2 focus:ring-verde/15"
             />
-            {busca && (
-              <button
-                type="button"
-                onClick={() => setBusca("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-suave hover:text-texto"
-              >
-                <X className="size-3" />
-              </button>
-            )}
           </div>
 
-          <div className="max-h-56 overflow-y-auto space-y-1 pr-1 text-xs">
-            <button
-              type="button"
-              onClick={() => {
-                onChange("");
-                setAberto(false);
-                setBusca("");
-              }}
-              className={`flex w-full items-center justify-between rounded-xl px-2.5 py-2 font-medium transition-colors ${
-                !valor ? "bg-verde-claro text-verde font-semibold" : "hover:bg-fundo text-suave"
-              }`}
-            >
-              <span>Qualquer convênio</span>
-              {!valor && <Icones.Check className="size-3.5" />}
-            </button>
-
-            {filtrados.length ? (
-              filtrados.map((c) => (
-                <div key={c.id} className="pt-1">
-                  <div className="flex items-center gap-2 px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-suave/80 bg-fundo/40 rounded-lg">
-                    <LogoMarca nome={c.nome} logo={c.logo} cor={c.cor} tamanho="sm" />
-                    <span>{c.nome}</span>
-                  </div>
-                  <div className="pl-2 pt-0.5 space-y-0.5">
-                    {c.subtipos.map((s) => {
-                      const ativo = valor === s.id;
-                      return (
-                        <button
-                          key={s.id}
-                          type="button"
-                          onClick={() => {
-                            onChange(s.id);
-                            setAberto(false);
-                            setBusca("");
-                          }}
-                          className={`flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left transition-colors ${
-                            ativo ? "bg-verde-claro text-verde font-semibold" : "hover:bg-fundo text-texto"
-                          }`}
-                        >
-                          <span>{s.nome}</span>
-                          {ativo && <Icones.Check className="size-3.5" />}
-                        </button>
-                      );
-                    })}
+          <div id={`${base}-lista`} role="listbox" className="max-h-64 space-y-0.5 overflow-y-auto pr-1 text-sm">
+            {lista.length ? lista.map((o, n) => {
+              const titulo = o.grupo && o.grupo !== grupoAnterior ? grupos[o.grupo] : null;
+              grupoAnterior = o.grupo;
+              const marcado = o.id === valor;
+              return (
+                <div key={o.id || "vazio"}>
+                  {titulo && <div className="mt-1 flex items-center gap-2 rounded-lg bg-fundo/40 px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-suave/80">{titulo}</div>}
+                  <div
+                    id={`${base}-${n}`}
+                    role="option"
+                    aria-selected={marcado}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => escolher(o.id)}
+                    onMouseMove={() => setAtiva(n)}
+                    className={`flex cursor-pointer items-center justify-between rounded-lg px-2.5 py-2 transition-colors ${o.grupo ? "ml-2" : ""} ${
+                      marcado ? "bg-verde-claro font-semibold text-verde" : n === ativa ? "bg-fundo text-texto" : "text-texto"
+                    } ${n === ativa ? "ring-1 ring-verde/30" : ""}`}
+                  >
+                    <span>{o.rotulo}</span>
+                    {marcado && <Icones.Check className="size-3.5" />}
                   </div>
                 </div>
-              ))
-            ) : (
-              <p className="py-3 text-center text-xs text-suave">Nenhum convênio encontrado para &quot;{busca}&quot;.</p>
+              );
+            }) : (
+              <p className="py-3 text-center text-sm text-suave">Nada encontrado para &quot;{busca}&quot;.</p>
             )}
           </div>
         </div>
       )}
     </div>
   );
+}
+
+export function SeletorConvenio({ dados, valor, onChange, abertoInicial, buscaInicial, onFechar }: {
+  dados: DadosClinica; valor: string; onChange: (v: string) => void;
+  abertoInicial?: boolean; buscaInicial?: string; onFechar?: () => void;
+}) {
+  const info = valor ? subtipoInfo(dados, valor) : undefined;
+  const grupos = Object.fromEntries(dados.convenios.map((c) => [c.id, <><LogoMarca nome={c.nome} logo={c.logo} cor={c.cor} tamanho="sm" /><span>{c.nome}</span></>]));
+  const opcoes = dados.convenios.flatMap((c) => c.subtipos.map((s) => ({ id: s.id, texto: `${c.nome} ${s.nome}`, rotulo: s.nome, grupo: c.id })));
+  return (
+    <SeletorBusca valor={valor} onChange={onChange} vazio="Qualquer convênio" placeholder="Buscar convênio ou plano..."
+      atual={info && <span className="font-medium text-texto"><strong className="font-semibold text-verde">{info.convenio.nome}</strong> · {info.subtipo.nome}</span>}
+      opcoes={opcoes} grupos={grupos} abertoInicial={abertoInicial} buscaInicial={buscaInicial} onFechar={onFechar} />
+  );
+}
+
+export function SeletorEspecialidade({ dados, valor, onChange }: { dados: DadosClinica; valor: string; onChange: (v: string) => void }) {
+  return (
+    <SeletorBusca valor={valor} onChange={onChange} vazio="Todas as especialidades" placeholder="Buscar especialidade..."
+      atual={<span className="font-medium text-texto">{dados.especialidades.find((e) => e.id === valor)?.nome}</span>}
+      opcoes={dados.especialidades.map((e) => ({ id: e.id, texto: e.nome, rotulo: e.nome }))} largo={false} />
+  );
+}
+
+// Destaca as palavras do texto que começam com alguma palavra da busca
+export function Destaque({ texto, q }: { texto: string; q: string }) {
+  return <>{trechosDestaque(texto, q).map((x, n) => x.marca ? <mark key={n} className="rounded bg-verde-claro px-0.5 text-texto">{x.t}</mark> : x.t)}</>;
 }
 
 // Quem está dentro da gaveta (o botão Cancelar) fecha por aqui, para passar pelo aviso de descartar
@@ -425,16 +429,16 @@ export function Vazio({ texto }: { texto: string }) {
   return <p className="rounded-xl border border-dashed border-borda px-4 py-6 text-center text-sm text-suave">{texto}</p>;
 }
 
-export function CartaoProfissional({ p, especialidade, destaque, i }: {
-  p: Profissional; especialidade?: string; destaque?: React.ReactNode; i: number;
+export function CartaoProfissional({ p, especialidade, destaque, i, q = "", onAbrir }: {
+  p: Profissional; especialidade?: string; destaque?: React.ReactNode; i: number; q?: string; onAbrir?: () => void;
 }) {
   return (
-    <Link href={`/profissionais/${p.id}`} style={{ "--i": Math.min(i, 10) } as React.CSSProperties}
+    <Link href={`/profissionais/${p.id}`} onClick={onAbrir} style={{ "--i": Math.min(i, 10) } as React.CSSProperties}
       className="entrar pressionavel levanta group flex w-full flex-col gap-4 rounded-3xl border border-borda bg-superficie p-5 text-left shadow-card">
       <div className="flex items-center gap-3">
         <Avatar nome={p.nome} />
         <div className="min-w-0 flex-1">
-          <p className="truncate font-semibold">{p.nome}</p>
+          <p className="truncate font-semibold"><Destaque texto={p.nome} q={q} /></p>
           {especialidade && <p className="text-sm text-suave">{especialidade}</p>}
         </div>
         <Icones.ChevronRight className="size-5 text-suave/50 transition-transform group-hover:translate-x-0.5 group-hover:text-verde" />

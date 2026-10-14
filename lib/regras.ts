@@ -182,3 +182,22 @@ export function tempoDesde(iso: string, agora = new Date()): string {
   const meses = Math.floor(dias / 30);
   return meses === 1 ? "há 1 mês" : `há ${meses} meses`;
 }
+
+// "humana gold" sugere a rede Gold como plano do paciente; "humana" sozinho não sugere nada
+export function sugestoesDePlano(convenios: Convenio[], q: string, max = 3) {
+  return coberturaDaBusca(convenios, () => true, q)
+    .filter((r) => !combina(r.convenio.nome, q))
+    .flatMap((r) => r.cobre.map((subtipo) => ({ convenio: r.convenio, subtipo })))
+    .slice(0, max);
+}
+
+// Partes do texto para destacar: as palavras que começam com alguma palavra da busca
+export function trechosDestaque(texto: string, q: string) {
+  const ws = palavras(q);
+  return texto.split(/([^A-Za-zÀ-ÿ0-9]+)/).filter(Boolean)
+    .map((t) => ({ t, marca: ws.length > 0 && ws.some((w) => semAcento(t).startsWith(w)) }));
+}
+
+export type Recente = { tipo: "profissional" | "exame"; id: string };
+export const lembrarRecente = (lista: Recente[], r: Recente, max = 8) =>
+  [r, ...lista.filter((x) => x.tipo !== r.tipo || x.id !== r.id)].slice(0, max);

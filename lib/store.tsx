@@ -1,11 +1,13 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import type { Banco, Clinica, DadosClinica, Usuario } from "./modelo";
+import type { Banco, Clinica, DadosClinica, Tipo, Usuario } from "./modelo";
+import { subtipoInfo } from "./regras";
 import { podeEditar } from "./permissoes";
 import { CHAVE, carregarProtegido, clinicasDo, dadosDaClinica, gravar } from "./repositorio";
 import { pontoZero } from "./semente";
 
+export type Plano = { subtipoId: string; tipo: Tipo } | null;
 export type Painel = { tipo: "exame"; id: string } | null;
 type Aviso = { texto: string; erro: boolean; acao?: { rotulo: string; fazer: () => void } };
 export type Formulario =
@@ -37,6 +39,11 @@ type Store = {
   executar: (op: (b: Banco, u: Usuario) => Banco, sucesso: string, opcoes?: { desfazer?: boolean }) => boolean;
   painel: Painel;
   abrir: (p: Painel) => void;
+  // convênio e rede do paciente na ligação atual; vale para a aba e zera ao trocar de unidade
+  plano: Plano;
+  escolherPlano: (p: Plano) => void;
+  // limpa o plano, fecha o exame e avisa a busca (evento "cartilha:nova-ligacao") para limpar o texto
+  novaLigacao: () => void;
   form: Formulario;
   abrirForm: (f: Formulario) => void;
   aviso: Aviso | null;
@@ -63,6 +70,7 @@ export function Provider({ children }: { children: React.ReactNode }) {
   const [form, abrirForm] = useState<Formulario>(null);
   const [aviso, setAviso] = useState<Aviso | null>(null);
   const [protegido, setProtegido] = useState(false);
+  const [plano, setPlano] = useState<Plano>(null);
   const bancoRef = useRef(banco);
   bancoRef.current = banco;
   // resultado da última exclusão com "Desfazer"; qualquer outra gravação depois dele invalida o botão
@@ -123,8 +131,26 @@ export function Provider({ children }: { children: React.ReactNode }) {
   // a última unidade escolhida neste navegador, se ainda for permitida; com uma só, ela mesma
   const unidade = (cs: Clinica[]) => cs.find((c) => c.id === clinicaId) ?? (cs.length === 1 ? cs[0] : null);
   const clinica = unidade(clinicas);
+  const chavePlano = clinica ? `cartilha:plano:${clinica.id}` : null;
+
+  useEffect(() => {
+    if (!chavePlano) return setPlano(null);
+    try { setPlano(JSON.parse(sessionStorage.getItem(chavePlano) ?? "null")); } catch { setPlano(null); }
+  }, [chavePlano]);
+
+  const escolherPlano = (p: Plano) => {
+    setPlano(p);
+    if (!chavePlano) return;
+    try { if (p) sessionStorage.setItem(chavePlano, JSON.stringify(p)); else sessionStorage.removeItem(chavePlano); } catch {}
+  };
+  const novaLigacao = () => {
+    escolherPlano(null);
+    abrir(null);
+    window.dispatchEvent(new Event("cartilha:nova-ligacao"));
+  };
 
   const escolherClinica = (id: string) => {
+    if (id !== clinica?.id) escolherPlano(null);
     setClinicaId(id);
     gravarLocal(SESSAO_CLINICA, id);
     abrir(null);
@@ -162,10 +188,13 @@ export function Provider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const dados = clinica ? dadosDaClinica(banco, clinica.id, usuario ?? undefined) : VAZIO;
+
   return (
     <Ctx.Provider value={{
-      banco, usuario, carregado, clinicas, clinica,
-      dados: clinica ? dadosDaClinica(banco, clinica.id, usuario ?? undefined) : VAZIO,
+      banco, usuario, carregado, clinicas, clinica, dados,
+      // rede apagada depois de escolhida deixa de valer
+      plano: plano && subtipoInfo(dados, plano.subtipoId) ? plano : null, escolherPlano, novaLigacao,
       podeEditarAtual: !!usuario && !!clinica && podeEditar(usuario, clinica.id),
       escolherClinica, entrar, sair, executar, painel, abrir, form, abrirForm, aviso, avisar,
     }}>

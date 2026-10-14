@@ -1,68 +1,84 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   BookOpen,
-  CalendarDays,
   ChevronRight,
   FlaskConical,
-  LayoutGrid,
   Search,
   ShieldAlert,
-  ShieldCheck,
-  Stethoscope,
-  TriangleAlert,
   UserRound,
   X,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { atende, combina, gruposPlanosDoConvenio, idsDeRedes, observacoesDoConvenio, pontuacao, resumoHorarios, subtipoInfo } from "@/lib/regras";
-import type { DadosClinica, Tipo } from "@/lib/modelo";
-import { Avatar, CartaoProfissional, Chip, Icone, LogoMarca, Segmentado, SeletorConvenio, TipoBadge, Vazio } from "@/components/ui";
+import {
+  type Recente, combina, gruposPlanosDoConvenio, idsDeRedes, lembrarRecente, observacoesDoConvenio, pontuacao, sugestoesDePlano, atende,
+} from "@/lib/regras";
+import { CartaoProfissional, Chip, Destaque, Icone, LogoMarca, Segmentado, SeletorConvenio, SeletorEspecialidade, Vazio } from "@/components/ui";
 
-function Contador({ valor }: { valor: number }) {
-  const [n, setN] = useState(0);
-  useEffect(() => {
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return setN(valor);
-    const inicio = performance.now();
-    let raf = 0;
-    const passo = (t: number) => {
-      const k = Math.min((t - inicio) / 900, 1);
-      setN(Math.round(valor * (1 - Math.pow(1 - k, 3))));
-      if (k < 1) raf = requestAnimationFrame(passo);
-    };
-    raf = requestAnimationFrame(passo);
-    return () => cancelAnimationFrame(raf);
-  }, [valor]);
-  return <>{n}</>;
+const ABAS = [
+  { id: "profissionais", rotulo: "Profissionais" },
+  { id: "exames", rotulo: "Exames" },
+  { id: "convenios", rotulo: "Convênios" },
+  { id: "especialidades", rotulo: "Especialidades" },
+] as const;
+type Secao = (typeof ABAS)[number]["id"];
+
+// useSearchParams pede Suspense no Next 16
+export default function PaginaBusca() {
+  return <Suspense><BuscaRapida /></Suspense>;
 }
 
-type Secao = "especialidades" | "profissionais" | "convenios" | "exames";
-
-export default function BuscaRapida() {
-  const { dados, abrir } = useStore();
-  const [texto, setTexto] = useState("");
-  const [subtipo, setSubtipo] = useState("");
-  const [tipo, setTipo] = useState<Tipo>("consulta");
-  const [esp, setEsp] = useState("");
-  const [secaoAtiva, setSecaoAtiva] = useState<Secao | null>("profissionais");
+function BuscaRapida() {
+  const { dados, abrir, clinica, plano, escolherPlano } = useStore();
+  const router = useRouter();
+  const rota = usePathname();
+  const params = useSearchParams();
+  const [texto, setTexto] = useState(() => params.get("q") ?? "");
+  const [esp, setEsp] = useState(() => params.get("esp") ?? "");
+  const [secaoAtiva, setSecaoAtiva] = useState<Secao>(() => ABAS.find((a) => a.id === params.get("aba"))?.id ?? "profissionais");
+  // "Filtrar médicos" abre o seletor de convênio já buscando pelo nome do convênio
+  const [filtroConvenio, setFiltroConvenio] = useState<string | null>(null);
+  const [recentes, setRecentes] = useState<Recente[]>([]);
+  // depois que a pessoa escolhe uma aba nesta busca, a busca não troca de aba sozinha
+  const clicouAba = useRef(false);
   const campo = useRef<HTMLInputElement>(null);
+  const chaveRecentes = `cartilha:recentes:${clinica?.id}`;
 
-  // Tecla "/" foca a busca automaticamente
   useEffect(() => {
-    const tecla = (e: KeyboardEvent) => {
-      if (e.key === "/" && document.activeElement?.tagName !== "INPUT" && document.activeElement?.tagName !== "TEXTAREA") {
-        e.preventDefault();
-        campo.current?.focus();
-      }
-    };
-    window.addEventListener("keydown", tecla);
-    return () => window.removeEventListener("keydown", tecla);
+    try { setRecentes(JSON.parse(localStorage.getItem(chaveRecentes) ?? "[]")); } catch { setRecentes([]); }
+  }, [chaveRecentes]);
+  const lembrar = (r: Recente) => {
+    const nova = lembrarRecente(recentes, r);
+    setRecentes(nova);
+    try { localStorage.setItem(chaveRecentes, JSON.stringify(nova)); } catch {}
+  };
+
+  useEffect(() => {
+    const focar = () => { campo.current?.focus(); campo.current?.select(); };
+    const limpar = () => { setTexto(""); clicouAba.current = false; };
+    window.addEventListener("cartilha:focar-busca", focar);
+    window.addEventListener("cartilha:nova-ligacao", limpar);
+    return () => { window.removeEventListener("cartilha:focar-busca", focar); window.removeEventListener("cartilha:nova-ligacao", limpar); };
   }, []);
 
+  // a busca fica na URL: voltar da ficha do médico devolve a mesma busca
+  useEffect(() => {
+    const p = new URLSearchParams(params.toString());
+    const por = (k: string, v: string) => (v ? p.set(k, v) : p.delete(k));
+    por("q", texto.trim());
+    por("aba", secaoAtiva === "profissionais" ? "" : secaoAtiva);
+    por("esp", esp);
+    const s = p.toString();
+    if (s !== params.toString()) router.replace(s ? `${rota}?${s}` : rota, { scroll: false });
+  }, [texto, secaoAtiva, esp, params, rota, router]);
+
   const q = texto.trim();
+  const subtipo = plano?.subtipoId ?? "";
+  const tipo = plano?.tipo ?? "consulta";
   const validos = idsDeRedes(dados);
   const ordenar = <T,>(lista: T[], textoDe: (x: T) => string) =>
     q ? [...lista].sort((a, b) => pontuacao(textoDe(b), q) - pontuacao(textoDe(a), q)) : lista;
@@ -105,15 +121,32 @@ export default function BuscaRapida() {
     (e) => e.nome,
   );
 
-  const info = subtipo ? subtipoInfo(dados, subtipo) : undefined;
   const filtrando = !!(q || subtipo || esp);
+  const contagem: Record<Secao, number> = {
+    profissionais: profissionaisFiltrados.length,
+    exames: examesFiltrados.length,
+    convenios: conveniosFiltrados.length,
+    especialidades: especialidadesFiltradas.length,
+  };
+  const chaveContagem = ABAS.map((a) => contagem[a.id]).join(",");
 
-  const cartoesNavegacao: { id: Secao; rotulo: string; valor: number; icone: typeof LayoutGrid }[] = [
-    { id: "especialidades", rotulo: "Especialidades", valor: especialidadesFiltradas.length, icone: LayoutGrid },
-    { id: "profissionais", rotulo: "Profissionais", valor: profissionaisFiltrados.length, icone: UserRound },
-    { id: "convenios", rotulo: "Convênios", valor: conveniosFiltrados.length, icone: ShieldCheck },
-    { id: "exames", rotulo: "Exames", valor: examesFiltrados.length, icone: FlaskConical },
-  ];
+  useEffect(() => { if (!q) clicouAba.current = false; }, [q]);
+  // aba atual sem resultado e outra com resultado: vai para a que tem mais
+  useEffect(() => {
+    if (!q || clicouAba.current || contagem[secaoAtiva] > 0) return;
+    const melhor = ABAS.reduce((a, b) => (contagem[b.id] > contagem[a.id] ? b : a));
+    if (contagem[melhor.id] > 0) setSecaoAtiva(melhor.id);
+  }, [q, chaveContagem, secaoAtiva]);
+
+  const sugestoes = q.length >= 2 ? sugestoesDePlano(dados.convenios, q).filter((x) => x.subtipo.id !== subtipo) : [];
+  const abertos = q ? [] : recentes.flatMap((r) => {
+    if (r.tipo === "profissional") {
+      const p = dados.profissionais.find((x) => x.id === r.id);
+      return p ? [{ r, nome: p.nome }] : [];
+    }
+    const e = dados.exames.find((x) => x.id === r.id);
+    return e ? [{ r, nome: e.nome }] : [];
+  });
 
   return (
     <div className="space-y-6">
@@ -139,123 +172,101 @@ export default function BuscaRapida() {
                 </button>
               ) : (
                 <kbd className="absolute right-4 top-1/2 hidden -translate-y-1/2 rounded-md border border-borda bg-superficie px-2 py-0.5 text-xs text-suave sm:block">
-                  /
+                  Ctrl K
                 </kbd>
               )}
             </div>
 
-            <div className="mt-3 grid gap-3 md:grid-cols-[1.3fr_1fr_1fr]">
-              <SeletorConvenio dados={dados} valor={subtipo} onChange={setSubtipo} />
-          <Segmentado
-            valor={tipo}
-            onChange={setTipo}
-            opcoes={[
-              { valor: "consulta", rotulo: "Consulta" },
-              { valor: "exame", rotulo: "Exame" },
-            ]}
-          />
-          <select
-            value={esp}
-            onChange={(e) => setEsp(e.target.value)}
-            className="h-11 w-full rounded-xl border border-borda bg-superficie px-3 text-[15px] outline-none transition focus:border-verde focus:ring-4 focus:ring-verde/15"
-          >
-            <option value="">Todas as especialidades</option>
-            {dados.especialidades.map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.nome}
-              </option>
-            ))}
-          </select>
-        </div>
+            {sugestoes.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {sugestoes.map(({ convenio, subtipo: s }) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => { escolherPlano({ subtipoId: s.id, tipo: "consulta" }); setTexto(""); }}
+                    className="pressionavel flex items-center gap-2 rounded-xl border border-verde/30 bg-verde-claro/40 px-3 py-1.5 text-sm font-semibold text-verde hover:bg-verde-claro"
+                  >
+                    <LogoMarca nome={convenio.nome} logo={convenio.logo} cor={convenio.cor} tamanho="sm" />
+                    Usar {convenio.nome} · {s.nome} como plano do paciente
+                  </button>
+                ))}
+              </div>
+            )}
 
-        {(esp || subtipo) && (
-          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-borda/60 pt-3 text-xs">
-            <span className="font-semibold text-suave">Filtros ativos:</span>
-            {esp && (
-              <span className="inline-flex items-center gap-1.5 rounded-lg bg-verde-claro px-2.5 py-1 font-semibold text-verde">
-                {nomeEsp(esp)}
-                <button type="button" onClick={() => setEsp("")} title="Remover filtro de especialidade">
-                  <X className="size-3.5" />
-                </button>
-              </span>
-            )}
-            {subtipo && info && (
-              <span className="inline-flex items-center gap-1.5 rounded-lg bg-superficie px-2.5 py-1 font-semibold text-texto border border-borda">
-                {info.convenio.nome} ({info.subtipo.nome})
-                <button type="button" onClick={() => setSubtipo("")} title="Remover filtro de convênio">
-                  <X className="size-3.5" />
-                </button>
-              </span>
-            )}
-          </div>
-        )}
+            <div className="mt-3 grid gap-3 md:grid-cols-[1.3fr_1fr_1fr]">
+              <SeletorConvenio
+                key={filtroConvenio ?? ""}
+                dados={dados}
+                valor={subtipo}
+                abertoInicial={filtroConvenio !== null}
+                buscaInicial={filtroConvenio ?? ""}
+                onFechar={() => setFiltroConvenio(null)}
+                onChange={(v) => {
+                  escolherPlano(v ? { subtipoId: v, tipo } : null);
+                  if (filtroConvenio !== null) setSecaoAtiva("profissionais");
+                }}
+              />
+              <div className="flex items-center gap-2" title={plano ? undefined : "Escolha o convênio do paciente para filtrar por atendimento"}>
+                <span className="text-sm font-semibold text-suave">Atendimento</span>
+                <div className="flex-1">
+                  <Segmentado
+                    valor={tipo}
+                    desativado={!plano}
+                    onChange={(t) => plano && escolherPlano({ ...plano, tipo: t })}
+                    opcoes={[
+                      { valor: "consulta", rotulo: "Consulta" },
+                      { valor: "exame", rotulo: "Exame" },
+                    ]}
+                  />
+                </div>
+              </div>
+              <SeletorEspecialidade dados={dados} valor={esp} onChange={setEsp} />
+            </div>
       </div>
 
-      {/* Cartões Selecionáveis de Navegação (Sempre visíveis e interativos) */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        {cartoesNavegacao.map((card, i) => {
-          const ativo = secaoAtiva === card.id;
+      {abertos.length > 0 && (
+        <div className="entrar flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wider text-suave">Abertos recentemente</span>
+          {abertos.map(({ r, nome }) => {
+            const classe = "pressionavel flex items-center gap-1.5 rounded-xl border border-borda bg-superficie px-3 py-1.5 text-sm font-semibold text-texto hover:border-verde/40";
+            return r.tipo === "profissional" ? (
+              <Link key={`p-${r.id}`} href={`/profissionais/${r.id}`} onClick={() => lembrar(r)} className={classe}>
+                <UserRound className="size-4 text-verde" />{nome}
+              </Link>
+            ) : (
+              <button key={`e-${r.id}`} type="button" onClick={() => { lembrar(r); abrir({ tipo: "exame", id: r.id }); }} className={classe}>
+                <FlaskConical className="size-4 text-azul" />{nome}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      <div role="tablist" aria-label="Resultados" className="flex gap-1 overflow-x-auto rounded-2xl border border-borda bg-superficie p-1">
+        {ABAS.map((a) => {
+          const ativo = secaoAtiva === a.id;
           return (
             <button
-              key={card.id}
+              key={a.id}
+              id={`aba-${a.id}`}
               type="button"
-              onClick={() => setSecaoAtiva((atual) => (atual === card.id ? null : card.id))}
-              title={ativo ? "Clique para desmarcar e recolher" : `Clique para exibir ${card.rotulo.toLowerCase()}`}
-              style={{ "--i": i + 2 } as React.CSSProperties}
-              className={`entrar pressionavel levanta group relative flex flex-col rounded-2xl border p-4 text-left transition-all duration-200 ${
-                ativo
-                  ? "border-verde/80 bg-verde-claro/40 shadow-card ring-2 ring-verde/30"
-                  : "border-borda bg-superficie hover:border-verde/40 hover:bg-fundo/70"
+              role="tab"
+              aria-selected={ativo}
+              aria-controls="resultados-busca"
+              onClick={() => { clicouAba.current = true; setSecaoAtiva(a.id); }}
+              className={`pressionavel flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${
+                ativo ? "bg-verde-claro text-verde" : "text-suave hover:bg-fundo hover:text-texto"
               }`}
             >
-              <div className="flex items-center justify-between">
-                <span
-                  className={`grid size-9 place-items-center rounded-xl transition-colors ${
-                    ativo ? "bg-verde text-white shadow-sm" : "bg-fundo text-verde group-hover:bg-verde group-hover:text-white"
-                  }`}
-                >
-                  <card.icone className="size-5" />
-                </span>
-                {ativo && (
-                  <span className="rounded-full bg-verde px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
-                    Ativo
-                  </span>
-                )}
-              </div>
-              <p className="mt-3 text-3xl font-bold tabular-nums tracking-tight text-texto">
-                <Contador valor={card.valor} />
-              </p>
-              <p className={`text-sm font-semibold transition-colors ${ativo ? "text-verde" : "text-suave"}`}>
-                {card.rotulo}
-              </p>
+              {a.rotulo}
+              <span className={`tabular-nums ${ativo ? "text-verde" : "text-suave/80"}`}>{contagem[a.id]}</span>
             </button>
           );
         })}
       </div>
 
-      {/* Banner de Convênio Ativo (se selecionado no Seletor) */}
-      {info && (
-        <div className="entrar rounded-2xl border border-borda bg-superficie p-4 shadow-card">
-          <div className="flex items-center gap-3">
-            <LogoMarca nome={info.convenio.nome} logo={info.convenio.logo} cor={info.convenio.cor} />
-            <div className="min-w-0 flex-1">
-              <p className="font-semibold text-texto">{info.convenio.nome}</p>
-              <p className="truncate text-xs text-suave">Rede ativa: {info.subtipo.nome}</p>
-            </div>
-            <TipoBadge tipo={tipo} />
-          </div>
-        </div>
-      )}
-
-      {/* ÁREA DE RESULTADOS DINÂMICA: Exibe APENAS a seção ativa selecionada */}
-      <div>
-        {!secaoAtiva && (
-          <div className="entrar rounded-3xl border border-dashed border-borda/80 bg-superficie/50 p-8 text-center">
-            <p className="text-sm font-semibold text-suave">
-              Nenhuma categoria selecionada. Clique em um dos cartões acima para visualizar os dados.
-            </p>
-          </div>
-        )}
+      {/* ÁREA DE RESULTADOS: só a aba ativa */}
+      <div id="resultados-busca" role="tabpanel" aria-labelledby={`aba-${secaoAtiva}`}>
         {/* ==================== 1. SEÇÃO ESPECIALIDADES ==================== */}
         {secaoAtiva === "especialidades" && (
           <div className="entrar space-y-4">
@@ -288,7 +299,7 @@ export default function BuscaRapida() {
                           </span>
                         </div>
                         <h3 className="mt-4 text-lg font-bold text-texto group-hover:text-verde transition-colors">
-                          {e.nome}
+                          <Destaque texto={e.nome} q={q} />
                         </h3>
 
                         {medicosDesta.length > 0 ? (
@@ -352,6 +363,8 @@ export default function BuscaRapida() {
                       key={p.id}
                       p={p}
                       i={i}
+                      q={q}
+                      onAbrir={() => lembrar({ tipo: "profissional", id: p.id })}
                       especialidade={medEsp}
                       destaque={
                         (bateuProc.length > 0 || bateuExames.length > 0) && (
@@ -420,7 +433,7 @@ export default function BuscaRapida() {
                         </div>
 
                         <h3 className="text-xl font-bold tracking-tight text-texto group-hover:text-verde transition-colors">
-                          {c.nome}
+                          <Destaque texto={c.nome} q={q} />
                         </h3>
                         <p className="mt-1 text-xs text-suave">Regras e planos da carteirinha</p>
 
@@ -464,10 +477,7 @@ export default function BuscaRapida() {
                         {c.subtipos.length > 0 && (
                           <button
                             type="button"
-                            onClick={() => {
-                              setSubtipo(c.subtipos[0].id);
-                              setSecaoAtiva("profissionais");
-                            }}
+                            onClick={() => setFiltroConvenio(c.nome)}
                             className="text-suave hover:text-texto font-semibold"
                           >
                             Filtrar médicos
@@ -500,11 +510,12 @@ export default function BuscaRapida() {
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {examesFiltrados.map((e, i) => {
                   const quemFaz = dados.profissionais.filter((p) => p.exames.includes(e.id));
+                  const redes = e.subtipos.filter((id) => validos.has(id)).length;
                   return (
                     <button
                       key={e.id}
                       type="button"
-                      onClick={() => abrir({ tipo: "exame", id: e.id })}
+                      onClick={() => { lembrar({ tipo: "exame", id: e.id }); abrir({ tipo: "exame", id: e.id }); }}
                       style={{ "--i": Math.min(i, 10) } as React.CSSProperties}
                       className="entrar pressionavel levanta group flex flex-col justify-between rounded-3xl border border-borda bg-superficie p-5 text-left shadow-card transition-all hover:border-azul/50 hover:shadow-elevado"
                     >
@@ -514,12 +525,12 @@ export default function BuscaRapida() {
                             <FlaskConical className="size-6" />
                           </span>
                           <span className="rounded-xl bg-fundo px-2.5 py-1 text-xs font-semibold text-suave">
-                            {e.subtipos.filter((id) => validos.has(id)).length} {e.subtipos.filter((id) => validos.has(id)).length === 1 ? "rede" : "redes"}
+                            {redes} {redes === 1 ? "rede" : "redes"}
                           </span>
                         </div>
 
                         <h3 className="mt-4 text-lg font-bold text-texto group-hover:text-azul transition-colors">
-                          {e.nome}
+                          <Destaque texto={e.nome} q={q} />
                         </h3>
                         <p className="mt-1 line-clamp-2 text-xs text-suave">
                           {e.preparo[0] ?? "Sem preparo específico cadastrado."}
