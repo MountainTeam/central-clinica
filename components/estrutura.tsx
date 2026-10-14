@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { Building2, Check, CheckCircle2, ChevronsUpDown, FlaskConical, LayoutGrid, Lock, LogOut, PhoneCall, Search, ShieldCheck, TriangleAlert, Users } from "lucide-react";
 import type { Usuario } from "@/lib/modelo";
 import { PAPEIS, podeCriarUsuario } from "@/lib/permissoes";
@@ -30,7 +30,7 @@ const menu: ItemMenu[] = [
 ];
 
 export function Estrutura({ children }: { children: React.ReactNode }) {
-  const { usuario, carregado, sair, aviso, avisar, clinica, form } = useStore();
+  const { usuario, carregado, sair, aviso, avisar, clinica, form, abrir } = useStore();
   const router = useRouter();
   const rota = usePathname();
   // telas que funcionam sem unidade escolhida
@@ -56,12 +56,13 @@ export function Estrutura({ children }: { children: React.ReactNode }) {
       const atalho = ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") || (e.key === "/" && !emCampo && !e.ctrlKey && !e.metaKey);
       if (!atalho || !clinica || form) return;
       e.preventDefault();
+      abrir(null);
       if (rota !== "/busca") router.push("/busca");
       window.dispatchEvent(new Event("cartilha:focar-busca"));
     };
     window.addEventListener("keydown", tecla);
     return () => window.removeEventListener("keydown", tecla);
-  }, [clinica, form, rota, router]);
+  }, [clinica, form, rota, router, abrir]);
 
   const itens = menu.filter((m) => !m.mostrar || (usuario && m.mostrar(usuario)));
   const ativo = itens.findIndex((m) => (m.href === "/" ? rota === "/" : rota.startsWith(m.href)));
@@ -168,6 +169,7 @@ export function Estrutura({ children }: { children: React.ReactNode }) {
       </main>
 
       <Paineis />
+      <Suspense><ExameNaUrl /></Suspense>
       <Formularios />
 
       {aviso && (
@@ -179,6 +181,43 @@ export function Estrutura({ children }: { children: React.ReactNode }) {
       )}
     </div>
   );
+}
+
+// Mantém "?exame=<id>" igual ao painel aberto, sem mexer nos outros parâmetros da URL
+function ExameNaUrl() {
+  const { painel, abrir, dados, carregado, clinica } = useStore();
+  const router = useRouter();
+  const rota = usePathname();
+  const params = useSearchParams();
+  const naUrl = params.get("exame");
+  const id = painel?.id ?? null;
+  const visto = useRef(`${id}|${rota}`);
+
+  // URL -> painel (link, recarregar); id que não existe é descartado
+  useEffect(() => {
+    if (!carregado || !clinica || !naUrl || naUrl === id) return;
+    if (dados.exames.some((e) => e.id === naUrl)) abrir({ tipo: "exame", id: naUrl });
+    else {
+      const p = new URLSearchParams(params.toString());
+      p.delete("exame");
+      router.replace(p.size ? `${rota}?${p}` : rota, { scroll: false });
+    }
+    // só reage à mudança do ?exame=
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [naUrl, carregado, clinica]);
+
+  // painel -> URL (abrir acrescenta, fechar remove); só age quando o painel ou a tela mudam (carregar com ?exame= só lê a URL)
+  useEffect(() => {
+    if (visto.current === `${id}|${rota}`) return;
+    visto.current = `${id}|${rota}`;
+    if (id === naUrl) return;
+    const p = new URLSearchParams(params.toString());
+    if (id) p.set("exame", id); else p.delete("exame");
+    router.replace(p.size ? `${rota}?${p}` : rota, { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, rota]);
+
+  return null;
 }
 
 // O plano do paciente da ligação atual, visível em todas as telas da unidade

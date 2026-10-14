@@ -316,103 +316,48 @@ export function Gaveta({ aberta, onFechar, alterado = false, largura = "max-w-xl
   );
 }
 
-const CHAVE_JANELA = "cartilha:janela";
-
-// Janela flutuante no estilo Mac: arrasta pela barra de título e não bloqueia a página atrás.
-// Fica no lugar em que a pessoa largou (só neste navegador). No celular vira folha de baixo, sem arrastar.
+// Painel lateral à direita: fundo escurecido (clique fecha), Esc fecha, foco vai ao botão Fechar e volta a quem abriu
 export function Janela({ aberta, titulo, onFechar, children }: {
   aberta: boolean; titulo: string; onFechar: () => void; children: React.ReactNode;
 }) {
-  const caixa = useRef<HTMLDivElement>(null);
-  const pos = useRef({ x: 0, y: 0 });
-  const arrasto = useRef<{ px: number; py: number; x: number; y: number } | null>(null);
-  const [arrastando, setArrastando] = useState(false);
-  const [recolhida, setRecolhida] = useState(false);
+  const { form } = useStore();
+  const idTitulo = useId();
+  const fechar = useRef<HTMLButtonElement>(null);
+  const painel = useRef<HTMLElement>(null);
+  const onFecharRef = useRef(onFechar);
+  onFecharRef.current = onFechar;
+  const formAberto = useRef(false);
+  formAberto.current = !!form;
 
-  // posição atual da janela, presa à tela: largura inteira visível e a barra de título sempre alcançável
-  const mover = (x: number, y: number) => {
-    const el = caixa.current;
-    if (!el) return;
-    if (innerWidth < 640) x = y = 0;
-    else {
-      // offset* ignora a animação de abrir e o deslocamento: é o lugar padrão da janela
-      const bx = el.offsetLeft, by = el.offsetTop;
-      x = Math.min(Math.max(x, 8 - bx), innerWidth - 8 - el.offsetWidth - bx);
-      y = Math.min(Math.max(y, 8 - by), innerHeight - 48 - by);
-      // a altura encolhe quando a janela desce, para o fim do conteúdo não sair da tela
-      el.style.setProperty("--alto", `${innerHeight - (by + y) - 8}px`);
-    }
-    pos.current = { x, y };
-    el.style.translate = `${x}px ${y}px`;
-  };
-  const guardar = () => { try { localStorage.setItem(CHAVE_JANELA, JSON.stringify(pos.current)); } catch {} };
-  const voltar = () => { mover(0, 0); guardar(); };
-
-  useEffect(() => {
-    try {
-      const salvo = JSON.parse(localStorage.getItem(CHAVE_JANELA) ?? "null");
-      if (salvo) mover(salvo.x, salvo.y);
-    } catch {}
-  }, []);
-
-  // ao abrir (ou trocar de exame): expande, cabe na tela atual e recebe o foco
   useEffect(() => {
     if (!aberta) return;
-    setRecolhida(false);
-    mover(pos.current.x, pos.current.y);
-    caixa.current?.focus({ preventScroll: true });
-  }, [aberta, titulo]);
-
-  const fechar = useRef(onFechar);
-  useEffect(() => { fechar.current = onFechar; });
-  useEffect(() => {
-    if (!aberta) return;
-    const esc = (e: KeyboardEvent) => e.key === "Escape" && fechar.current();
+    const origem = document.activeElement as HTMLElement | null;
+    fechar.current?.focus({ preventScroll: true });
+    // com um formulário por cima, o Esc é dele
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape" && !formAberto.current) onFecharRef.current(); };
     window.addEventListener("keydown", esc);
-    return () => window.removeEventListener("keydown", esc);
+    return () => {
+      window.removeEventListener("keydown", esc);
+      // o foco só volta se não foi para outro lugar (ex.: o formulário de edição)
+      if (origem?.isConnected && (!document.activeElement || document.activeElement === document.body || painel.current?.contains(document.activeElement))) origem.focus({ preventScroll: true });
+    };
   }, [aberta]);
 
-  const soltar = () => {
-    if (!arrasto.current) return;
-    arrasto.current = null;
-    setArrastando(false);
-    guardar();
-  };
-
   return (
-    <div ref={caixa} role="dialog" aria-label={titulo} tabIndex={-1} data-aberta={aberta} data-arrastando={arrastando}
-      aria-hidden={!aberta} inert={!aberta}
-      className="janela fixed inset-x-2 bottom-2 z-[35] flex flex-col overflow-hidden rounded-2xl border border-borda bg-superficie shadow-elevado outline-none sm:inset-x-auto sm:bottom-auto sm:right-6 sm:top-6 sm:w-[460px]">
-      <div onDoubleClick={voltar} onPointerUp={soltar} onPointerCancel={soltar}
-        onPointerDown={(e) => {
-          if (arrasto.current || e.button !== 0 || innerWidth < 640 || (e.target as HTMLElement).closest("button")) return;
-          e.currentTarget.setPointerCapture(e.pointerId);
-          arrasto.current = { px: e.clientX, py: e.clientY, ...pos.current };
-          setArrastando(true);
-        }}
-        onPointerMove={(e) => { const a = arrasto.current; if (a) mover(a.x + e.clientX - a.px, a.y + e.clientY - a.py); }}
-        className={`relative flex h-10 shrink-0 select-none items-center border-b border-borda bg-fundo/70 px-3 sm:cursor-grab ${arrastando ? "sm:cursor-grabbing" : ""}`}>
-        <div className="group/luzes relative z-10 flex">
-          <Luz cor="bg-[#ff5f57]" rotulo="Fechar" onClick={onFechar}><X /></Luz>
-          <Luz cor="bg-[#febc2e]" rotulo={recolhida ? "Expandir" : "Recolher"} onClick={() => setRecolhida(!recolhida)}><Icones.Minus /></Luz>
-          <Luz cor="bg-[#28c840]" rotulo="Voltar para o canto" onClick={voltar}><Icones.CornerRightUp /></Luz>
-        </div>
-        <p className="absolute inset-x-24 truncate text-center text-[13px] font-semibold text-suave">{titulo}</p>
-      </div>
-      <div className="grid transition-[grid-template-rows] duration-200 ease-saida" style={{ gridTemplateRows: recolhida ? "0fr" : "1fr" }}>
-        <div className="max-h-[calc(85dvh-2.5rem)] min-h-0 overflow-y-auto sm:max-h-[calc(var(--alto,100dvh)-2.5rem)]">{children}</div>
-      </div>
-    </div>
-  );
-}
-
-function Luz({ cor, rotulo, onClick, children }: { cor: string; rotulo: string; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button type="button" onClick={onClick} aria-label={rotulo} title={rotulo} className="grid size-5 place-items-center">
-      <span className={`grid size-3 place-items-center rounded-full ${cor} text-black/60 ring-1 ring-black/10 [&_svg]:size-2 [&_svg]:stroke-[3] [&_svg]:opacity-0 group-hover/luzes:[&_svg]:opacity-100 group-focus-within/luzes:[&_svg]:opacity-100`}>
-        {children}
-      </span>
-    </button>
+    <>
+      <div data-aberta={aberta} onClick={onFechar} className="veu fixed inset-0 z-40 bg-texto/30" />
+      <aside ref={painel} role="dialog" aria-modal="true" aria-labelledby={idTitulo} data-aberta={aberta} aria-hidden={!aberta} inert={!aberta}
+        className="gaveta fixed inset-y-0 right-0 z-50 flex w-[min(560px,100vw)] flex-col bg-superficie shadow-elevado">
+        <header className="flex shrink-0 items-center gap-3 border-b border-borda px-5 py-3">
+          <h2 id={idTitulo} className="min-w-0 flex-1 truncate text-xl font-bold tracking-tight">{titulo}</h2>
+          <button ref={fechar} type="button" onClick={onFechar} aria-label="Fechar"
+            className="pressionavel grid size-10 shrink-0 place-items-center rounded-xl text-suave hover:bg-fundo hover:text-texto">
+            <X className="size-5" />
+          </button>
+        </header>
+        <div className="flex-1 overflow-y-auto">{children}</div>
+      </aside>
+    </>
   );
 }
 
