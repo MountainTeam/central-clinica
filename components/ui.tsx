@@ -109,7 +109,7 @@ export function Segmentado<T extends string>({ opcoes, valor, onChange, desativa
       />
       {opcoes.map((o) => (
         <button key={o.valor} type="button" onClick={() => onChange(o.valor)} disabled={desativado}
-          className={`relative h-9 rounded-lg px-3 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${o.valor === valor ? "text-texto" : "text-suave enabled:hover:text-texto"}`}>
+          className={`relative h-9 whitespace-nowrap rounded-lg px-3 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${o.valor === valor ? "text-texto" : "text-suave enabled:hover:text-texto"}`}>
           {o.rotulo}
         </button>
       ))}
@@ -120,7 +120,7 @@ export function Segmentado<T extends string>({ opcoes, valor, onChange, desativa
 type OpcaoLista = { id: string; texto: string; rotulo: React.ReactNode; grupo?: string };
 
 // Botão + lista com busca: Esc fecha, ↑/↓ movem a opção ativa, Enter escolhe
-function SeletorBusca({ valor, onChange, vazio, placeholder, atual, opcoes, grupos = {}, abertoInicial = false, buscaInicial = "", onFechar, largo = true }: {
+export function SeletorBusca({ valor, onChange, vazio, placeholder, atual, opcoes, grupos = {}, abertoInicial = false, buscaInicial = "", onFechar, largo = true }: {
   valor: string; onChange: (v: string) => void; vazio: string; placeholder: string; atual: React.ReactNode;
   opcoes: OpcaoLista[]; grupos?: Record<string, React.ReactNode>;
   abertoInicial?: boolean; buscaInicial?: string; onFechar?: () => void; largo?: boolean;

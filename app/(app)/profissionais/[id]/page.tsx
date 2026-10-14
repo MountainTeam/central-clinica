@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Check, Copy, ChevronDown, ChevronRight, ClipboardList, Clock, FlaskConical, Minus, NotebookPen, Pencil, Search, ShieldCheck, TriangleAlert, X } from "lucide-react";
-import { useStore } from "@/lib/store";
+import { useItemDeOutraUnidade, useStore } from "@/lib/store";
 import { DIAS, type DadosClinica, type Profissional } from "@/lib/modelo";
 import { coberturaDaBusca, combina, gruposHorarios, subtipoInfo } from "@/lib/regras";
 import { salvarProfissional } from "@/lib/repositorio";
@@ -15,21 +15,29 @@ const cartao = "rounded-3xl border border-borda bg-superficie p-5 shadow-card sm
 
 export default function PaginaProfissional() {
   const { id } = useParams<{ id: string }>();
+  const { dados } = useStore();
+  const { semAcesso } = useItemDeOutraUnidade("profissionais", id);
+  const p = dados.profissionais.find((x) => x.id === id);
+  // a ficha só monta com o médico carregado (ela usa hooks depois da leitura)
+  if (!p) {
+    return (
+      <div className="entrar space-y-4">
+        <Vazio texto={semAcesso ? "Você não tem acesso a esta unidade." : "Profissional não encontrado."} />
+        <Link href="/busca" className="pressionavel inline-flex items-center gap-2 font-semibold text-verde"><ArrowLeft className="size-4" />Voltar para a busca</Link>
+      </div>
+    );
+  }
+  return <Ficha p={p} />;
+}
+
+function Ficha({ p }: { p: Profissional }) {
+  const router = useRouter();
   const { dados, podeEditarAtual, abrir, abrirForm, executar, avisar } = useStore();
   const [editando, setEditando] = useState<"horarios" | "obs" | null>(null);
   // dia da semana só no navegador, para não divergir do HTML do servidor
   const [hoje, setHoje] = useState<string | null>(null);
   useEffect(() => setHoje(DIAS[new Date().getDay() - 1] ?? null), []);
 
-  const p = dados.profissionais.find((x) => x.id === id);
-  if (!p) {
-    return (
-      <div className="entrar space-y-4">
-        <Vazio texto={"Profissional não encontrado."} />
-        <Link href="/" className="pressionavel inline-flex items-center gap-2 font-semibold text-verde"><ArrowLeft className="size-4" />Voltar para a busca</Link>
-      </div>
-    );
-  }
   const esp = dados.especialidades.find((e) => e.id === p.especialidadeId);
   const admin = podeEditarAtual; // pode editar esta clínica
   const salvar = (mudanca: Partial<Profissional>, msg: string) => {
@@ -51,7 +59,7 @@ export default function PaginaProfissional() {
 
   return (
     <div>
-      <button onClick={() => history.back()} className="entrar pressionavel mb-6 inline-flex items-center gap-2 text-sm font-semibold text-suave hover:text-texto">
+      <button onClick={() => (history.length > 1 ? history.back() : router.push("/busca"))} className="entrar pressionavel mb-6 inline-flex items-center gap-2 text-sm font-semibold text-suave hover:text-texto">
         <ArrowLeft className="size-4" />Voltar
       </button>
 
@@ -365,9 +373,7 @@ function ChecadorConveniosProfissional({ dados, p }: { dados: DadosClinica; p: P
                     <LogoMarca nome={c.nome} logo={c.logo} cor={c.cor} tamanho="sm" />
                     <div>
                       <span className="font-semibold text-texto">{c.nome}</span>
-                      <p className="text-xs text-suave">
-                        {naoCobre.length ? "Convênio atendido, mas não nesta rede" : "Disponível na clínica em outras especialidades"}
-                      </p>
+                      {naoCobre.length > 0 && <p className="text-xs text-suave">Convênio atendido, mas não nesta rede</p>}
                       {naoCobre.length > 0 && (
                         <div className="mt-1.5 flex flex-wrap gap-1">
                           {naoCobre.map((s) => <Chip key={s.id} tom="alerta">{s.nome} · não cobre</Chip>)}

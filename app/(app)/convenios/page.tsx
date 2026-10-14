@@ -3,8 +3,6 @@
 import Link from "next/link";
 import { useState } from "react";
 import {
-  ArrowRight,
-  BookOpen,
   Plus,
   Search,
   ShieldAlert,
@@ -79,7 +77,7 @@ export default function Convenios() {
   return (
     <div className="space-y-6">
       <CabecalhoPagina
-        titulo="Convênios & Manuais de Atendimento"
+        titulo="Convênios e manuais de atendimento"
         acao={
           podeEditarAtual && (
             <div className="flex flex-wrap items-center gap-2">
@@ -131,11 +129,8 @@ export default function Convenios() {
                 className="entrar pressionavel levanta group flex flex-col justify-between rounded-3xl border border-borda bg-superficie p-6 shadow-card transition-all hover:border-verde/40 hover:shadow-elevado"
               >
                 <div>
-                  <div className="mb-4 flex items-center justify-between">
+                  <div className="mb-4">
                     <LogoMarca nome={conv.nome} logo={conv.logo} cor={conv.cor} tamanho="lg" />
-                    <span className="rounded-xl bg-fundo px-3 py-1 text-xs font-semibold text-suave">
-                      {clinica?.nome ?? "COMN"}
-                    </span>
                   </div>
 
                   <h2 className="text-xl font-bold tracking-tight text-texto group-hover:text-verde transition-colors">
@@ -149,7 +144,7 @@ export default function Convenios() {
                         <span className="size-2 rounded-full bg-emerald-500" />
                         Consultas e exames
                       </span>
-                      <span className="font-bold text-emerald-700">{countAtende} planos</span>
+                      <span className={`font-bold ${countAtende ? "text-texto" : "text-suave"}`}>{countAtende} planos</span>
                     </div>
 
                     <div className="flex items-center justify-between text-texto">
@@ -157,7 +152,7 @@ export default function Convenios() {
                         <span className="size-2 rounded-full bg-amber-500" />
                         Somente exames
                       </span>
-                      <span className="font-bold text-amber-700">{countSomente} planos</span>
+                      <span className={`font-bold ${countSomente ? "text-texto" : "text-suave"}`}>{countSomente} planos</span>
                     </div>
 
                     {countNao > 0 && (
@@ -166,7 +161,7 @@ export default function Convenios() {
                           <span className="size-2 rounded-full bg-rose-500" />
                           Não atendidos
                         </span>
-                        <span className="font-bold text-rose-700">{countNao} planos</span>
+                        <span className={`font-bold ${countNao ? "text-texto" : "text-suave"}`}>{countNao} planos</span>
                       </div>
                     )}
 
@@ -182,13 +177,6 @@ export default function Convenios() {
                   </div>
                 </div>
 
-                <div className="mt-6 flex items-center justify-between border-t border-borda/60 pt-4 text-xs font-bold text-verde">
-                  <span className="flex items-center gap-1.5">
-                    <BookOpen className="size-4" />
-                    Abrir guia do convênio
-                  </span>
-                  <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
-                </div>
               </Link>
             );
           })}

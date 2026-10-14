@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import type { Banco, Clinica, DadosClinica, Tipo, Usuario } from "./modelo";
 import { subtipoInfo } from "./regras";
-import { podeEditar } from "./permissoes";
+import { podeEditar, podeVer } from "./permissoes";
 import { CHAVE, carregarProtegido, clinicasDo, dadosDaClinica, gravar } from "./repositorio";
 import { pontoZero } from "./semente";
 
@@ -207,4 +207,16 @@ export function useStore() {
   const s = useContext(Ctx);
   if (!s) throw new Error("useStore fora do Provider");
   return s;
+}
+
+// Link direto para médico ou convênio de outra unidade: se a pessoa pode ver, troca de unidade;
+// se não, devolve `semAcesso`. Só age quando o item não está na unidade atual.
+export function useItemDeOutraUnidade(lista: "profissionais" | "convenios", id: string) {
+  const { banco, dados, usuario, escolherClinica } = useStore();
+  const naAtual = dados[lista].some((x) => x.id === id);
+  const fora = naAtual ? undefined : banco[lista].find((x) => x.id === id);
+  const liberado = !!fora && !!usuario && podeVer(usuario, fora.clinicaId);
+  const destino = liberado ? fora!.clinicaId : null;
+  useEffect(() => { if (destino) escolherClinica(destino); }, [destino]); // eslint-disable-line react-hooks/exhaustive-deps
+  return { semAcesso: !!fora && !liberado };
 }

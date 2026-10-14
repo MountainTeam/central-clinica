@@ -111,6 +111,7 @@ const carimbo = (u: Usuario) => ({ atualizadoEm: new Date().toISOString(), atual
 
 export function salvarProfissional(b: Banco, u: Usuario, p: Profissional): Banco {
   conferirClinica(u, p, b.profissionais.find((x) => x.id === p.id));
+  for (const h of p.horarios) exigir(h.inicio < h.fim, `Horário de ${h.dia}: o início precisa ser antes do fim.`);
   return { ...b, profissionais: gravarEm(b.profissionais, { ...p, ...carimbo(u) }) };
 }
 
@@ -161,6 +162,8 @@ export function salvarConvenio(b: Banco, u: Usuario, c: Convenio): Banco {
 
 export function salvarEspecialidade(b: Banco, u: Usuario, e: Especialidade): Banco {
   conferirClinica(u, e, b.especialidades.find((x) => x.id === e.id));
+  const nome = e.nome.trim().toLowerCase();
+  exigir(!b.especialidades.some((x) => x.id !== e.id && x.clinicaId === e.clinicaId && x.nome.trim().toLowerCase() === nome), `Já existe a especialidade ${e.nome.trim()} nesta clínica.`);
   return { ...b, especialidades: gravarEm(b.especialidades, e) };
 }
 
@@ -185,6 +188,8 @@ export function salvarUsuario(b: Banco, u: Usuario, novo: Usuario): Banco {
   exigir(podeCriarUsuario(u), "Só o Administrador cria usuários.");
   const todas = novo.papel === "administrador" || novo.papel === "comercial";
   exigir(todas || novo.clinicas.length > 0, "Vincule pelo menos uma clínica.");
+  const email = novo.email.trim().toLowerCase();
+  exigir(!b.usuarios.some((x) => x.id !== novo.id && x.email.trim().toLowerCase() === email), "Já existe um usuário com este e-mail.");
   exigir(novo.id !== u.id || novo.papel === "administrador", "Você não pode tirar o seu próprio acesso de Administrador.");
   return comAdministrador({ ...b, usuarios: gravarEm(b.usuarios, todas ? { ...novo, clinicas: [] } : novo) });
 }
