@@ -174,11 +174,17 @@ export function salvarOrganizacao(b: Banco, u: Usuario, o: Organizacao): Banco {
   return { ...b, organizacoes: gravarEm(b.organizacoes, o) };
 }
 
+function comAdministrador(b: Banco): Banco {
+  exigir(b.usuarios.some((x) => x.papel === "administrador"), "A cartilha precisa de pelo menos um Administrador.");
+  return b;
+}
+
 export function salvarUsuario(b: Banco, u: Usuario, novo: Usuario): Banco {
   exigir(podeCriarUsuario(u), "Só o Administrador cria usuários.");
   const todas = novo.papel === "administrador" || novo.papel === "comercial";
   exigir(todas || novo.clinicas.length > 0, "Vincule pelo menos uma clínica.");
-  return { ...b, usuarios: gravarEm(b.usuarios, todas ? { ...novo, clinicas: [] } : novo) };
+  exigir(novo.id !== u.id || novo.papel === "administrador", "Você não pode tirar o seu próprio acesso de Administrador.");
+  return comAdministrador({ ...b, usuarios: gravarEm(b.usuarios, todas ? { ...novo, clinicas: [] } : novo) });
 }
 
 // --- exclusão: acha o item, confere a clínica e devolve um banco novo ---
@@ -212,7 +218,7 @@ export function excluirConvenio(b: Banco, u: Usuario, id: string): Banco {
 export function excluirEspecialidade(b: Banco, u: Usuario, id: string): Banco {
   achar(b.especialidades, u, id);
   const n = b.profissionais.filter((p) => p.especialidadeId === id).length;
-  exigir(n === 0, `Mova os ${n} médicos desta especialidade antes de excluir.`);
+  exigir(n === 0, n === 1 ? "Mova o médico desta especialidade antes de excluir." : `Mova os ${n} médicos desta especialidade antes de excluir.`);
   return { ...b, especialidades: b.especialidades.filter((x) => x.id !== id) };
 }
 
@@ -220,7 +226,7 @@ export function excluirUsuario(b: Banco, u: Usuario, id: string): Banco {
   exigir(podeCriarUsuario(u), "Só o Administrador exclui usuários.");
   exigir(id !== u.id, "Você não pode excluir o próprio usuário.");
   exigir(b.usuarios.some((x) => x.id === id), "Não encontrado.");
-  return { ...b, usuarios: b.usuarios.filter((x) => x.id !== id) };
+  return comAdministrador({ ...b, usuarios: b.usuarios.filter((x) => x.id !== id) });
 }
 
 export function restaurarDemonstracao(_b: Banco, u: Usuario): Banco {

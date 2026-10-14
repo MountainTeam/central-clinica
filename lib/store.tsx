@@ -63,6 +63,10 @@ export function Provider({ children }: { children: React.ReactNode }) {
   const [form, abrirForm] = useState<Formulario>(null);
   const [aviso, setAviso] = useState<Aviso | null>(null);
   const [protegido, setProtegido] = useState(false);
+  const bancoRef = useRef(banco);
+  bancoRef.current = banco;
+  // resultado da última exclusão com "Desfazer"; qualquer outra gravação depois dele invalida o botão
+  const excluido = useRef<Banco | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const avisar = useCallback((t: string, erro = false, acao?: Aviso["acao"]) => {
@@ -88,6 +92,10 @@ export function Provider({ children }: { children: React.ReactNode }) {
     if (protegido) return;
     if (!gravar(banco)) avisar("Não deu para salvar no navegador: o espaço acabou. Baixe uma cópia de segurança em Usuários.", true);
   }, [banco, carregado, protegido, avisar]);
+
+  useEffect(() => {
+    if (banco !== excluido.current) setAviso((a) => (a?.acao ? { ...a, acao: undefined } : a));
+  }, [banco]);
 
   // outra aba gravou: pega o banco novo, para esta aba não sobrescrever com dados velhos
   useEffect(() => {
@@ -137,10 +145,13 @@ export function Provider({ children }: { children: React.ReactNode }) {
     if (!usuario) return false;
     if (protegido) { avisar(DADOS_ANTIGOS, true); return false; }
     try {
-      setBanco(op(banco, usuario));
+      const novo = op(banco, usuario);
       const anterior = banco;
+      setBanco(novo);
+      excluido.current = opcoes?.desfazer ? novo : null;
       avisar(sucesso, false, opcoes?.desfazer ? { rotulo: "Desfazer", fazer: () => {
         if (protegido) { avisar(DADOS_ANTIGOS, true); return; }
+        if (bancoRef.current !== novo) { avisar("Não dá mais para desfazer: houve outra alteração depois.", true); return; }
         setBanco(anterior);
         avisar("Exclusão desfeita");
       } } : undefined);
