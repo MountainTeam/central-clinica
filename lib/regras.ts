@@ -121,7 +121,7 @@ export const novoId = (prefixo: string) =>
   `${prefixo}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
 
 // Cor automática de convênio novo (fallback quando não há logo)
-export const CORES = ["#0d9b86", "#2d6be0", "#d1344b", "#ea7a1a", "#7c3aed", "#0891b2", "#ca8a04", "#db2777"];
+export const CORES = ["#0b7a69", "#2d6be0", "#d1344b", "#ea7a1a", "#7c3aed", "#0891b2", "#ca8a04", "#db2777"];
 export const corDoIndice = (n: number) => CORES[n % CORES.length];
 
 export function gruposPlanosDoConvenio(c: Convenio): GrupoPlano[] {

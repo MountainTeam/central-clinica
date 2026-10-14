@@ -163,6 +163,7 @@ export function Provider({ children }: { children: React.ReactNode }) {
     return !!u && !!unidade(clinicasDo(banco, u));
   };
   const sair = () => {
+    escolherPlano(null);
     setUsuarioId(null);
     gravarLocal(SESSAO_USUARIO, null);
     abrir(null);
