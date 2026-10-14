@@ -7,13 +7,16 @@
   --color-superficie: #ffffff;
   --color-borda: #e2eaee;
   --color-texto: #0f2a33;
-  --color-suave: #5d7682;
-  --color-verde: #0d9b86;
+  --color-suave: #4b6470;
+  --color-verde: #0b7a69;
+  --color-verde-escuro: #096455;
   --color-verde-claro: #e5f5f1;
-  --color-azul: #2d6be0;
+  --color-azul: #2559c4;
   --color-azul-claro: #e9f0fd;
   --color-alerta: #a85b06;
   --color-alerta-claro: #fff6e5;
+  --color-perigo: #b42336;
+  --color-perigo-claro: #fdecee;
 
   --ease-saida: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-gaveta: cubic-bezier(0.32, 0.72, 0, 1);
@@ -28,10 +31,10 @@ body {
 }
 
 .gradiente-marca {
-  background-image: linear-gradient(135deg, #12b39a 0%, #2d6be0 100%);
+  background-image: linear-gradient(135deg, #0f9680 0%, #2559c4 100%);
 }
 .texto-marca {
-  background-image: linear-gradient(135deg, #0d9b86 0%, #2d6be0 100%);
+  background-image: linear-gradient(135deg, #0b7a69 0%, #2559c4 100%);
   background-clip: text;
   color: transparent;
 }
@@ -90,27 +93,12 @@ body {
   animation: tracar 2.6s cubic-bezier(0.65, 0, 0.35, 1) 300ms forwards;
 }
 @keyframes pulsar {
-  0% { box-shadow: 0 0 0 0 rgb(13 155 134 / 0.45); }
-  100% { box-shadow: 0 0 0 10px rgb(13 155 134 / 0); }
+  0% { box-shadow: 0 0 0 0 rgb(11 122 105 / 0.45); }
+  100% { box-shadow: 0 0 0 10px rgb(11 122 105 / 0); }
 }
 .pulso { animation: pulsar 2s ease-out infinite; }
 
-/* Janela flutuante: aparece rápido, some mais rápido ainda; a sombra cresce enquanto é arrastada */
-.janela {
-  transform-origin: top right;
-  transition: opacity 220ms var(--ease-saida), transform 220ms var(--ease-saida), box-shadow 200ms ease;
-}
-.janela[data-aberta="false"] {
-  opacity: 0;
-  transform: scale(0.96) translateY(-6px);
-  visibility: hidden;
-  pointer-events: none;
-  transition: opacity 140ms ease, transform 140ms var(--ease-saida), visibility 0s 140ms;
-}
-.janela[data-arrastando="true"] { box-shadow: 0 32px 64px -16px rgb(15 42 51 / 0.35); }
-
 @media (prefers-reduced-motion: reduce) {
-  .janela, .janela[data-aberta="false"] { transform: none; transition: opacity 150ms ease; }
   .entrar { animation: none; }
   .bolha, .pulso { animation: none; }
   .ecg { animation: none; stroke-dashoffset: 0; }

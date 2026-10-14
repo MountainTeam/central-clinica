@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowUpRight, Settings2 } from "lucide-react";
@@ -44,7 +44,7 @@ function CartaoOrganizacao({ org, lista, indice }: { org: Organizacao; lista: Cl
             : <h3 className="truncate text-base font-bold">{c.nome}</h3>}
         </div>
         <button type="button" onClick={abrir}
-          className={`pressionavel mt-auto flex items-center justify-between rounded-xl px-4 py-2.5 text-sm font-semibold ${atual ? "gradiente-marca text-white" : "bg-fundo text-texto ring-1 ring-borda hover:text-verde"}`}>
+          className={`pressionavel mt-auto flex items-center justify-between rounded-xl px-4 py-2.5 text-sm font-semibold ${atual ? "bg-verde text-white hover:bg-verde-escuro" : "bg-fundo text-texto ring-1 ring-borda hover:text-verde"}`}>
           {atual ? "Continuar na unidade" : "Entrar na unidade"}
           <ArrowUpRight className="size-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
         </button>
@@ -54,7 +54,15 @@ function CartaoOrganizacao({ org, lista, indice }: { org: Organizacao; lista: Cl
 }
 
 export default function UnidadesPage() {
-  const { banco, usuario, clinicas } = useStore();
+  const { banco, usuario, clinicas, escolherClinica } = useStore();
+  const router = useRouter();
+  const unica = clinicas.length === 1 && usuario && !podeGerenciarUnidades(usuario) ? clinicas[0] : null;
+  // Central e Recepção com uma unidade só não têm o que escolher: vão direto para a busca
+  useEffect(() => {
+    if (!unica) return;
+    escolherClinica(unica.id);
+    router.replace("/busca");
+  }, [unica?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const orgs = banco.organizacoes.filter((o) => clinicas.some((c) => c.organizacaoId === o.id));
 
   return (

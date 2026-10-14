@@ -1,20 +1,38 @@
 "use client";
 
 import { useState } from "react";
-import { Building2, Plus, RotateCcw, ShieldCheck, UserRound } from "lucide-react";
+import { Building2, Download, Plus, RotateCcw, ShieldCheck, Upload, UserRound } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { PAPEIS, podeCriarUsuario } from "@/lib/permissoes";
-import { restaurarDemonstracao } from "@/lib/repositorio";
+import { exportarBackup, importarBackup, restaurarDemonstracao } from "@/lib/repositorio";
 import { Botao, CabecalhoPagina, Chip, Vazio } from "@/components/ui";
 
 export default function Usuarios() {
   const { banco, usuario, abrirForm, executar } = useStore();
   const [confirmando, setConfirmando] = useState(false);
+  const [copia, setCopia] = useState<string | null>(null);
   if (!usuario || !podeCriarUsuario(usuario)) return <Vazio texto="Só o Administrador gerencia usuários." />;
 
   const nomeClinica = (id: string) => banco.clinicas.find((c) => c.id === id)?.nome ?? id;
   const restaurar = () => {
     if (executar((b, u) => restaurarDemonstracao(b, u), "Demonstração restaurada")) setConfirmando(false);
+  };
+
+  const baixar = () => {
+    const url = URL.createObjectURL(new Blob([exportarBackup(banco)], { type: "application/json" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `cartilha-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+  const lerCopia = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const arquivo = e.target.files?.[0];
+    e.target.value = "";
+    if (arquivo) setCopia(await arquivo.text());
+  };
+  const restaurarCopia = () => {
+    if (copia !== null && executar((b, u) => importarBackup(b, u, copia), "Cópia restaurada")) setCopia(null);
   };
 
   return (
@@ -26,7 +44,7 @@ export default function Usuarios() {
         {banco.usuarios.map((u, i) => (
           <div key={u.id} style={{ "--i": Math.min(i, 10) } as React.CSSProperties}
             className={`entrar flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4 ${i ? "border-t border-borda" : ""}`}>
-            <span className={`grid size-10 place-items-center rounded-xl ${u.clinicas.length ? "bg-verde-claro text-verde" : "gradiente-marca text-white"}`}>
+            <span className={`grid size-10 place-items-center rounded-xl ${u.clinicas.length ? "bg-verde-claro text-verde" : "bg-verde text-white"}`}>
               {u.clinicas.length ? <UserRound className="size-5" /> : <ShieldCheck className="size-5" />}
             </span>
             <span className="min-w-0 flex-1">
@@ -34,16 +52,37 @@ export default function Usuarios() {
               <span className="block truncate text-sm text-suave">{u.email}</span>
             </span>
             <span className="flex flex-wrap gap-2">
-              <Chip tom={u.papel === "recepcao" ? "neutro" : "verde"}>{PAPEIS[u.papel].rotulo}</Chip>
+              <Chip tom={u.papel === "recepcao" || u.papel === "central" ? "neutro" : "verde"}>{PAPEIS[u.papel].rotulo}</Chip>
               {u.clinicas.length
                 ? u.clinicas.map((id) => <Chip key={id} tom="azul"><Building2 className="size-3.5" />{nomeClinica(id)}</Chip>)
                 : <Chip tom="azul">Todas as clínicas</Chip>}
             </span>
+            <Botao variante="secundario" onClick={() => abrirForm({ tipo: "usuario", id: u.id })}>Editar</Botao>
           </div>
         ))}
       </div>
 
       <section className="entrar mt-10 rounded-3xl border border-borda bg-superficie p-5 sm:p-6" style={{ "--i": 3 } as React.CSSProperties}>
+        <h2 className="font-bold">Cópia de segurança</h2>
+        <p className="mt-1 text-sm text-suave">Os dados ficam só neste navegador. Baixe uma cópia de vez em quando.</p>
+        {copia !== null ? (
+          <div className="entrar mt-4 flex flex-wrap items-center gap-3 rounded-2xl bg-alerta-claro p-4">
+            <p className="flex-1 text-sm font-semibold text-alerta">Isto substitui todos os dados deste navegador. Restaurar?</p>
+            <Botao variante="secundario" onClick={() => setCopia(null)}>Cancelar</Botao>
+            <Botao onClick={restaurarCopia}><Upload className="size-4" />Restaurar</Botao>
+          </div>
+        ) : (
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Botao variante="secundario" onClick={baixar}><Download className="size-4" />Baixar cópia</Botao>
+            <label className="pressionavel inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl border border-borda bg-superficie px-4 text-sm font-semibold hover:bg-fundo">
+              <Upload className="size-4" />Restaurar cópia
+              <input type="file" accept=".json,application/json" onChange={lerCopia} className="sr-only" />
+            </label>
+          </div>
+        )}
+      </section>
+
+      <section className="entrar mt-6 rounded-3xl border border-borda bg-superficie p-5 sm:p-6" style={{ "--i": 4 } as React.CSSProperties}>
         <h2 className="font-bold">Restaurar demonstração</h2>
         <p className="mt-1 text-sm text-suave">Apaga tudo que foi cadastrado.</p>
         {confirmando ? (

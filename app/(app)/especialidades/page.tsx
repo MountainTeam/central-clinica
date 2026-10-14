@@ -30,7 +30,7 @@ export default function Especialidades() {
           return (
             <button key={e.id} onClick={() => setSel(e.id)} style={{ "--i": i } as React.CSSProperties}
               className={`entrar pressionavel levanta flex items-center gap-3 rounded-2xl border p-4 text-left ${ativa ? "border-verde/40 bg-verde-claro shadow-card" : "border-borda bg-superficie"}`}>
-              <span className={`grid size-11 shrink-0 place-items-center rounded-xl transition-colors duration-300 ${ativa ? "gradiente-marca text-white" : "bg-fundo text-verde"}`}>
+              <span className={`grid size-11 shrink-0 place-items-center rounded-xl transition-colors duration-300 ${ativa ? "bg-verde text-white" : "bg-fundo text-verde"}`}>
                 <Icone nome={e.icone} className="size-5" />
               </span>
               <span className="min-w-0">
@@ -48,7 +48,10 @@ export default function Especialidades() {
 
       {atual && (
         <section key={sel} className="mt-10">
-          <h2 className="entrar mb-4 text-lg font-bold">{atual.nome}</h2>
+          <div className="entrar mb-4 flex items-center gap-3">
+            <h2 className="text-lg font-bold">{atual.nome}</h2>
+            {podeEditarAtual && <Botao variante="secundario" onClick={() => abrirForm({ tipo: "especialidade", id: atual.id })}>Editar</Botao>}
+          </div>
           {lista.length ? (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {lista.map((p, i) => (
@@ -56,8 +59,8 @@ export default function Especialidades() {
                   destaque={
                     <div className="flex flex-wrap gap-1.5 border-t border-borda pt-3">
                       {p.procedimentos.length
-                        ? p.procedimentos.map((x) => <span key={x} className="rounded-md bg-fundo px-2 py-0.5 text-xs text-suave">{x}</span>)
-                        : <span className="text-xs text-suave">Só consulta</span>}
+                        ? p.procedimentos.map((x) => <span key={x} className="rounded-md bg-fundo px-2 py-0.5 text-[13px] text-suave">{x}</span>)
+                        : <span className="text-[13px] text-suave">Só consulta</span>}
                     </div>
                   } />
               ))}

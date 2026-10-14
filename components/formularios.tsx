@@ -1,16 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { createContext, useContext, useMemo, useState } from "react";
 import { ChevronDown, Search, X } from "lucide-react";
 import { useStore, type Formulario } from "@/lib/store";
-import { DIAS, type Convenio, type DadosClinica, type Exame, type GrupoPlano, type Horario, type Papel, type Profissional } from "@/lib/modelo";
+import { DIAS, type Convenio, type DadosClinica, type Exame, type GrupoPlano, type Horario, type Papel, type Profissional, type Restricao } from "@/lib/modelo";
 import { PAPEIS } from "@/lib/permissoes";
-import { corDoIndice, gruposPlanosDoConvenio, novoId, observacoesDoConvenio, semAcento, slug } from "@/lib/regras";
-import { salvarClinica, salvarConvenio, salvarEspecialidade, salvarExame, salvarExameComProfissionais, salvarOrganizacao, salvarProfissional, salvarUsuario } from "@/lib/repositorio";
-import { Botao, EnvioLogo, Gaveta, LogoMarca } from "./ui";
+import { combina, corDoIndice, gruposPlanosDoConvenio, juntarRedes, montarRedes, novoId, observacoesDoConvenio, slug } from "@/lib/regras";
+import { excluirConvenio, excluirEspecialidade, excluirExame, excluirProfissional, excluirUsuario, salvarClinica, salvarConvenio, salvarEspecialidade, salvarExame, salvarExameComProfissionais, salvarOrganizacao, salvarProfissional, salvarUsuario } from "@/lib/repositorio";
+import { Botao, EnvioLogo, Gaveta, LogoMarca, SeletorConvenio, useFecharGaveta } from "./ui";
 
-export const campo = "w-full rounded-xl border border-borda bg-superficie px-3 py-2.5 text-[15px] outline-none transition placeholder:text-suave/60 focus:border-verde focus:ring-4 focus:ring-verde/15";
+export const campo = "w-full rounded-xl border border-borda bg-superficie px-3 py-2.5 text-[15px] outline-none transition placeholder:text-suave focus:border-verde focus:ring-4 focus:ring-verde/15";
 const linhas = (t: FormDataEntryValue | null) => String(t ?? "").split("\n").map((x) => x.trim()).filter(Boolean);
 
 export function Campo({ rotulo, children, dica }: { rotulo: string; children: React.ReactNode; dica?: string }) {
@@ -18,7 +18,7 @@ export function Campo({ rotulo, children, dica }: { rotulo: string; children: Re
     <label className="block">
       <span className="mb-1.5 block text-sm font-semibold">{rotulo}</span>
       {children}
-      {dica && <span className="mt-1 block text-xs text-suave">{dica}</span>}
+      {dica && <span className="mt-1 block text-[13px] text-suave">{dica}</span>}
     </label>
   );
 }
@@ -48,44 +48,68 @@ export function EditorHorarios({ valor }: { valor: Horario[] }) {
 export const lerHorarios = (f: FormData): Horario[] =>
   DIAS.filter((d) => f.get(`h:${d}`)).map((dia) => ({ dia, inicio: String(f.get(`h:${dia}:inicio`)), fim: String(f.get(`h:${dia}:fim`)) }));
 
+// a Moldura avisa aqui no primeiro campo mexido; a Gaveta usa isso para pedir confirmação ao descartar
+const MarcarAlterado = createContext<() => void>(() => {});
+
 export function Formularios() {
   const { form, abrirForm } = useStore();
   // guarda o último formulário para a gaveta sair com conteúdo; `n` zera os campos a cada abertura
   const [ultimo, setUltimo] = useState<{ f: Formulario; n: number }>({ f: null, n: 0 });
-  if (form && form !== ultimo.f) setUltimo({ f: form, n: ultimo.n + 1 });
+  const [alterado, setAlterado] = useState(false);
+  if (form && form !== ultimo.f) { setUltimo({ f: form, n: ultimo.n + 1 }); setAlterado(false); }
   const atual = form ?? ultimo.f;
   const k = ultimo.n;
 
   return (
-    <Gaveta aberta={!!form} onFechar={() => abrirForm(null)} largura="max-w-2xl">
+    <Gaveta aberta={!!form} onFechar={() => abrirForm(null)} alterado={alterado} largura="max-w-2xl">
+      <MarcarAlterado.Provider value={() => setAlterado(true)}>
       {atual?.tipo === "profissional" && <FormProfissional key={k} id={atual.id} />}
-      {atual?.tipo === "especialidade" && <FormEspecialidade key={k} />}
+      {atual?.tipo === "especialidade" && <FormEspecialidade key={k} id={atual.id} />}
       {atual?.tipo === "convenio" && <FormConvenio key={k} id={atual.id} />}
       {atual?.tipo === "exame" && <FormExame key={k} id={atual.id} />}
       {atual?.tipo === "organizacao" && <FormOrganizacao key={k} />}
       {atual?.tipo === "clinica" && <FormClinica key={k} id={atual.id} />}
-      {atual?.tipo === "usuario" && <FormUsuario key={k} />}
+      {atual?.tipo === "usuario" && <FormUsuario key={k} id={atual.id} />}
+      </MarcarAlterado.Provider>
     </Gaveta>
   );
 }
 
-export function Moldura({ titulo, onSalvar, children }: { titulo: string; onSalvar: (f: FormData) => void; children: React.ReactNode }) {
-  const { abrirForm } = useStore();
+// onExcluir (só ao editar): o rodapé pede a confirmação ali mesmo; quem chama exclui e fecha a gaveta
+export function Moldura({ titulo, onSalvar, onExcluir, rotuloExcluir, children }: {
+  titulo: string; onSalvar: (f: FormData) => void; onExcluir?: () => void; rotuloExcluir?: string; children: React.ReactNode;
+}) {
+  const fechar = useFecharGaveta();
+  const marcar = useContext(MarcarAlterado);
+  const [excluindo, setExcluindo] = useState(false);
   return (
-    <form className="flex min-h-full flex-col" onSubmit={(e) => { e.preventDefault(); onSalvar(new FormData(e.currentTarget)); }}>
+    <form className="flex min-h-full flex-col" onInput={(e) => { if ((e.target as HTMLInputElement).name) marcar(); }}
+      // Enter num campo não salva (ficha longa); no textarea continua quebrando linha
+      onKeyDown={(e) => { if (e.key === "Enter" && (e.target as HTMLElement).tagName === "INPUT") e.preventDefault(); }}
+      onSubmit={(e) => { e.preventDefault(); onSalvar(new FormData(e.currentTarget)); }}>
       <div className="entrar border-b border-borda p-6 pr-14 sm:p-8">
         <h2 className="text-2xl font-bold tracking-tight">{titulo}</h2>
       </div>
       <div className="flex-1 space-y-6 p-6 sm:p-8">{children}</div>
-      <div className="sticky bottom-0 flex justify-end gap-2 border-t border-borda bg-superficie/90 p-4 backdrop-blur">
-        <Botao variante="secundario" onClick={() => abrirForm(null)}>Cancelar</Botao>
-        <Botao type="submit">Salvar</Botao>
-      </div>
+      {excluindo && onExcluir ? (
+        <div className="entrar sticky bottom-0 flex flex-wrap items-center justify-end gap-2 border-t border-borda bg-perigo-claro p-4">
+          <p className="flex-1 text-sm font-semibold text-perigo">Excluir {rotuloExcluir}? Esta ação some da cartilha para todos.</p>
+          <Botao variante="secundario" onClick={() => setExcluindo(false)}>Cancelar</Botao>
+          <button type="button" onClick={onExcluir} className="pressionavel inline-flex h-10 items-center rounded-xl bg-perigo px-4 text-sm font-semibold text-white hover:brightness-110">Excluir</button>
+        </div>
+      ) : (
+        <div className="sticky bottom-0 flex items-center justify-end gap-2 border-t border-borda bg-superficie/90 p-4 backdrop-blur">
+          {onExcluir && <button type="button" onClick={() => setExcluindo(true)} className="pressionavel mr-auto rounded-lg px-2 py-1 text-sm font-semibold text-perigo hover:bg-perigo-claro">Excluir</button>}
+          <Botao variante="secundario" onClick={fechar}>Cancelar</Botao>
+          <Botao type="submit">Salvar</Botao>
+        </div>
+      )}
     </form>
   );
 }
 
 function MatrizConvenios({ dados, atende }: { dados: DadosClinica; atende: Record<string, string> }) {
+  const marcar = useContext(MarcarAlterado);
   const [busca, setBusca] = useState("");
   const [filtro, setFiltro] = useState<"todos" | "atendidos" | "nao_atendidos">("todos");
   const [estado, setEstado] = useState<Record<string, { c: boolean; e: boolean }>>(() => {
@@ -118,6 +142,7 @@ function MatrizConvenios({ dados, atende }: { dados: DadosClinica; atende: Recor
   };
 
   const marcarTodos = (c: Convenio, tipo: "c" | "e", valor: boolean) => {
+    marcar();
     setEstado((ant) => {
       const prox = { ...ant };
       for (const s of c.subtipos) {
@@ -132,6 +157,7 @@ function MatrizConvenios({ dados, atende }: { dados: DadosClinica; atende: Recor
   };
 
   const limparConvenio = (c: Convenio) => {
+    marcar();
     setEstado((ant) => {
       const prox = { ...ant };
       for (const s of c.subtipos) {
@@ -155,7 +181,7 @@ function MatrizConvenios({ dados, atende }: { dados: DadosClinica; atende: Recor
     setExpandidos({});
   };
 
-  const q = semAcento(busca.trim());
+  const q = busca.trim();
 
   // Estatísticas gerais
   const totalSubtipos = dados.convenios.flatMap((c) => c.subtipos);
@@ -169,9 +195,7 @@ function MatrizConvenios({ dados, atende }: { dados: DadosClinica; atende: Recor
       if (filtro === "nao_atendidos" && temAtendimento) return false;
 
       if (!q) return true;
-      const nomeC = semAcento(c.nome);
-      const redes = c.subtipos.map((s) => semAcento(s.nome));
-      return nomeC.includes(q) || redes.some((r) => r.includes(q));
+      return combina(`${c.nome} ${c.subtipos.map((s) => s.nome).join(" ")}`, q);
     });
   }, [dados.convenios, estado, filtro, q]);
 
@@ -203,7 +227,7 @@ function MatrizConvenios({ dados, atende }: { dados: DadosClinica; atende: Recor
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             placeholder="Buscar entre os 50+ convênios ou redes..."
-            className="h-10 w-full rounded-xl border border-borda bg-superficie pl-9 pr-8 text-xs sm:text-sm outline-none transition focus:border-verde focus:ring-2 focus:ring-verde/15"
+            className="h-10 w-full rounded-xl border border-borda bg-superficie pl-9 pr-8 text-sm outline-none transition focus:border-verde focus:ring-2 focus:ring-verde/15"
           />
           {busca && (
             <button type="button" onClick={() => setBusca("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-suave hover:text-texto">
@@ -212,7 +236,7 @@ function MatrizConvenios({ dados, atende }: { dados: DadosClinica; atende: Recor
           )}
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-[13px]">
           <div className="flex items-center gap-1">
             <button
               type="button"
@@ -269,12 +293,12 @@ function MatrizConvenios({ dados, atende }: { dados: DadosClinica; atende: Recor
                   >
                     <LogoMarca nome={c.nome} logo={c.logo} cor={c.cor} tamanho="sm" />
                     <span>{c.nome}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-md font-medium ${temMarcado ? "bg-verde-claro text-verde" : "bg-borda/40 text-suave"}`}>
+                    <span className={`text-[13px] px-2 py-0.5 rounded-md font-medium ${temMarcado ? "bg-verde-claro text-verde" : "bg-borda/40 text-suave"}`}>
                       {temMarcado ? `${qtdC} consult. · ${qtdE} exam.` : "Não atende"}
                     </span>
                   </button>
 
-                  <div className="flex items-center gap-1.5 text-xs font-semibold">
+                  <div className="flex items-center gap-1.5 text-[13px] font-semibold">
                     <button
                       type="button"
                       onClick={() => marcarTodos(c, "c", qtdC !== c.subtipos.length)}
@@ -312,7 +336,7 @@ function MatrizConvenios({ dados, atende }: { dados: DadosClinica; atende: Recor
                 </div>
 
                 <div className={aberto ? "block border-t border-borda/60 divide-y divide-borda/40 bg-superficie" : "hidden"}>
-                  <div className="grid grid-cols-[1fr_80px_80px] bg-fundo/40 px-4 py-2 text-xs font-semibold text-suave">
+                  <div className="grid grid-cols-[1fr_80px_80px] bg-fundo/40 px-4 py-2 text-[13px] font-semibold text-suave">
                     <span>Rede / Plano</span>
                     <span className="text-center">Consulta</span>
                     <span className="text-center">Exame</span>
@@ -349,7 +373,7 @@ function MatrizConvenios({ dados, atende }: { dados: DadosClinica; atende: Recor
             );
           })
         ) : (
-          <p className="rounded-xl border border-dashed border-borda py-4 text-center text-xs text-suave">
+          <p className="rounded-xl border border-dashed border-borda py-4 text-center text-[13px] text-suave">
             Nenhum convênio encontrado para &quot;{busca}&quot;.
           </p>
         )}
@@ -362,6 +386,7 @@ function FormProfissional({ id }: { id?: string }) {
   const { dados, clinica, executar, abrirForm, avisar } = useStore();
   const router = useRouter();
   const p = dados.profissionais.find((x) => x.id === id);
+  const [restricoes, setRestricoes] = useState<Restricao[]>(p?.restricoes ?? []);
 
   const salvar = (f: FormData) => {
     const nome = String(f.get("nome")).trim();
@@ -383,8 +408,9 @@ function FormProfissional({ id }: { id?: string }) {
       procedimentos: String(f.get("procedimentos")).split(",").map((x) => x.trim()).filter(Boolean),
       exames: dados.exames.filter((e) => f.get(`ex:${e.id}`)).map((e) => e.id),
       atende,
-      restricoes: linhas(f.get("restricoes")).map((texto) => ({ texto })),
+      restricoes: restricoes.map(({ texto, subtipoId }) => (subtipoId ? { texto: texto.trim(), subtipoId } : { texto: texto.trim() })).filter((r) => r.texto),
       observacoes: String(f.get("observacoes")).trim(),
+      observacoesInternas: String(f.get("observacoesInternas") ?? "").trim() || undefined,
     };
     if (!executar((b, u) => salvarProfissional(b, u, novo), p ? "Ficha atualizada" : "Profissional cadastrado")) return;
     abrirForm(null);
@@ -392,7 +418,12 @@ function FormProfissional({ id }: { id?: string }) {
   };
 
   return (
-    <Moldura titulo={p ? "Editar profissional" : "Novo profissional"} onSalvar={salvar}>
+    <Moldura titulo={p ? "Editar profissional" : "Novo profissional"} onSalvar={salvar}
+      onExcluir={p && (() => {
+        if (!executar((b, u) => excluirProfissional(b, u, p.id), `${p.nome} excluído`, { desfazer: true, desfeito: "Exclusão desfeita" })) return;
+        abrirForm(null);
+        router.push("/especialidades");
+      })} rotuloExcluir={p?.nome}>
       <div className="grid gap-4 sm:grid-cols-2">
         <Campo rotulo="Nome"><input name="nome" defaultValue={p?.nome} placeholder="Dra. Nome Sobrenome" className={campo} /></Campo>
         <Campo rotulo="Especialidade" dica={dados.especialidades.length ? undefined : "Cadastre uma especialidade antes."}>
@@ -415,13 +446,46 @@ function FormProfissional({ id }: { id?: string }) {
       <Campo rotulo="Exames que realiza">
         <SeletorExamesProfissional dados={dados} examesIniciais={p?.exames ?? []} />
       </Campo>
-      <Campo rotulo="Restrições" dica="Uma por linha.">
-        <textarea name="restricoes" rows={3} defaultValue={p?.restricoes.map((r) => r.texto).join("\n")} className={campo} />
-      </Campo>
+      <div>
+        <span className="mb-1.5 block text-sm font-semibold">Restrições</span>
+        <EditorRestricoes dados={dados} valor={restricoes} onChange={setRestricoes} />
+      </div>
       <Campo rotulo="Observações">
         <textarea name="observacoes" rows={3} defaultValue={p?.observacoes} className={campo} />
       </Campo>
+      <Campo rotulo="Observações internas" dica="A recepção não vê. Só central, coordenação e gestão.">
+        <textarea name="observacoesInternas" rows={3} defaultValue={p?.observacoesInternas} className={campo} />
+      </Campo>
     </Moldura>
+  );
+}
+
+// Cada restrição vale para tudo ou só para uma rede
+function EditorRestricoes({ dados, valor, onChange }: { dados: DadosClinica; valor: Restricao[]; onChange: (r: Restricao[]) => void }) {
+  const marcar = useContext(MarcarAlterado);
+  const mudar = (k: number, r: Partial<Restricao>) => onChange(valor.map((x, i) => (i === k ? { ...x, ...r } : x)));
+  return (
+    <div className="space-y-2">
+      {valor.map((r, k) => (
+        <div key={k} className="space-y-2 rounded-2xl border border-borda p-3">
+          <div className="flex gap-2">
+            <input name={`restricao:${k}`} value={r.texto} onChange={(e) => mudar(k, { texto: e.target.value })}
+              placeholder="Ex.: não atende gestantes" aria-label={`Restrição ${k + 1}`} className={campo} />
+            <button type="button" onClick={() => { marcar(); onChange(valor.filter((_, i) => i !== k)); }}
+              aria-label={`Remover restrição ${k + 1}`} className="shrink-0 rounded-xl px-3 text-suave hover:bg-fundo hover:text-texto">
+              <X className="size-4" />
+            </button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="text-suave">Vale só para a rede…</span>
+            <div className="min-w-[220px] flex-1">
+              <SeletorConvenio dados={dados} valor={r.subtipoId ?? ""} onChange={(v) => { marcar(); mudar(k, { subtipoId: v || undefined }); }} />
+            </div>
+          </div>
+        </div>
+      ))}
+      <Botao variante="secundario" onClick={() => { marcar(); onChange([...valor, { texto: "" }]); }}>Acrescentar restrição</Botao>
+    </div>
   );
 }
 
@@ -432,11 +496,12 @@ function SeletorExamesProfissional({
   dados: DadosClinica;
   examesIniciais: string[];
 }) {
+  const marcar = useContext(MarcarAlterado);
   const [busca, setBusca] = useState("");
   const [selecionados, setSelecionados] = useState<Set<string>>(() => new Set(examesIniciais));
   const [filtro, setFiltro] = useState<"todos" | "selecionados">("todos");
 
-  const q = semAcento(busca.trim());
+  const q = busca.trim();
 
   const toggle = (id: string) => {
     setSelecionados((ant) => {
@@ -448,6 +513,7 @@ function SeletorExamesProfissional({
   };
 
   const selecionarTodosFiltrados = (lista: Exame[]) => {
+    marcar();
     setSelecionados((ant) => {
       const prox = new Set(ant);
       for (const e of lista) prox.add(e.id);
@@ -456,6 +522,7 @@ function SeletorExamesProfissional({
   };
 
   const desmarcarTodosFiltrados = (lista: Exame[]) => {
+    marcar();
     setSelecionados((ant) => {
       const prox = new Set(ant);
       for (const e of lista) prox.delete(e.id);
@@ -467,7 +534,7 @@ function SeletorExamesProfissional({
     return dados.exames.filter((e) => {
       if (filtro === "selecionados" && !selecionados.has(e.id)) return false;
       if (!q) return true;
-      return semAcento(e.nome).includes(q);
+      return combina(e.nome, q);
     });
   }, [dados.exames, selecionados, filtro, q]);
 
@@ -494,7 +561,7 @@ function SeletorExamesProfissional({
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             placeholder="Buscar exame pelo nome..."
-            className="h-9 w-full rounded-xl border border-borda bg-superficie pl-8 pr-7 text-xs outline-none transition focus:border-azul focus:ring-2 focus:ring-azul/15"
+            className="h-9 w-full rounded-xl border border-borda bg-superficie pl-8 pr-7 text-sm outline-none transition focus:border-azul focus:ring-2 focus:ring-azul/15"
           />
           {busca && (
             <button type="button" onClick={() => setBusca("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-suave hover:text-texto">
@@ -503,7 +570,7 @@ function SeletorExamesProfissional({
           )}
         </div>
 
-        <div className="flex items-center gap-1.5 text-xs">
+        <div className="flex items-center gap-1.5 text-[13px]">
           <button
             type="button"
             onClick={() => setFiltro("todos")}
@@ -521,7 +588,7 @@ function SeletorExamesProfissional({
         </div>
       </div>
 
-      <div className="flex items-center justify-between text-xs text-suave">
+      <div className="flex items-center justify-between text-[13px] text-suave">
         <span>{selecionados.size} de {dados.exames.length} exames vinculados</span>
         <div className="flex items-center gap-2 font-medium">
           <button
@@ -549,7 +616,7 @@ function SeletorExamesProfissional({
             return (
               <label
                 key={e.id}
-                className={`pressionavel flex cursor-pointer items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-xs transition-colors select-none ${
+                className={`pressionavel flex cursor-pointer items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-[13px] transition-colors select-none ${
                   marcado
                     ? "bg-azul-claro/50 text-azul font-semibold"
                     : "hover:bg-fundo text-texto"
@@ -565,12 +632,12 @@ function SeletorExamesProfissional({
                   />
                   <span className="truncate">{e.nome}</span>
                 </div>
-                {e.valor && <span className="text-[11px] font-normal text-suave">{e.valor}</span>}
+                {e.valor && <span className="text-[13px] font-normal text-suave">{e.valor}</span>}
               </label>
             );
           })
         ) : (
-          <p className="py-2 text-center text-xs text-suave">Nenhum exame encontrado para &quot;{busca}&quot;.</p>
+          <p className="py-2 text-center text-[13px] text-suave">Nenhum exame encontrado para &quot;{busca}&quot;.</p>
         )}
       </div>
     </div>
@@ -584,6 +651,7 @@ function SeletorConveniosExame({
   dados: DadosClinica;
   selecionadosIniciais: string[];
 }) {
+  const marcar = useContext(MarcarAlterado);
   const [busca, setBusca] = useState("");
   const [filtro, setFiltro] = useState<"todos" | "selecionados">("todos");
   const [selecionados, setSelecionados] = useState<Set<string>>(() => new Set(selecionadosIniciais));
@@ -595,7 +663,7 @@ function SeletorConveniosExame({
     return init;
   });
 
-  const q = semAcento(busca.trim());
+  const q = busca.trim();
 
   const toggleSub = (subId: string) => {
     setSelecionados((ant) => {
@@ -607,6 +675,7 @@ function SeletorConveniosExame({
   };
 
   const selecionarTodosDoConvenio = (c: Convenio) => {
+    marcar();
     setSelecionados((ant) => {
       const prox = new Set(ant);
       for (const s of c.subtipos) prox.add(s.id);
@@ -616,6 +685,7 @@ function SeletorConveniosExame({
   };
 
   const desmarcarTodosDoConvenio = (c: Convenio) => {
+    marcar();
     setSelecionados((ant) => {
       const prox = new Set(ant);
       for (const s of c.subtipos) prox.delete(s.id);
@@ -632,9 +702,7 @@ function SeletorConveniosExame({
       const marcados = c.subtipos.filter((s) => selecionados.has(s.id)).length;
       if (filtro === "selecionados" && marcados === 0) return false;
       if (!q) return true;
-      const nomeC = semAcento(c.nome);
-      const redes = c.subtipos.map((s) => semAcento(s.nome));
-      return nomeC.includes(q) || redes.some((r) => r.includes(q));
+      return combina(`${c.nome} ${c.subtipos.map((s) => s.nome).join(" ")}`, q);
     });
   }, [dados.convenios, selecionados, filtro, q]);
 
@@ -663,7 +731,7 @@ function SeletorConveniosExame({
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             placeholder="Buscar entre os 50+ convênios ou redes..."
-            className="h-9 w-full rounded-xl border border-borda bg-superficie pl-9 pr-8 text-xs outline-none transition focus:border-azul focus:ring-2 focus:ring-azul/15"
+            className="h-9 w-full rounded-xl border border-borda bg-superficie pl-9 pr-8 text-sm outline-none transition focus:border-azul focus:ring-2 focus:ring-azul/15"
           />
           {busca && (
             <button type="button" onClick={() => setBusca("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-suave hover:text-texto">
@@ -672,7 +740,7 @@ function SeletorConveniosExame({
           )}
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-[13px]">
           <div className="flex items-center gap-1">
             <button
               type="button"
@@ -712,12 +780,12 @@ function SeletorConveniosExame({
                   >
                     <LogoMarca nome={c.nome} logo={c.logo} cor={c.cor} tamanho="sm" />
                     <span>{c.nome}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-md font-medium ${marcados > 0 ? "bg-azul-claro text-azul" : "bg-borda/40 text-suave"}`}>
+                    <span className={`text-[13px] px-2 py-0.5 rounded-md font-medium ${marcados > 0 ? "bg-azul-claro text-azul" : "bg-borda/40 text-suave"}`}>
                       {todosMarcados ? `Todas (${c.subtipos.length})` : `${marcados} de ${c.subtipos.length} redes`}
                     </span>
                   </button>
 
-                  <div className="flex items-center gap-1.5 text-xs font-semibold">
+                  <div className="flex items-center gap-1.5 text-[13px] font-semibold">
                     <button
                       type="button"
                       onClick={() => selecionarTodosDoConvenio(c)}
@@ -772,14 +840,14 @@ function SeletorConveniosExame({
                       })}
                     </div>
                   ) : (
-                    <p className="text-xs text-suave">Nenhuma rede cadastrada para este convênio.</p>
+                    <p className="text-[13px] text-suave">Nenhuma rede cadastrada para este convênio.</p>
                   )}
                 </div>
               </div>
             );
           })
         ) : (
-          <p className="rounded-xl border border-dashed border-borda py-4 text-center text-xs text-suave">
+          <p className="rounded-xl border border-dashed border-borda py-4 text-center text-[13px] text-suave">
             Nenhum convênio encontrado para &quot;{busca}&quot;.
           </p>
         )}
@@ -789,19 +857,20 @@ function SeletorConveniosExame({
 }
 
 function SeletorProfissionaisExame({ dados, exameId }: { dados: DadosClinica; exameId?: string }) {
+  const marcar = useContext(MarcarAlterado);
   const [busca, setBusca] = useState("");
   const [selecionados, setSelecionados] = useState<Set<string>>(() => {
     if (!exameId) return new Set();
     return new Set(dados.profissionais.filter((p) => p.exames.includes(exameId)).map((p) => p.id));
   });
 
-  const q = semAcento(busca.trim());
+  const q = busca.trim();
 
   const filtrados = useMemo(() => {
     return dados.profissionais.filter((p) => {
       if (!q) return true;
       const espNome = dados.especialidades.find((e) => e.id === p.especialidadeId)?.nome ?? "";
-      return semAcento(p.nome).includes(q) || semAcento(espNome).includes(q);
+      return combina(`${p.nome} ${espNome}`, q);
     });
   }, [dados.profissionais, dados.especialidades, q]);
 
@@ -815,6 +884,7 @@ function SeletorProfissionaisExame({ dados, exameId }: { dados: DadosClinica; ex
   };
 
   const selecionarTodos = () => {
+    marcar();
     setSelecionados((ant) => {
       const prox = new Set(ant);
       for (const p of filtrados) prox.add(p.id);
@@ -823,6 +893,7 @@ function SeletorProfissionaisExame({ dados, exameId }: { dados: DadosClinica; ex
   };
 
   const desmarcarTodos = () => {
+    marcar();
     setSelecionados((ant) => {
       const prox = new Set(ant);
       for (const p of filtrados) prox.delete(p.id);
@@ -853,7 +924,7 @@ function SeletorProfissionaisExame({ dados, exameId }: { dados: DadosClinica; ex
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             placeholder="Buscar por médico ou especialidade..."
-            className="h-9 w-full rounded-xl border border-borda bg-fundo pl-8 pr-7 text-xs outline-none transition focus:border-verde focus:ring-2 focus:ring-verde/15"
+            className="h-9 w-full rounded-xl border border-borda bg-fundo pl-8 pr-7 text-sm outline-none transition focus:border-verde focus:ring-2 focus:ring-verde/15"
           />
           {busca && (
             <button type="button" onClick={() => setBusca("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-suave hover:text-texto">
@@ -861,7 +932,7 @@ function SeletorProfissionaisExame({ dados, exameId }: { dados: DadosClinica; ex
             </button>
           )}
         </div>
-        <div className="flex items-center gap-1.5 text-xs font-semibold">
+        <div className="flex items-center gap-1.5 text-[13px] font-semibold">
           <button
             type="button"
             onClick={selecionarTodos}
@@ -906,17 +977,17 @@ function SeletorProfissionaisExame({ dados, exameId }: { dados: DadosClinica; ex
                   />
                   <div className="min-w-0">
                     <span className="block truncate text-sm font-semibold text-texto">{p.nome}</span>
-                    {espNome && <span className="block text-xs text-suave">{espNome}</span>}
+                    {espNome && <span className="block text-[13px] text-suave">{espNome}</span>}
                   </div>
                 </div>
-                <span className={`text-xs font-medium px-2 py-0.5 rounded ${marcado ? "bg-verde-claro text-verde" : "text-suave"}`}>
+                <span className={`text-[13px] font-medium px-2 py-0.5 rounded ${marcado ? "bg-verde-claro text-verde" : "text-suave"}`}>
                   {marcado ? "Realiza" : "Não realiza"}
                 </span>
               </label>
             );
           })
         ) : (
-          <p className="py-3 text-center text-xs text-suave">Nenhum médico encontrado para &quot;{busca}&quot;.</p>
+          <p className="py-3 text-center text-[13px] text-suave">Nenhum médico encontrado para &quot;{busca}&quot;.</p>
         )}
       </div>
     </div>
@@ -938,6 +1009,7 @@ function FormExame({ id }: { id?: string }) {
       preparo: linhas(f.get("preparo")),
       valor: String(f.get("valor") ?? "").trim(),
       observacoes: String(f.get("observacoes") ?? "").trim(),
+      observacoesInternas: String(f.get("observacoesInternas") ?? "").trim() || undefined,
       subtipos: dados.convenios.flatMap((c) => c.subtipos).filter((s) => f.get(`s:${s.id}`)).map((s) => s.id),
     };
     const profsIds = dados.profissionais.filter((p) => f.get(`prof:${p.id}`)).map((p) => p.id);
@@ -947,7 +1019,12 @@ function FormExame({ id }: { id?: string }) {
   };
 
   return (
-    <Moldura titulo={ex ? "Editar exame" : "Novo exame"} onSalvar={salvar}>
+    <Moldura titulo={ex ? "Editar exame" : "Novo exame"} onSalvar={salvar}
+      onExcluir={ex && (() => {
+        if (!executar((b, u) => excluirExame(b, u, ex.id), `${ex.nome} excluído`, { desfazer: true, desfeito: "Exclusão desfeita" })) return;
+        abrirForm(null);
+        abrir(null);
+      })} rotuloExcluir={ex?.nome}>
       <Campo rotulo="Nome do exame"><input name="nome" defaultValue={ex?.nome} className={campo} /></Campo>
       <Campo rotulo="Preparo" dica="Um passo por linha. Inclua o que o paciente deve trazer no dia.">
         <textarea name="preparo" rows={5} defaultValue={ex?.preparo.join("\n")} placeholder={"Jejum de 4 horas\nTrazer exames anteriores e pedido médico"} className={campo} />
@@ -957,6 +1034,9 @@ function FormExame({ id }: { id?: string }) {
       </Campo>
       <Campo rotulo="Observações" dica="Avisos para a central, ex.: só às terças, agendar com 7 dias de antecedência.">
         <textarea name="observacoes" rows={3} defaultValue={ex?.observacoes} className={campo} />
+      </Campo>
+      <Campo rotulo="Observações internas" dica="A recepção não vê. Só central, coordenação e gestão.">
+        <textarea name="observacoesInternas" rows={3} defaultValue={ex?.observacoesInternas} className={campo} />
       </Campo>
       <div>
         <span className="mb-2 block text-sm font-semibold">Profissionais que realizam este exame</span>
@@ -970,27 +1050,41 @@ function FormExame({ id }: { id?: string }) {
   );
 }
 
-function FormEspecialidade() {
-  const { clinica, executar, abrirForm, avisar } = useStore();
+function FormEspecialidade({ id }: { id?: string }) {
+  const { dados, clinica, executar, abrirForm, avisar } = useStore();
+  const esp = dados.especialidades.find((x) => x.id === id);
   const salvar = (f: FormData) => {
     const nome = String(f.get("nome")).trim();
     if (!nome) return avisar("Informe o nome", true);
     if (!clinica) return;
-    const nova = { id: novoId("esp"), clinicaId: clinica.id, nome, icone: "Stethoscope" };
-    if (executar((b, u) => salvarEspecialidade(b, u, nova), "Especialidade cadastrada")) abrirForm(null);
+    const nova = { id: esp?.id ?? novoId("esp"), clinicaId: clinica.id, nome, icone: esp?.icone ?? "Stethoscope" };
+    if (executar((b, u) => salvarEspecialidade(b, u, nova), esp ? "Especialidade atualizada" : "Especialidade cadastrada")) abrirForm(null);
   };
   return (
-    <Moldura titulo="Nova especialidade" onSalvar={salvar}>
-      <Campo rotulo="Nome"><input name="nome" placeholder="Ex.: Mastologia" className={campo} /></Campo>
+    <Moldura titulo={esp ? "Editar especialidade" : "Nova especialidade"} onSalvar={salvar}
+      onExcluir={esp && (() => { if (executar((b, u) => excluirEspecialidade(b, u, esp.id), `${esp.nome} excluída`, { desfazer: true, desfeito: "Exclusão desfeita" })) abrirForm(null); })}
+      rotuloExcluir={esp?.nome}>
+      <Campo rotulo="Nome"><input name="nome" defaultValue={esp?.nome} placeholder="Ex.: Mastologia" className={campo} /></Campo>
     </Moldura>
   );
 }
 
 function FormConvenio({ id }: { id?: string }) {
+  const marcar = useContext(MarcarAlterado);
   const { dados, clinica, executar, abrirForm, avisar } = useStore();
   const c = dados.convenios.find((x) => x.id === id);
   const [logo, setLogo] = useState(c?.logo);
   const [nomeAtual, setNomeAtual] = useState(c?.nome ?? "");
+  const [convId] = useState(() => c?.id ?? novoId("conv"));
+  const [redes, setRedes] = useState(c?.subtipos ?? []);
+  const [novasRedes, setNovasRedes] = useState("");
+  const [removendo, setRemovendo] = useState<string | null>(null);
+  const linhasNovas = novasRedes.split(/[\n,]/).map((x) => x.trim()).filter(Boolean);
+  const qtdNovas = juntarRedes(convId, redes, linhasNovas).length - redes.length;
+  const usoDaRede = (rid: string) => ({
+    medicos: dados.profissionais.filter((p) => p.atende[rid]).length,
+    exames: dados.exames.filter((e) => e.subtipos.includes(rid)).length,
+  });
 
   const grupos = c ? gruposPlanosDoConvenio(c) : [];
   const gAtende = grupos.find((g) => g.status === "atende");
@@ -1002,7 +1096,6 @@ function FormConvenio({ id }: { id?: string }) {
     const nome = String(f.get("nome")).trim();
     if (!nome) return avisar("Informe o nome do convênio", true);
     if (!clinica) return;
-    const convId = c?.id ?? novoId("conv");
 
     const planosAtende = String(f.get("planosAtende") ?? "")
       .split(/[\n,]/)
@@ -1025,11 +1118,12 @@ function FormConvenio({ id }: { id?: string }) {
       .map((x) => x.trim())
       .filter(Boolean);
 
-    // Tipos de rede para vinculação de profissionais e exames
-    const redesManuais = String(f.get("subtipos") ?? "").split(/[\n,]/).map((x) => x.trim()).filter(Boolean);
-    const nomesRedes = redesManuais.length > 0
-      ? redesManuais
-      : Array.from(new Set([...planosAtende, ...planosSomente]));
+    // redes que ficaram mantêm o id (com o nome editado); as novas ganham id a partir da caixa
+    const editadas = redes.map((r) => ({ id: r.id, nome: String(f.get(`rede:${r.id}`) ?? r.nome) }));
+    const nomesCaixa = String(f.get("novasRedes") ?? "").split(/[\n,]/).map((x) => x.trim()).filter(Boolean);
+    const montadas = montarRedes(convId, c?.subtipos ?? [], editadas, nomesCaixa, Array.from(new Set([...planosAtende, ...planosSomente])));
+    if ("erro" in montadas) return avisar(montadas.erro, true);
+    const subtipos = montadas.redes;
 
     const novosGrupos: GrupoPlano[] = [
       { status: "atende", titulo: "Atende consultas e exames", planos: planosAtende },
@@ -1043,16 +1137,17 @@ function FormConvenio({ id }: { id?: string }) {
       nome,
       cor: c?.cor ?? corDoIndice(dados.convenios.length),
       logo,
-      // rede com o mesmo nome mantém o id, para não perder o que já foi marcado nos médicos e exames
-      subtipos: nomesRedes.map((n) => c?.subtipos.find((s) => s.nome === n) ?? { id: `${convId}-${slug(n)}`, nome: n }),
+      subtipos,
       gruposPlanos: novosGrupos,
       observacoesGerais: observacoes,
     };
     if (executar((b, u) => salvarConvenio(b, u, novo), c ? "Convênio atualizado" : "Convênio cadastrado")) abrirForm(null);
   };
   return (
-    <Moldura titulo={c ? "Editar convênio" : "Novo convênio"} onSalvar={salvar}>
-      <EnvioLogo nome={nomeAtual} cor={c?.cor ?? corDoIndice(dados.convenios.length)} valor={logo} onChange={setLogo} />
+    <Moldura titulo={c ? "Editar convênio" : "Novo convênio"} onSalvar={salvar}
+      onExcluir={c && (() => { if (executar((b, u) => excluirConvenio(b, u, c.id), `${c.nome} excluído`, { desfazer: true, desfeito: "Exclusão desfeita" })) abrirForm(null); })}
+      rotuloExcluir={c?.nome}>
+      <EnvioLogo nome={nomeAtual} cor={c?.cor ?? corDoIndice(dados.convenios.length)} valor={logo} onChange={(l) => { marcar(); setLogo(l); }} />
       <Campo rotulo="Nome do convênio">
         <input name="nome" defaultValue={c?.nome} onChange={(e) => setNomeAtual(e.target.value)} placeholder="Ex.: Unimed" className={campo} />
       </Campo>
@@ -1110,14 +1205,42 @@ function FormConvenio({ id }: { id?: string }) {
           />
         </Campo>
 
-        <details className="text-xs text-suave">
-          <summary className="cursor-pointer font-semibold hover:text-texto">Avançado: Redes técnicas para médicos</summary>
-          <div className="mt-2">
-            <Campo rotulo="Redes manuais" dica="Opcional. Se vazio, sincroniza com os planos de consulta e exames.">
-              <textarea name="subtipos" rows={2} defaultValue={c?.subtipos.map((s) => s.nome).join(", ")} className={campo} />
-            </Campo>
-          </div>
-        </details>
+        <div className="space-y-2">
+          <h5 className="text-sm font-semibold">Redes (usadas nos médicos e exames)</h5>
+          {redes.length === 0 && !c?.subtipos.length && <p className="text-[13px] text-suave">Nenhuma rede ainda. Em convênio novo, se deixar vazio, usa os planos acima.</p>}
+          {redes.map((r) => {
+            const uso = usoDaRede(r.id);
+            return (
+              <div key={r.id} className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <input name={`rede:${r.id}`} defaultValue={r.nome} aria-label={`Nome da rede ${r.nome}`} className={campo} />
+                  <button type="button" aria-label={`Remover rede ${r.nome}`} className="pressionavel grid size-10 shrink-0 place-items-center rounded-xl text-suave hover:bg-fundo hover:text-texto"
+                    onClick={() => {
+                      if (uso.medicos || uso.exames) setRemovendo(r.id);
+                      else { marcar(); setRedes(redes.filter((x) => x.id !== r.id)); }
+                    }}>
+                    <X className="size-4" />
+                  </button>
+                </div>
+                {removendo === r.id && (
+                  <div className="flex flex-wrap items-center gap-2 rounded-xl bg-alerta-claro px-3 py-2 text-sm text-alerta">
+                    <span className="flex-1">{r.nome} está marcada em {uso.medicos} {uso.medicos === 1 ? "médico" : "médicos"} e {uso.exames} {uso.exames === 1 ? "exame" : "exames"}. Remover mesmo assim?</span>
+                    <Botao variante="secundario" onClick={() => setRemovendo(null)}>Manter</Botao>
+                    <Botao onClick={() => { marcar(); setRemovendo(null); setRedes(redes.filter((x) => x.id !== r.id)); }}>Remover</Botao>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          <Campo rotulo="Acrescentar redes" dica="Vírgula ou uma por linha; aceita colar a coluna da planilha.">
+            <textarea name="novasRedes" rows={2} value={novasRedes} onChange={(e) => setNovasRedes(e.target.value)} className={campo} />
+          </Campo>
+          {linhasNovas.length > 0 && (
+            <p className="text-[13px] text-suave">
+              {qtdNovas} {qtdNovas === 1 ? "rede nova" : "redes novas"}; {linhasNovas.length - qtdNovas} já {linhasNovas.length - qtdNovas === 1 ? "existe" : "existem"}.
+            </p>
+          )}
+        </div>
       </div>
     </Moldura>
   );
@@ -1138,6 +1261,7 @@ function FormOrganizacao() {
 }
 
 function FormClinica({ id }: { id?: string }) {
+  const marcar = useContext(MarcarAlterado);
   const { banco, executar, abrirForm, avisar } = useStore();
   const c = banco.clinicas.find((x) => x.id === id);
   const [logo, setLogo] = useState(c?.logo);
@@ -1151,7 +1275,7 @@ function FormClinica({ id }: { id?: string }) {
   };
   return (
     <Moldura titulo={c ? "Editar clínica" : "Nova clínica"} onSalvar={salvar}>
-      <EnvioLogo nome={nomeAtual} valor={logo} onChange={setLogo} />
+      <EnvioLogo nome={nomeAtual} valor={logo} onChange={(l) => { marcar(); setLogo(l); }} />
       {!c && (
         <Campo rotulo="Organização">
           <select name="organizacao" className={campo}>
@@ -1166,9 +1290,10 @@ function FormClinica({ id }: { id?: string }) {
   );
 }
 
-function FormUsuario() {
+function FormUsuario({ id }: { id?: string }) {
   const { banco, executar, abrirForm, avisar } = useStore();
-  const [papel, setPapel] = useState<Papel>("recepcao");
+  const us = banco.usuarios.find((x) => x.id === id);
+  const [papel, setPapel] = useState<Papel>(us?.papel ?? "recepcao");
   const todas = papel === "administrador" || papel === "comercial";
 
   const salvar = (f: FormData) => {
@@ -1177,14 +1302,16 @@ function FormUsuario() {
     if (!nome || !email) return avisar("Informe nome e e-mail", true);
     const clinicas = todas ? [] : banco.clinicas.filter((c) => f.get(`cl:${c.id}`)).map((c) => c.id);
     // a regra "pelo menos uma clínica" é conferida no repositório
-    if (executar((b, u) => salvarUsuario(b, u, { id: novoId("usuario"), nome, email, papel, clinicas }), "Usuário cadastrado")) abrirForm(null);
+    if (executar((b, u) => salvarUsuario(b, u, { id: us?.id ?? novoId("usuario"), nome, email, papel, clinicas }), us ? "Usuário atualizado" : "Usuário cadastrado")) abrirForm(null);
   };
 
   return (
-    <Moldura titulo="Novo usuário" onSalvar={salvar}>
+    <Moldura titulo={us ? "Editar usuário" : "Novo usuário"} onSalvar={salvar}
+      onExcluir={us && (() => { if (executar((b, u) => excluirUsuario(b, u, us.id), `${us.nome} excluído`, { desfazer: true, desfeito: "Exclusão desfeita" })) abrirForm(null); })}
+      rotuloExcluir={us?.nome}>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Campo rotulo="Nome"><input name="nome" placeholder="Ex.: Recepção COMN tarde" className={campo} /></Campo>
-        <Campo rotulo="E-mail"><input name="email" type="email" placeholder="nome@clinica.com.br" className={campo} /></Campo>
+        <Campo rotulo="Nome"><input name="nome" defaultValue={us?.nome} placeholder="Ex.: Recepção COMN tarde" className={campo} /></Campo>
+        <Campo rotulo="E-mail"><input name="email" type="email" defaultValue={us?.email} placeholder="nome@clinica.com.br" className={campo} /></Campo>
       </div>
       <fieldset>
         <legend className="mb-1.5 block text-sm font-semibold">Papel</legend>
@@ -1194,7 +1321,7 @@ function FormUsuario() {
               <input type="radio" name="papel" checked={papel === p} onChange={() => setPapel(p)} className="mt-1 size-4 accent-verde" />
               <span>
                 <span className="block text-sm font-semibold">{PAPEIS[p].rotulo}</span>
-                <span className="block text-xs text-suave">{PAPEIS[p].descricao}</span>
+                <span className="block text-[13px] text-suave">{PAPEIS[p].descricao}</span>
               </span>
             </label>
           ))}
@@ -1214,7 +1341,7 @@ function FormUsuario() {
                   <div className="flex flex-wrap gap-2">
                     {daOrg.map((c) => (
                       <label key={c.id} className="pressionavel flex cursor-pointer items-center gap-2 rounded-xl border border-borda px-3 py-1.5 text-sm has-[:checked]:border-azul/40 has-[:checked]:bg-azul-claro has-[:checked]:text-azul">
-                        <input type="checkbox" name={`cl:${c.id}`} className="accent-azul" />{c.nome}
+                        <input type="checkbox" name={`cl:${c.id}`} defaultChecked={us?.clinicas.includes(c.id)} className="accent-azul" />{c.nome}
                       </label>
                     ))}
                   </div>

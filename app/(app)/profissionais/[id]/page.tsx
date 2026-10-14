@@ -1,50 +1,71 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Check, ChevronDown, ChevronRight, ClipboardList, Clock, FlaskConical, Minus, NotebookPen, Pencil, Search, ShieldCheck, TriangleAlert, X } from "lucide-react";
-import { useStore } from "@/lib/store";
+import { ArrowLeft, Check, Copy, ChevronDown, ChevronRight, ClipboardList, Clock, FlaskConical, Minus, NotebookPen, Pencil, Search, ShieldCheck, TriangleAlert, X } from "lucide-react";
+import { useItemDeOutraUnidade, useStore } from "@/lib/store";
 import { DIAS, type DadosClinica, type Profissional } from "@/lib/modelo";
-import { semAcento, subtipoInfo } from "@/lib/regras";
+import { coberturaDaBusca, combina, gruposHorarios, subtipoInfo } from "@/lib/regras";
 import { salvarProfissional } from "@/lib/repositorio";
-import { Avatar, Botao, Chip, Icone, LogoMarca, Secao, Vazio } from "@/components/ui";
+import { Atualizado, Avatar, Botao, Chip, Icone, LogoMarca, ObservacaoInterna, Secao, Vazio } from "@/components/ui";
 import { EditorHorarios, lerHorarios } from "@/components/formularios";
 
 const cartao = "rounded-3xl border border-borda bg-superficie p-5 shadow-card sm:p-6";
 
 export default function PaginaProfissional() {
   const { id } = useParams<{ id: string }>();
-  const { dados, podeEditarAtual, abrir, abrirForm, executar } = useStore();
+  const { dados } = useStore();
+  const { semAcesso, trocando } = useItemDeOutraUnidade("profissionais", id);
+  const p = dados.profissionais.find((x) => x.id === id);
+  // a ficha só monta com o médico carregado (ela usa hooks depois da leitura)
+  if (!p && trocando) return null;
+  if (!p) {
+    return (
+      <div className="entrar space-y-4">
+        <Vazio texto={semAcesso ? "Você não tem acesso a esta unidade." : "Profissional não encontrado."} />
+        <Link href="/busca" className="pressionavel inline-flex items-center gap-2 font-semibold text-verde"><ArrowLeft className="size-4" />Voltar para a busca</Link>
+      </div>
+    );
+  }
+  return <Ficha p={p} />;
+}
+
+function Ficha({ p }: { p: Profissional }) {
+  const router = useRouter();
+  const { dados, podeEditarAtual, abrir, abrirForm, executar, avisar } = useStore();
   const [editando, setEditando] = useState<"horarios" | "obs" | null>(null);
   // dia da semana só no navegador, para não divergir do HTML do servidor
   const [hoje, setHoje] = useState<string | null>(null);
   useEffect(() => setHoje(DIAS[new Date().getDay() - 1] ?? null), []);
 
-  const p = dados.profissionais.find((x) => x.id === id);
-  if (!p) {
-    return (
-      <div className="entrar space-y-4">
-        <Vazio texto={"Profissional não encontrado."} />
-        <Link href="/" className="pressionavel inline-flex items-center gap-2 font-semibold text-verde"><ArrowLeft className="size-4" />Voltar para a busca</Link>
-      </div>
-    );
-  }
   const esp = dados.especialidades.find((e) => e.id === p.especialidadeId);
   const admin = podeEditarAtual; // pode editar esta clínica
   const salvar = (mudanca: Partial<Profissional>, msg: string) => {
     if (executar((b, u) => salvarProfissional(b, u, { ...p, ...mudanca }), msg)) setEditando(null);
   };
+  // nunca inclui observações internas
+  const copiar = async () => {
+    const texto = [
+      p.nome,
+      esp?.nome,
+      p.horarios.length ? `Horários:\n${gruposHorarios(p.horarios).join("\n")}` : "",
+      p.restricoes.length ? `Restrições:\n${p.restricoes.map((r) => `- ${r.texto}`).join("\n")}` : "",
+      p.observacoes ? `Observações: ${p.observacoes}` : "",
+      p.procedimentos.length ? `Procedimentos: ${p.procedimentos.join(", ")}` : "",
+    ].filter(Boolean).join("\n\n");
+    try { await navigator.clipboard.writeText(texto); avisar("Ficha copiada"); } catch { avisar("Não foi possível copiar", true); }
+  };
   const atendeHoje = hoje && p.horarios.find((h) => h.dia === hoje);
 
   return (
     <div>
-      <button onClick={() => history.back()} className="entrar pressionavel mb-6 inline-flex items-center gap-2 text-sm font-semibold text-suave hover:text-texto">
+      <button onClick={() => (history.length > 1 ? history.back() : router.push("/busca"))} className="entrar pressionavel mb-6 inline-flex items-center gap-2 text-sm font-semibold text-suave hover:text-texto">
         <ArrowLeft className="size-4" />Voltar
       </button>
 
       <header className={`entrar ${cartao} relative mb-6 flex flex-wrap items-center gap-5 overflow-hidden`} style={{ "--i": 1 } as React.CSSProperties}>
-        <div className="gradiente-marca pointer-events-none absolute inset-x-0 top-0 h-1" />
+        <div className="pointer-events-none bg-verde absolute inset-x-0 top-0 h-1" />
         <Avatar nome={p.nome} grande />
         <div className="min-w-0 flex-1">
           <h1 className="text-[28px] font-bold leading-tight tracking-tight">{p.nome}</h1>
@@ -55,7 +76,9 @@ export default function PaginaProfissional() {
               ? <Chip tom="verde"><span className="pulso size-1.5 rounded-full bg-verde" />Atende hoje · {atendeHoje.inicio}–{atendeHoje.fim}</Chip>
               : <Chip>Não atende hoje</Chip>)}
           </div>
+          <div className="mt-2"><Atualizado em={p.atualizadoEm} por={p.atualizadoPor} /></div>
         </div>
+        <Botao variante="secundario" onClick={copiar}><Copy className="size-4" />Copiar</Botao>
         {admin && <Botao variante="secundario" onClick={() => abrirForm({ tipo: "profissional", id: p.id })}><Pencil className="size-4" />Editar ficha</Botao>}
       </header>
 
@@ -70,7 +93,7 @@ export default function PaginaProfissional() {
                     return (
                       <li key={k} className="flex gap-3 rounded-2xl bg-alerta-claro px-4 py-3 text-[15px] text-alerta">
                         <TriangleAlert className="mt-0.5 size-4 shrink-0" />
-                        <span>{r.texto}{info && <span className="ml-1 opacity-75">({info.convenio.nome} {info.subtipo.nome})</span>}</span>
+                        <span>{r.texto}{info && <span className="ml-1 opacity-75">· {info.convenio.nome} · {info.subtipo.nome}</span>}</span>
                       </li>
                     );
                   })}
@@ -80,7 +103,7 @@ export default function PaginaProfissional() {
           )}
 
           <div className={cartao}>
-            <Secao titulo="Consulta de Convênios" icone={<ShieldCheck className="size-4" />} i={3}>
+            <Secao titulo="Consulta de convênios" icone={<ShieldCheck className="size-4" />} i={3}>
               <ChecadorConveniosProfissional dados={dados} p={p} />
             </Secao>
           </div>
@@ -94,7 +117,7 @@ export default function PaginaProfissional() {
           </div>
 
           <div className={cartao}>
-            <Secao titulo="Exames Realizados" icone={<FlaskConical className="size-4" />} i={5}>
+            <Secao titulo="Exames realizados" icone={<FlaskConical className="size-4" />} i={5}>
               <SecaoExamesProfissional examesIds={p.exames} dados={dados} abrirExame={(eid) => abrir({ tipo: "exame", id: eid })} />
             </Secao>
           </div>
@@ -116,12 +139,12 @@ export default function PaginaProfissional() {
                   return (
                     <li key={dia} style={{ "--i": k + 3 } as React.CSSProperties}
                       className={`entrar flex items-center justify-between rounded-xl px-3 py-2 ${dia === hoje ? "bg-verde-claro ring-1 ring-verde/25" : ""}`}>
-                      <span className={`font-semibold ${h ? "" : "text-suave/70"}`}>
-                        {dia}{dia === hoje && <span className="ml-2 text-xs font-medium text-verde">hoje</span>}
+                      <span className={`font-semibold ${h ? "" : "text-suave"}`}>
+                        {dia}{dia === hoje && <span className="ml-2 text-[13px] font-medium text-verde">hoje</span>}
                       </span>
                       {h
                         ? <span className="rounded-lg bg-superficie px-2.5 py-1 text-sm font-semibold tabular-nums text-verde ring-1 ring-verde/20">{h.inicio} – {h.fim}</span>
-                        : <span className="text-sm text-suave/70">Não atende</span>}
+                        : <span className="text-sm text-suave">Não atende</span>}
                     </li>
                   );
                 })}
@@ -143,6 +166,7 @@ export default function PaginaProfissional() {
             ) : (
               <Vazio texto={admin ? "Nenhuma observação." : "Nenhuma observação."} />
             )}
+            {editando !== "obs" && <div className="mt-3"><ObservacaoInterna texto={p.observacoesInternas} /></div>}
           </div>
         </aside>
       </div>
@@ -193,39 +217,17 @@ function ChecadorConveniosProfissional({ dados, p }: { dados: DadosClinica; p: P
   const totalConsultas = conveniosAtendidos.reduce((acc, curr) => acc + curr.subs.filter((s) => p.atende[s.id]?.includes("c")).length, 0);
   const totalExames = conveniosAtendidos.reduce((acc, curr) => acc + curr.subs.filter((s) => p.atende[s.id]?.includes("e")).length, 0);
 
-  const q = semAcento(busca.trim());
+  const q = busca.trim();
 
   const principaisConvenios = useMemo(() => {
     return [...conveniosAtendidos].sort((a, b) => b.subs.length - a.subs.length).slice(0, 4);
   }, [conveniosAtendidos]);
 
-  const resultadoBusca = useMemo(() => {
-    if (!q) return null;
-
-    const matchesClinica = dados.convenios.filter((c) => {
-      const nomeC = semAcento(c.nome);
-      const redes = c.subtipos.map((s) => semAcento(s.nome));
-      return nomeC.includes(q) || redes.some((r) => r.includes(q));
-    });
-
-    const atendidosNoMatch = matchesClinica
-      .map((c) => {
-        const subsAtendidos = c.subtipos.filter((s) => {
-          const atendeSub = !!p.atende[s.id];
-          if (!atendeSub) return false;
-          return semAcento(c.nome).includes(q) || semAcento(s.nome).includes(q);
-        });
-        return { c, subs: subsAtendidos };
-      })
-      .filter((x) => x.subs.length > 0);
-
-    const naoAtendidosNoMatch = matchesClinica.filter((c) => {
-      const temAlgumAtendido = c.subtipos.some((s) => p.atende[s.id]);
-      return !temAlgumAtendido;
-    });
-
-    return { atendidosNoMatch, naoAtendidosNoMatch, totalEncontrados: matchesClinica.length };
-  }, [dados.convenios, p.atende, q]);
+  // Sem seletor Consulta/Exame nesta tela: a rede cobre quando atende consulta ou exame
+  const resultadoBusca = useMemo(
+    () => (q ? coberturaDaBusca(dados.convenios, (s) => (p.atende[s.id] ?? "") !== "", q) : null),
+    [dados.convenios, p.atende, q],
+  );
 
   if (!dados.convenios.length) {
     return <Vazio texto="Nenhum convênio cadastrado nesta clínica." />;
@@ -236,8 +238,8 @@ function ChecadorConveniosProfissional({ dados, p }: { dados: DadosClinica; p: P
   }
 
   const marca = (ok: boolean) => ok
-    ? <span className="inline-flex items-center gap-1 rounded-full bg-verde-claro px-2.5 py-0.5 text-xs font-semibold text-verde"><Check className="size-3" strokeWidth={3} /> Atende</span>
-    : <span className="inline-flex items-center gap-1 rounded-full bg-fundo px-2 py-0.5 text-xs font-medium text-suave/70"><Minus className="size-3" /> Não</span>;
+    ? <span className="inline-flex items-center gap-1 rounded-full bg-verde-claro px-2.5 py-0.5 text-[13px] font-semibold text-verde"><Check className="size-3" strokeWidth={3} /> Atende</span>
+    : <span className="inline-flex items-center gap-1 rounded-full bg-fundo px-2 py-0.5 text-[13px] font-medium text-suave"><Minus className="size-3" /> Não</span>;
 
   return (
     <div className="space-y-4">
@@ -247,11 +249,11 @@ function ChecadorConveniosProfissional({ dados, p }: { dados: DadosClinica; p: P
           <span className="text-sm font-semibold text-texto">
             Credenciado em <strong className="text-verde">{conveniosAtendidos.length} convênios</strong> ({totalRedes} redes)
           </span>
-          <p className="text-xs text-suave">
+          <p className="text-[13px] text-suave">
             {totalConsultas} redes com Consulta · {totalExames} redes com Exames
           </p>
         </div>
-        <div className="flex items-center gap-1.5 text-xs">
+        <div className="flex items-center gap-1.5 text-[13px]">
           <span className="rounded-lg bg-verde-claro px-2.5 py-1 font-semibold text-verde">
             {totalConsultas} Consultas
           </span>
@@ -284,13 +286,13 @@ function ChecadorConveniosProfissional({ dados, p }: { dados: DadosClinica; p: P
       {/* Pílulas de Acesso Rápido */}
       {!busca && principaisConvenios.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-          <span className="text-xs font-semibold text-suave mr-1">Consultar rápido:</span>
+          <span className="text-[13px] font-semibold text-suave mr-1">Consultar rápido:</span>
           {principaisConvenios.map(({ c }) => (
             <button
               key={c.id}
               type="button"
               onClick={() => setBusca(c.nome)}
-              className="pressionavel inline-flex items-center gap-1.5 rounded-xl border border-borda/80 bg-fundo px-2.5 py-1 text-xs font-semibold text-texto hover:border-verde/40 hover:bg-verde-claro/30 transition-colors"
+              className="pressionavel inline-flex items-center gap-1.5 rounded-xl border border-borda/80 bg-fundo px-2.5 py-1 text-[13px] font-semibold text-texto hover:border-verde/40 hover:bg-verde-claro/30 transition-colors"
             >
               <LogoMarca nome={c.nome} logo={c.logo} cor={c.cor} tamanho="sm" />
               <span>{c.nome}</span>
@@ -302,14 +304,14 @@ function ChecadorConveniosProfissional({ dados, p }: { dados: DadosClinica; p: P
       {/* RESULTADO DA BUSCA ATIVA */}
       {busca && resultadoBusca && (
         <div className="space-y-3 pt-1">
-          {resultadoBusca.totalEncontrados === 0 ? (
+          {resultadoBusca.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-borda p-4 text-center">
-              <p className="text-sm text-suave">Nenhum convênio encontrado para &quot;{busca}&quot; nesta unidade.</p>
+              <p className="text-sm text-suave">Nenhum convênio ou rede com &ldquo;{busca}&rdquo; nesta unidade.</p>
             </div>
           ) : (
             <>
               {/* Convênios que o médico atende */}
-              {resultadoBusca.atendidosNoMatch.map(({ c, subs }) => {
+              {resultadoBusca.filter((r) => r.cobre.length).map(({ convenio: c, cobre: subs, naoCobre }) => {
                 const restricoesConvenio = p.restricoes.filter((r) =>
                   r.subtipoId ? c.subtipos.some((s) => s.id === r.subtipoId) : false
                 );
@@ -321,25 +323,25 @@ function ChecadorConveniosProfissional({ dados, p }: { dados: DadosClinica; p: P
                         <LogoMarca nome={c.nome} logo={c.logo} cor={c.cor} tamanho="sm" />
                         <div>
                           <span className="font-bold text-[15px] text-texto">{c.nome}</span>
-                          <span className="ml-2 rounded-full bg-verde px-2 py-0.5 text-[11px] font-semibold text-white">
+                          <span className="ml-2 rounded-full bg-verde px-2 py-0.5 text-xs font-semibold text-white">
                             Credenciado
                           </span>
                         </div>
                       </div>
-                      <span className="text-xs font-medium text-verde">
+                      <span className="text-[13px] font-medium text-verde">
                         {subs.length} rede(s) encontrada(s)
                       </span>
                     </div>
 
                     {restricoesConvenio.length > 0 && (
-                      <div className="border-t border-alerta/30 bg-alerta-claro/40 px-4 py-2 text-xs text-alerta flex items-center gap-2">
+                      <div className="border-t border-alerta/30 bg-alerta-claro/40 px-4 py-2 text-[13px] text-alerta flex items-center gap-2">
                         <TriangleAlert className="size-3.5 shrink-0" />
                         <span>Aviso deste profissional para {c.nome}: {restricoesConvenio.map((r) => r.texto).join(" | ")}</span>
                       </div>
                     )}
 
                     <div className="border-t border-borda/60 divide-y divide-borda/40">
-                      <div className="grid grid-cols-[1fr_90px_90px] bg-fundo/40 px-4 py-2 text-xs font-semibold text-suave">
+                      <div className="grid grid-cols-[1fr_90px_90px] bg-fundo/40 px-4 py-2 text-[13px] font-semibold text-suave">
                         <span>Rede / Plano</span>
                         <span className="text-center">Consulta</span>
                         <span className="text-center">Exame</span>
@@ -356,21 +358,31 @@ function ChecadorConveniosProfissional({ dados, p }: { dados: DadosClinica; p: P
                         );
                       })}
                     </div>
+                    {naoCobre.length > 0 && (
+                      <div className="flex flex-wrap gap-1 border-t border-borda/60 px-4 py-2.5">
+                        {naoCobre.map((s) => <Chip key={s.id} tom="alerta">{s.nome} · não cobre</Chip>)}
+                      </div>
+                    )}
                   </div>
                 );
               })}
 
               {/* Convênios da clínica que este médico NÃO atende */}
-              {resultadoBusca.naoAtendidosNoMatch.map((c) => (
+              {resultadoBusca.filter((r) => !r.cobre.length).map(({ convenio: c, naoCobre }) => (
                 <div key={c.id} className="flex items-center justify-between rounded-2xl border border-borda bg-fundo/40 p-3.5 text-sm">
                   <div className="flex items-center gap-2.5 opacity-70">
                     <LogoMarca nome={c.nome} logo={c.logo} cor={c.cor} tamanho="sm" />
                     <div>
                       <span className="font-semibold text-texto">{c.nome}</span>
-                      <p className="text-xs text-suave">Disponível na clínica em outras especialidades</p>
+                      {naoCobre.length > 0 && <p className="text-[13px] text-suave">Convênio atendido, mas não nesta rede</p>}
+                      {naoCobre.length > 0 && (
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          {naoCobre.map((s) => <Chip key={s.id} tom="alerta">{s.nome} · não cobre</Chip>)}
+                        </div>
+                      )}
                     </div>
                   </div>
-                  <span className="rounded-lg bg-borda/50 px-2.5 py-1 text-xs font-semibold text-suave">
+                  <span className="rounded-lg bg-borda/50 px-2.5 py-1 text-[13px] font-semibold text-suave">
                     Não atende
                   </span>
                 </div>
@@ -386,7 +398,7 @@ function ChecadorConveniosProfissional({ dados, p }: { dados: DadosClinica; p: P
           <button
             type="button"
             onClick={() => setExpandido(!expandido)}
-            className="pressionavel flex w-full items-center justify-between rounded-2xl border border-borda bg-fundo/50 px-4 py-2.5 text-xs font-semibold text-texto hover:bg-fundo hover:border-verde/40 transition-colors"
+            className="pressionavel flex w-full items-center justify-between rounded-2xl border border-borda bg-fundo/50 px-4 py-2.5 text-[13px] font-semibold text-texto hover:bg-fundo hover:border-verde/40 transition-colors"
           >
             <span>{expandido ? "Ocultar lista de convênios" : `Ver todas as ${totalRedes} redes credenciadas (${conveniosAtendidos.length} convênios)`}</span>
             <ChevronDown className={`size-4 text-suave transition-transform duration-200 ${expandido ? "rotate-180" : ""}`} />
@@ -405,7 +417,7 @@ function ChecadorConveniosProfissional({ dados, p }: { dados: DadosClinica; p: P
                         <LogoMarca nome={c.nome} logo={c.logo} cor={c.cor} tamanho="sm" />
                         <span className="font-bold text-[14px] text-texto">{c.nome}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-xs">
+                      <div className="flex items-center gap-2 text-[13px]">
                         {todasConsultas && todosExames ? (
                           <span className="rounded-lg bg-verde-claro px-2.5 py-0.5 font-semibold text-verde">
                             Consulta e Exame ({subs.length} redes)
@@ -421,20 +433,20 @@ function ChecadorConveniosProfissional({ dados, p }: { dados: DadosClinica; p: P
                     <div className="border-t border-borda/60 divide-y divide-borda/40">
                       {subs.map((s) => (
                         <div key={s.id} className="flex items-center justify-between px-4 py-2 text-sm hover:bg-fundo/20">
-                          <span className="font-medium text-texto text-xs sm:text-sm">{s.nome}</span>
+                          <span className="font-medium text-texto text-[13px] sm:text-sm">{s.nome}</span>
                           <div className="flex items-center gap-3">
-                            <span className="text-xs">
+                            <span className="text-[13px]">
                               {p.atende[s.id]?.includes("c") ? (
                                 <span className="font-semibold text-verde">✓ Consulta</span>
                               ) : (
-                                <span className="text-suave/60">- Consulta</span>
+                                <span className="text-suave">- Consulta</span>
                               )}
                             </span>
-                            <span className="text-xs">
+                            <span className="text-[13px]">
                               {p.atende[s.id]?.includes("e") ? (
                                 <span className="font-semibold text-azul">✓ Exame</span>
                               ) : (
-                                <span className="text-suave/60">- Exame</span>
+                                <span className="text-suave">- Exame</span>
                               )}
                             </span>
                           </div>
@@ -462,7 +474,7 @@ function SecaoExamesProfissional({
   abrirExame: (id: string) => void;
 }) {
   const [busca, setBusca] = useState("");
-  const q = semAcento(busca.trim());
+  const q = busca.trim();
 
   const lista = useMemo(() => {
     return examesIds
@@ -472,7 +484,7 @@ function SecaoExamesProfissional({
 
   const filtrados = useMemo(() => {
     if (!q) return lista;
-    return lista.filter((e) => semAcento(e.nome).includes(q));
+    return lista.filter((e) => combina(e.nome, q));
   }, [lista, q]);
 
   if (!lista.length) return <Vazio texto="Nenhum exame realizado por este profissional." />;
@@ -486,7 +498,7 @@ function SecaoExamesProfissional({
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             placeholder={`Buscar entre os ${lista.length} exames...`}
-            className="h-9 w-full rounded-xl border border-borda bg-superficie pl-9 pr-8 text-xs outline-none transition focus:border-verde focus:ring-2 focus:ring-verde/15"
+            className="h-9 w-full rounded-xl border border-borda bg-superficie pl-9 pr-8 text-sm outline-none transition focus:border-verde focus:ring-2 focus:ring-verde/15"
           />
           {busca && (
             <button onClick={() => setBusca("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-suave hover:text-texto">
@@ -514,7 +526,7 @@ function SecaoExamesProfissional({
           ))}
         </div>
       ) : (
-        <p className="text-xs text-suave py-2">Nenhum exame corresponde à busca &quot;{busca}&quot;.</p>
+        <p className="text-[13px] text-suave py-2">Nenhum exame corresponde à busca &quot;{busca}&quot;.</p>
       )}
     </div>
   );

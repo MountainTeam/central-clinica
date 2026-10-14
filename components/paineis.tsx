@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, ClipboardList, Copy, FlaskConical, Info, Pencil, Search, ShieldCheck, TriangleAlert, UserRound, X } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, ClipboardList, Copy, FlaskConical, Info, Pencil, Search, ShieldCheck, TriangleAlert, UserRound, X } from "lucide-react";
 import { useStore, type Painel } from "@/lib/store";
-import { resumoHorarios, semAcento } from "@/lib/regras";
+import { atende, coberturaDaBusca, combina, gruposHorarios, subtipoInfo } from "@/lib/regras";
 import type { DadosClinica, Exame, Profissional } from "@/lib/modelo";
-import { Avatar, Botao, Chip, Janela, LogoMarca, Secao, Vazio } from "./ui";
+import { Atualizado, Avatar, Botao, Chip, Janela, LogoMarca, ObservacaoInterna, Secao, Vazio } from "./ui";
 
 export function Paineis() {
   const { painel, abrir, dados } = useStore();
@@ -17,13 +17,11 @@ export function Paineis() {
 
   return (
     <Janela aberta={!!painel} onFechar={() => abrir(null)}
-      titulo={`Exame · ${dados.exames.find((e) => e.id === atual?.id)?.nome ?? ""}`}>
+      titulo={dados.exames.find((e) => e.id === atual?.id)?.nome ?? ""}>
       {atual && <FichaExame key={atual.id} id={atual.id} />}
     </Janela>
   );
 }
-
-const temTexto = (t: string, q: string) => semAcento(t).includes(semAcento(q.trim()));
 
 function Filtro({ valor, onChange, placeholder }: { valor: string; onChange: (v: string) => void; placeholder: string }) {
   return (
@@ -36,9 +34,12 @@ function Filtro({ valor, onChange, placeholder }: { valor: string; onChange: (v:
 }
 
 // Quem realiza: abre as observações e restrições do médico sem sair do exame
-function QuemRealiza({ p }: { p: Profissional }) {
+function QuemRealiza({ p, cobre }: { p: Profissional; cobre: boolean }) {
+  const { dados, plano } = useStore();
+  // com o plano cobrindo o exame, a pergunta seguinte é "este médico faz este exame por esse plano?"
+  const rede = plano ? subtipoInfo(dados, plano.subtipoId)?.subtipo : undefined;
   const [aberto, setAberto] = useState(false);
-  const semNotas = !p.observacoes && !p.restricoes.length && !p.idadeMinima;
+  const semNotas = !p.observacoes && !p.observacoesInternas && !p.restricoes.length && !p.idadeMinima;
   return (
     <div className={`overflow-hidden rounded-2xl border ${aberto ? "border-verde/30" : "border-borda"}`}>
       <button type="button" onClick={() => setAberto(!aberto)} aria-expanded={aberto}
@@ -46,20 +47,27 @@ function QuemRealiza({ p }: { p: Profissional }) {
         <Avatar nome={p.nome} />
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-2 font-semibold">
-            <span className="truncate">{p.nome}</span>
+            <span className="line-clamp-2">{p.nome}</span>
             {p.restricoes.length > 0 && <TriangleAlert className="size-3.5 shrink-0 text-alerta" aria-label="Tem restrições" />}
           </span>
-          <span className="block truncate text-sm text-suave">{resumoHorarios(p.horarios)}</span>
+          {plano && rede && cobre && <span className="mt-1 block">{atende(p, plano.subtipoId, "exame") ? <Chip tom="verde">Faz pelo {rede.nome}</Chip> : <Chip tom="perigo">Não faz pelo {rede.nome}</Chip>}</span>}
+          <span className="block text-sm text-suave">{p.horarios.length ? gruposHorarios(p.horarios).map((g) => <span key={g} className="block">{g}</span>) : "Horários não informados"}</span>
         </span>
         <ChevronDown className={`size-4 shrink-0 text-suave transition-transform duration-200 ${aberto ? "rotate-180" : ""}`} />
       </button>
       {aberto && (
         <div className="entrar space-y-2 border-t border-borda/60 p-3 text-sm">
           {p.idadeMinima && <Chip>A partir de {p.idadeMinima} anos</Chip>}
-          {p.restricoes.map((r, k) => (
-            <p key={k} className="flex gap-2 rounded-xl bg-alerta-claro px-3 py-2 text-alerta"><TriangleAlert className="mt-0.5 size-4 shrink-0" />{r.texto}</p>
-          ))}
+          {p.restricoes.map((r, k) => {
+            const info = r.subtipoId ? subtipoInfo(dados, r.subtipoId) : undefined;
+            return (
+              <p key={k} className="flex gap-2 rounded-xl bg-alerta-claro px-3 py-2 text-alerta"><TriangleAlert className="mt-0.5 size-4 shrink-0" />
+                <span>{r.texto}{info && <span className="ml-1 opacity-75">· {info.convenio.nome} · {info.subtipo.nome}</span>}</span>
+              </p>
+            );
+          })}
           {p.observacoes && <p className="whitespace-pre-line rounded-xl bg-fundo px-3 py-2">{p.observacoes}</p>}
+          <ObservacaoInterna texto={p.observacoesInternas} />
           {semNotas && <p className="text-suave">Sem observações cadastradas.</p>}
           <Link href={`/profissionais/${p.id}`} className="inline-flex items-center gap-1 font-semibold text-verde hover:underline">
             Abrir ficha completa <ChevronRight className="size-4" />
@@ -71,12 +79,14 @@ function QuemRealiza({ p }: { p: Profissional }) {
 }
 
 function FichaExame({ id }: { id: string }) {
-  const { dados, podeEditarAtual, abrirForm, avisar } = useStore();
+  const { dados, podeEditarAtual, abrirForm, avisar, plano } = useStore();
   const [qMedico, setQMedico] = useState("");
   const ex = dados.exames.find((e) => e.id === id);
   if (!ex) return null;
+  const info = plano ? subtipoInfo(dados, plano.subtipoId) : undefined;
+  const cobre = !!plano && ex.subtipos.includes(plano.subtipoId);
   const quemFaz = dados.profissionais.filter((p) => p.exames.includes(ex.id));
-  const medicos = quemFaz.filter((p) => temTexto(p.nome, qMedico));
+  const medicos = quemFaz.filter((p) => combina(p.nome, qMedico));
 
   const copiar = async () => {
     const texto = [
@@ -90,14 +100,25 @@ function FichaExame({ id }: { id: string }) {
 
   return (
     <div className="space-y-7 p-5 sm:p-6">
+      {plano && info && (
+        <div className={`entrar flex items-center gap-3 rounded-2xl px-4 py-3 ${cobre ? "bg-verde-claro text-verde" : "bg-alerta-claro text-alerta"}`}>
+          <LogoMarca nome={info.convenio.nome} logo={info.convenio.logo} cor={info.convenio.cor} tamanho="md" />
+          <div className="min-w-0 flex-1">
+            <p className="flex items-start gap-1.5 text-lg font-bold leading-snug">
+              {cobre ? <Check className="mt-1 size-5 shrink-0" /> : <X className="mt-1 size-5 shrink-0" />}
+              <span>{info.convenio.nome} · {info.subtipo.nome} {cobre ? "cobre" : "não cobre"} este exame</span>
+            </p>
+          </div>
+        </div>
+      )}
       <header className="entrar flex items-start gap-4">
-        <div className="grid size-16 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-sky-400 to-blue-600 text-white"><FlaskConical className="size-7" /></div>
+        <div className="grid size-16 shrink-0 place-items-center rounded-2xl bg-azul-claro text-azul"><FlaskConical className="size-7" /></div>
         <div className="min-w-0 flex-1">
-          <h2 className="text-2xl font-bold tracking-tight">{ex.nome}</h2>
           {/* a resposta mais pedida na ligação: quanto custa sem convênio */}
-          <p className="mt-1 text-sm text-suave">
+          <p className="text-sm text-suave">
             Particular: <b className="text-lg text-verde">{ex.valor || "consulte a recepção"}</b>
           </p>
+          <div className="mt-2"><Atualizado em={ex.atualizadoEm} por={ex.atualizadoPor} /></div>
         </div>
       </header>
 
@@ -111,6 +132,7 @@ function FichaExame({ id }: { id: string }) {
           <Info className="mt-0.5 size-4 shrink-0" />{ex.observacoes}
         </p>
       )}
+      <ObservacaoInterna texto={ex.observacoesInternas} />
 
       <Secao titulo="Convênios que cobrem" icone={<ShieldCheck className="size-4" />} i={3}>
         <ChecadorConveniosExame ex={ex} dados={dados} />
@@ -121,7 +143,7 @@ function FichaExame({ id }: { id: string }) {
           <ol className="space-y-2">
             {ex.preparo.map((passo, k) => (
               <li key={k} className="flex gap-3 rounded-2xl border border-borda px-4 py-3 text-[15px]">
-                <span className="grid size-6 shrink-0 place-items-center rounded-full gradiente-marca text-xs font-bold text-white">{k + 1}</span>
+                <span className="grid size-6 shrink-0 place-items-center rounded-full bg-verde text-xs font-bold text-white">{k + 1}</span>
                 {passo}
               </li>
             ))}
@@ -133,7 +155,7 @@ function FichaExame({ id }: { id: string }) {
         {quemFaz.length ? (
           <div className="space-y-2">
             {quemFaz.length > 5 && <Filtro valor={qMedico} onChange={setQMedico} placeholder="Procurar médico" />}
-            {medicos.map((p) => <QuemRealiza key={p.id} p={p} />)}
+            {medicos.map((p) => <QuemRealiza key={p.id} p={p} cobre={cobre} />)}
             {!medicos.length && <p className="text-sm text-suave">Nenhum médico com esse nome faz este exame.</p>}
           </div>
         ) : <Vazio texto="Nenhum profissional vinculado." />}
@@ -144,7 +166,8 @@ function FichaExame({ id }: { id: string }) {
 
 function ChecadorConveniosExame({ ex, dados }: { ex: Exame; dados: DadosClinica }) {
   const [busca, setBusca] = useState("");
-  const [expandido, setExpandido] = useState(false);
+  const [aberto, setAberto] = useState<string | null>(null);
+  const [qRede, setQRede] = useState("");
 
   const porConvenio = useMemo(() => {
     return dados.convenios
@@ -152,158 +175,75 @@ function ChecadorConveniosExame({ ex, dados }: { ex: Exame; dados: DadosClinica 
       .filter((x) => x.subs.length > 0);
   }, [dados.convenios, ex.subtipos]);
 
-  const totalRedes = porConvenio.reduce((acc, curr) => acc + curr.subs.length, 0);
-  const q = semAcento(busca.trim());
+  const q = busca.trim();
+  const resultadoBusca = useMemo(
+    () => (q ? coberturaDaBusca(dados.convenios, (s) => ex.subtipos.includes(s.id), q) : null),
+    [dados.convenios, ex.subtipos, q],
+  );
 
-  const resultadoBusca = useMemo(() => {
-    if (!q) return null;
-
-    const matchesClinica = dados.convenios.filter((c) => {
-      const nomeC = semAcento(c.nome);
-      const redes = c.subtipos.map((s) => semAcento(s.nome));
-      return nomeC.includes(q) || redes.some((r) => r.includes(q));
-    });
-
-    const cobertosNoMatch = matchesClinica
-      .map((c) => {
-        const subsCobertos = c.subtipos.filter((s) => {
-          const cobre = ex.subtipos.includes(s.id);
-          if (!cobre) return false;
-          return semAcento(c.nome).includes(q) || semAcento(s.nome).includes(q);
-        });
-        return { c, subs: subsCobertos };
-      })
-      .filter((x) => x.subs.length > 0);
-
-    const naoCobertosNoMatch = matchesClinica.filter((c) => {
-      const cobreAlgum = c.subtipos.some((s) => ex.subtipos.includes(s.id));
-      return !cobreAlgum;
-    });
-
-    return { cobertosNoMatch, naoCobertosNoMatch, totalEncontrados: matchesClinica.length };
-  }, [dados.convenios, ex.subtipos, q]);
-
-  if (!dados.convenios.length) {
-    return <Vazio texto="Nenhum convênio cadastrado nesta clínica." />;
-  }
-
-  if (!porConvenio.length) {
-    return (
-      <div className="rounded-2xl border border-borda/80 bg-fundo/40 p-4 text-center">
-        <p className="text-sm font-medium text-suave">Disponível exclusivamente para atendimento Particular.</p>
-      </div>
-    );
-  }
+  if (!dados.convenios.length) return <Vazio texto="Nenhum convênio cadastrado nesta clínica." />;
+  if (!porConvenio.length) return <Vazio texto="Disponível exclusivamente para atendimento Particular." />;
 
   return (
     <div className="space-y-3">
-      {/* Resumo simples e direto */}
-      <div className="flex items-center justify-between text-xs text-suave">
-        <span>
-          Coberto por <strong className="font-semibold text-texto">{porConvenio.length} convênios</strong> ({totalRedes} redes)
-        </span>
-      </div>
-
-      {/* Campo de Consulta Rápida */}
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-suave" />
-        <input
-          value={busca}
-          onChange={(e) => setBusca(e.target.value)}
-          placeholder="Consultar se convênio do paciente cobre..."
-          className="h-10 w-full rounded-xl border border-borda bg-superficie pl-9 pr-8 text-xs outline-none transition placeholder:text-suave focus:border-azul focus:ring-2 focus:ring-azul/15"
-        />
+        <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="O plano do paciente cobre?" aria-label="O plano do paciente cobre?"
+          className="h-10 w-full rounded-xl border border-borda bg-superficie pl-9 pr-9 text-sm outline-none transition focus:border-verde focus:ring-4 focus:ring-verde/15" />
         {busca && (
-          <button
-            onClick={() => setBusca("")}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-suave hover:bg-borda/40 hover:text-texto"
-            title="Limpar consulta"
-          >
+          <button type="button" onClick={() => setBusca("")} aria-label="Limpar consulta"
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-suave hover:bg-borda/40 hover:text-texto">
             <X className="size-3.5" />
           </button>
         )}
       </div>
 
-      {/* RESULTADO DA BUSCA SOB DEMANDA */}
-      {busca && resultadoBusca ? (
-        <div className="space-y-2 pt-1">
-          {resultadoBusca.totalEncontrados === 0 ? (
-            <div className="rounded-xl border border-dashed border-borda p-3.5 text-center">
-              <p className="text-xs text-suave">Nenhum convênio encontrado para &quot;{busca}&quot; nesta unidade.</p>
-            </div>
-          ) : (
-            <>
-              {resultadoBusca.cobertosNoMatch.map(({ c, subs }) => (
-                <div key={c.id} className="rounded-2xl border border-azul/40 bg-superficie p-3.5 space-y-2 shadow-sm ring-1 ring-azul/10">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="flex items-center gap-2 font-bold text-sm text-texto">
-                      <LogoMarca nome={c.nome} logo={c.logo} cor={c.cor} tamanho="sm" />
-                      {c.nome}
-                    </span>
-                    <span className="rounded-md bg-azul-claro px-2.5 py-0.5 text-xs font-bold text-azul">
-                      ✓ Coberto ({subs.length} rede{subs.length > 1 ? "s" : ""})
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-1 pt-1.5 border-t border-borda/40">
-                    {subs.map((s) => (
-                      <Chip key={s.id} tom="azul">{s.nome}</Chip>
-                    ))}
-                  </div>
-                </div>
-              ))}
-
-              {resultadoBusca.naoCobertosNoMatch.map((c) => (
-                <div key={c.id} className="flex items-center justify-between rounded-xl border border-borda bg-fundo/40 p-2.5 text-xs">
-                  <div className="flex items-center gap-2 opacity-60">
-                    <LogoMarca nome={c.nome} logo={c.logo} cor={c.cor} tamanho="sm" />
-                    <span className="font-medium text-texto">{c.nome}</span>
-                  </div>
-                  <span className="rounded bg-borda/50 px-2 py-0.5 font-medium text-suave">
-                    Não cobre este exame
+      {resultadoBusca ? (
+        resultadoBusca.length === 0 ? (
+          <Vazio texto={`Nenhum convênio ou rede com “${q}” nesta unidade.`} />
+        ) : (
+          <div className="space-y-2">
+            {resultadoBusca.map(({ convenio: c, cobre, naoCobre }) => (
+              <div key={c.id} className={`space-y-2 rounded-2xl border bg-superficie p-3.5 ${cobre.length ? "border-verde/40" : "border-borda"}`}>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-2 text-sm font-bold">
+                    <LogoMarca nome={c.nome} logo={c.logo} cor={c.cor} tamanho="sm" />{c.nome}
                   </span>
+                  {cobre.length > 0 && <Chip tom="verde"><Check className="size-3.5" />Cobre</Chip>}
                 </div>
-              ))}
-            </>
-          )}
-        </div>
+                {cobre.length > 0 && <div className="flex flex-wrap gap-1">{cobre.map((s) => <Chip key={s.id} tom="verde">{s.nome}</Chip>)}</div>}
+                {naoCobre.length > 0 && <div className="flex flex-wrap gap-1">{naoCobre.map((s) => <Chip key={s.id} tom="alerta">{s.nome} · não cobre</Chip>)}</div>}
+                {!cobre.length && !naoCobre.length && <p className="text-[13px] text-suave">Sem redes cadastradas</p>}
+              </div>
+            ))}
+          </div>
+        )
       ) : (
-        /* ESTADO PADRÃO LIMPO: Apenas o botão recolhido */
-        <div className="pt-0.5">
-          <button
-            type="button"
-            onClick={() => setExpandido(!expandido)}
-            className="pressionavel flex w-full items-center justify-between rounded-xl border border-borda bg-fundo/50 px-3.5 py-2 text-xs font-semibold text-texto hover:bg-fundo hover:border-azul/40 transition-colors"
-          >
-            <span>{expandido ? "Ocultar lista de convênios" : `Ver todos os ${porConvenio.length} convênios credenciados`}</span>
-            <ChevronDown className={`size-3.5 text-suave transition-transform duration-200 ${expandido ? "rotate-180" : ""}`} />
-          </button>
-
-          {expandido && (
-            <div className="mt-2.5 space-y-2 border-t border-borda/40 pt-2.5">
-              {porConvenio.map(({ c, subs }) => {
-                const cobreTudo = subs.length === c.subtipos.length && c.subtipos.length > 1;
-                return (
-                  <div key={c.id} className="rounded-2xl border border-borda/80 bg-fundo/30 p-3 space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="flex items-center gap-2 font-bold text-xs text-texto">
-                        <LogoMarca nome={c.nome} logo={c.logo} cor={c.cor} tamanho="sm" />
-                        {c.nome}
-                      </span>
-                      <span className="rounded-md bg-azul-claro px-2 py-0.5 text-[11px] font-semibold text-azul">
-                        {cobreTudo ? `Todas (${subs.length})` : `${subs.length} de ${c.subtipos.length} redes`}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-1 pt-1 border-t border-borda/40">
-                      {subs.map((s) => (
-                        <Chip key={s.id} tom="azul">{s.nome}</Chip>
-                      ))}
-                    </div>
+        <ul className="space-y-2">
+          {porConvenio.map(({ c, subs }) => {
+            const todas = subs.length === c.subtipos.length;
+            const sel = aberto === c.id;
+            const lista = subs.filter((s) => combina(s.nome, qRede));
+            return (
+              <li key={c.id} className={`overflow-hidden rounded-2xl border ${sel ? "border-verde/30" : "border-borda"}`}>
+                <button type="button" aria-expanded={sel} onClick={() => { setAberto(sel ? null : c.id); setQRede(""); }}
+                  className="pressionavel flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-verde-claro/40">
+                  <LogoMarca nome={c.nome} logo={c.logo} cor={c.cor} tamanho="sm" />
+                  <span className="min-w-0 flex-1 truncate font-semibold">{c.nome}</span>
+                  <Chip tom="verde">{todas ? `Todas as redes (${subs.length})` : `${subs.length} de ${c.subtipos.length} redes`}</Chip>
+                  <ChevronDown className={`size-4 shrink-0 text-suave transition-transform duration-200 ${sel ? "rotate-180" : ""}`} />
+                </button>
+                {sel && (
+                  <div className="entrar space-y-2 border-t border-borda/60 p-3">
+                    {subs.length > 6 && <Filtro valor={qRede} onChange={setQRede} placeholder="Procurar rede" />}
+                    <div className="flex flex-wrap gap-1">{lista.map((s) => <Chip key={s.id} tom="verde">{s.nome}</Chip>)}</div>
+                    {!lista.length && <p className="text-sm text-suave">Nenhuma rede com esse nome.</p>}
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
       )}
     </div>
   );
