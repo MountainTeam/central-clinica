@@ -48,7 +48,10 @@ export default function Especialidades() {
 
       {atual && (
         <section key={sel} className="mt-10">
-          <h2 className="entrar mb-4 text-lg font-bold">{atual.nome}</h2>
+          <div className="entrar mb-4 flex items-center gap-3">
+            <h2 className="text-lg font-bold">{atual.nome}</h2>
+            {podeEditarAtual && <Botao variante="secundario" onClick={() => abrirForm({ tipo: "especialidade", id: atual.id })}>Editar</Botao>}
+          </div>
           {lista.length ? (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {lista.map((p, i) => (

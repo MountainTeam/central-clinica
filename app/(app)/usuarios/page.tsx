@@ -57,6 +57,7 @@ export default function Usuarios() {
                 ? u.clinicas.map((id) => <Chip key={id} tom="azul"><Building2 className="size-3.5" />{nomeClinica(id)}</Chip>)
                 : <Chip tom="azul">Todas as clínicas</Chip>}
             </span>
+            <Botao variante="secundario" onClick={() => abrirForm({ tipo: "usuario", id: u.id })}>Editar</Botao>
           </div>
         ))}
       </div>

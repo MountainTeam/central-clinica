@@ -7,7 +7,7 @@ import { useStore, type Formulario } from "@/lib/store";
 import { DIAS, type Convenio, type DadosClinica, type Exame, type GrupoPlano, type Horario, type Papel, type Profissional, type Restricao } from "@/lib/modelo";
 import { PAPEIS } from "@/lib/permissoes";
 import { combina, corDoIndice, gruposPlanosDoConvenio, juntarRedes, montarRedes, novoId, observacoesDoConvenio, slug } from "@/lib/regras";
-import { salvarClinica, salvarConvenio, salvarEspecialidade, salvarExame, salvarExameComProfissionais, salvarOrganizacao, salvarProfissional, salvarUsuario } from "@/lib/repositorio";
+import { excluirConvenio, excluirEspecialidade, excluirExame, excluirProfissional, excluirUsuario, salvarClinica, salvarConvenio, salvarEspecialidade, salvarExame, salvarExameComProfissionais, salvarOrganizacao, salvarProfissional, salvarUsuario } from "@/lib/repositorio";
 import { Botao, EnvioLogo, Gaveta, LogoMarca, SeletorConvenio, useFecharGaveta } from "./ui";
 
 export const campo = "w-full rounded-xl border border-borda bg-superficie px-3 py-2.5 text-[15px] outline-none transition placeholder:text-suave/60 focus:border-verde focus:ring-4 focus:ring-verde/15";
@@ -64,20 +64,24 @@ export function Formularios() {
     <Gaveta aberta={!!form} onFechar={() => abrirForm(null)} alterado={alterado} largura="max-w-2xl">
       <MarcarAlterado.Provider value={() => setAlterado(true)}>
       {atual?.tipo === "profissional" && <FormProfissional key={k} id={atual.id} />}
-      {atual?.tipo === "especialidade" && <FormEspecialidade key={k} />}
+      {atual?.tipo === "especialidade" && <FormEspecialidade key={k} id={atual.id} />}
       {atual?.tipo === "convenio" && <FormConvenio key={k} id={atual.id} />}
       {atual?.tipo === "exame" && <FormExame key={k} id={atual.id} />}
       {atual?.tipo === "organizacao" && <FormOrganizacao key={k} />}
       {atual?.tipo === "clinica" && <FormClinica key={k} id={atual.id} />}
-      {atual?.tipo === "usuario" && <FormUsuario key={k} />}
+      {atual?.tipo === "usuario" && <FormUsuario key={k} id={atual.id} />}
       </MarcarAlterado.Provider>
     </Gaveta>
   );
 }
 
-export function Moldura({ titulo, onSalvar, children }: { titulo: string; onSalvar: (f: FormData) => void; children: React.ReactNode }) {
+// onExcluir (só ao editar): o rodapé pede a confirmação ali mesmo; quem chama exclui e fecha a gaveta
+export function Moldura({ titulo, onSalvar, onExcluir, rotuloExcluir, children }: {
+  titulo: string; onSalvar: (f: FormData) => void; onExcluir?: () => void; rotuloExcluir?: string; children: React.ReactNode;
+}) {
   const fechar = useFecharGaveta();
   const marcar = useContext(MarcarAlterado);
+  const [excluindo, setExcluindo] = useState(false);
   return (
     <form className="flex min-h-full flex-col" onInput={(e) => { if ((e.target as HTMLInputElement).name) marcar(); }}
       // Enter num campo não salva (ficha longa); no textarea continua quebrando linha
@@ -87,10 +91,19 @@ export function Moldura({ titulo, onSalvar, children }: { titulo: string; onSalv
         <h2 className="text-2xl font-bold tracking-tight">{titulo}</h2>
       </div>
       <div className="flex-1 space-y-6 p-6 sm:p-8">{children}</div>
-      <div className="sticky bottom-0 flex justify-end gap-2 border-t border-borda bg-superficie/90 p-4 backdrop-blur">
-        <Botao variante="secundario" onClick={fechar}>Cancelar</Botao>
-        <Botao type="submit">Salvar</Botao>
-      </div>
+      {excluindo && onExcluir ? (
+        <div className="entrar sticky bottom-0 flex flex-wrap items-center justify-end gap-2 border-t border-borda bg-alerta-claro p-4">
+          <p className="flex-1 text-sm font-semibold text-alerta">Excluir {rotuloExcluir}? Esta ação some da cartilha para todos.</p>
+          <Botao variante="secundario" onClick={() => setExcluindo(false)}>Cancelar</Botao>
+          <button type="button" onClick={onExcluir} className="pressionavel inline-flex h-10 items-center rounded-xl bg-alerta px-4 text-sm font-semibold text-white hover:brightness-110">Excluir</button>
+        </div>
+      ) : (
+        <div className="sticky bottom-0 flex items-center justify-end gap-2 border-t border-borda bg-superficie/90 p-4 backdrop-blur">
+          {onExcluir && <button type="button" onClick={() => setExcluindo(true)} className="pressionavel mr-auto rounded-lg px-2 py-1 text-sm font-semibold text-alerta hover:bg-alerta-claro">Excluir</button>}
+          <Botao variante="secundario" onClick={fechar}>Cancelar</Botao>
+          <Botao type="submit">Salvar</Botao>
+        </div>
+      )}
     </form>
   );
 }
@@ -405,7 +418,12 @@ function FormProfissional({ id }: { id?: string }) {
   };
 
   return (
-    <Moldura titulo={p ? "Editar profissional" : "Novo profissional"} onSalvar={salvar}>
+    <Moldura titulo={p ? "Editar profissional" : "Novo profissional"} onSalvar={salvar}
+      onExcluir={p && (() => {
+        if (!executar((b, u) => excluirProfissional(b, u, p.id), `${p.nome} excluído`, { desfazer: true })) return;
+        abrirForm(null);
+        router.push("/especialidades");
+      })} rotuloExcluir={p?.nome}>
       <div className="grid gap-4 sm:grid-cols-2">
         <Campo rotulo="Nome"><input name="nome" defaultValue={p?.nome} placeholder="Dra. Nome Sobrenome" className={campo} /></Campo>
         <Campo rotulo="Especialidade" dica={dados.especialidades.length ? undefined : "Cadastre uma especialidade antes."}>
@@ -1001,7 +1019,12 @@ function FormExame({ id }: { id?: string }) {
   };
 
   return (
-    <Moldura titulo={ex ? "Editar exame" : "Novo exame"} onSalvar={salvar}>
+    <Moldura titulo={ex ? "Editar exame" : "Novo exame"} onSalvar={salvar}
+      onExcluir={ex && (() => {
+        if (!executar((b, u) => excluirExame(b, u, ex.id), `${ex.nome} excluído`, { desfazer: true })) return;
+        abrirForm(null);
+        abrir(null);
+      })} rotuloExcluir={ex?.nome}>
       <Campo rotulo="Nome do exame"><input name="nome" defaultValue={ex?.nome} className={campo} /></Campo>
       <Campo rotulo="Preparo" dica="Um passo por linha. Inclua o que o paciente deve trazer no dia.">
         <textarea name="preparo" rows={5} defaultValue={ex?.preparo.join("\n")} placeholder={"Jejum de 4 horas\nTrazer exames anteriores e pedido médico"} className={campo} />
@@ -1027,18 +1050,21 @@ function FormExame({ id }: { id?: string }) {
   );
 }
 
-function FormEspecialidade() {
-  const { clinica, executar, abrirForm, avisar } = useStore();
+function FormEspecialidade({ id }: { id?: string }) {
+  const { dados, clinica, executar, abrirForm, avisar } = useStore();
+  const esp = dados.especialidades.find((x) => x.id === id);
   const salvar = (f: FormData) => {
     const nome = String(f.get("nome")).trim();
     if (!nome) return avisar("Informe o nome", true);
     if (!clinica) return;
-    const nova = { id: novoId("esp"), clinicaId: clinica.id, nome, icone: "Stethoscope" };
-    if (executar((b, u) => salvarEspecialidade(b, u, nova), "Especialidade cadastrada")) abrirForm(null);
+    const nova = { id: esp?.id ?? novoId("esp"), clinicaId: clinica.id, nome, icone: esp?.icone ?? "Stethoscope" };
+    if (executar((b, u) => salvarEspecialidade(b, u, nova), esp ? "Especialidade atualizada" : "Especialidade cadastrada")) abrirForm(null);
   };
   return (
-    <Moldura titulo="Nova especialidade" onSalvar={salvar}>
-      <Campo rotulo="Nome"><input name="nome" placeholder="Ex.: Mastologia" className={campo} /></Campo>
+    <Moldura titulo={esp ? "Editar especialidade" : "Nova especialidade"} onSalvar={salvar}
+      onExcluir={esp && (() => { if (executar((b, u) => excluirEspecialidade(b, u, esp.id), `${esp.nome} excluída`, { desfazer: true })) abrirForm(null); })}
+      rotuloExcluir={esp?.nome}>
+      <Campo rotulo="Nome"><input name="nome" defaultValue={esp?.nome} placeholder="Ex.: Mastologia" className={campo} /></Campo>
     </Moldura>
   );
 }
@@ -1118,7 +1144,9 @@ function FormConvenio({ id }: { id?: string }) {
     if (executar((b, u) => salvarConvenio(b, u, novo), c ? "Convênio atualizado" : "Convênio cadastrado")) abrirForm(null);
   };
   return (
-    <Moldura titulo={c ? "Editar convênio" : "Novo convênio"} onSalvar={salvar}>
+    <Moldura titulo={c ? "Editar convênio" : "Novo convênio"} onSalvar={salvar}
+      onExcluir={c && (() => { if (executar((b, u) => excluirConvenio(b, u, c.id), `${c.nome} excluído`, { desfazer: true })) abrirForm(null); })}
+      rotuloExcluir={c?.nome}>
       <EnvioLogo nome={nomeAtual} cor={c?.cor ?? corDoIndice(dados.convenios.length)} valor={logo} onChange={(l) => { marcar(); setLogo(l); }} />
       <Campo rotulo="Nome do convênio">
         <input name="nome" defaultValue={c?.nome} onChange={(e) => setNomeAtual(e.target.value)} placeholder="Ex.: Unimed" className={campo} />
@@ -1262,9 +1290,10 @@ function FormClinica({ id }: { id?: string }) {
   );
 }
 
-function FormUsuario() {
+function FormUsuario({ id }: { id?: string }) {
   const { banco, executar, abrirForm, avisar } = useStore();
-  const [papel, setPapel] = useState<Papel>("recepcao");
+  const us = banco.usuarios.find((x) => x.id === id);
+  const [papel, setPapel] = useState<Papel>(us?.papel ?? "recepcao");
   const todas = papel === "administrador" || papel === "comercial";
 
   const salvar = (f: FormData) => {
@@ -1273,14 +1302,16 @@ function FormUsuario() {
     if (!nome || !email) return avisar("Informe nome e e-mail", true);
     const clinicas = todas ? [] : banco.clinicas.filter((c) => f.get(`cl:${c.id}`)).map((c) => c.id);
     // a regra "pelo menos uma clínica" é conferida no repositório
-    if (executar((b, u) => salvarUsuario(b, u, { id: novoId("usuario"), nome, email, papel, clinicas }), "Usuário cadastrado")) abrirForm(null);
+    if (executar((b, u) => salvarUsuario(b, u, { id: us?.id ?? novoId("usuario"), nome, email, papel, clinicas }), us ? "Usuário atualizado" : "Usuário cadastrado")) abrirForm(null);
   };
 
   return (
-    <Moldura titulo="Novo usuário" onSalvar={salvar}>
+    <Moldura titulo={us ? "Editar usuário" : "Novo usuário"} onSalvar={salvar}
+      onExcluir={us && (() => { if (executar((b, u) => excluirUsuario(b, u, us.id), `${us.nome} excluído`, { desfazer: true })) abrirForm(null); })}
+      rotuloExcluir={us?.nome}>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Campo rotulo="Nome"><input name="nome" placeholder="Ex.: Recepção COMN tarde" className={campo} /></Campo>
-        <Campo rotulo="E-mail"><input name="email" type="email" placeholder="nome@clinica.com.br" className={campo} /></Campo>
+        <Campo rotulo="Nome"><input name="nome" defaultValue={us?.nome} placeholder="Ex.: Recepção COMN tarde" className={campo} /></Campo>
+        <Campo rotulo="E-mail"><input name="email" type="email" defaultValue={us?.email} placeholder="nome@clinica.com.br" className={campo} /></Campo>
       </div>
       <fieldset>
         <legend className="mb-1.5 block text-sm font-semibold">Papel</legend>
@@ -1310,7 +1341,7 @@ function FormUsuario() {
                   <div className="flex flex-wrap gap-2">
                     {daOrg.map((c) => (
                       <label key={c.id} className="pressionavel flex cursor-pointer items-center gap-2 rounded-xl border border-borda px-3 py-1.5 text-sm has-[:checked]:border-azul/40 has-[:checked]:bg-azul-claro has-[:checked]:text-azul">
-                        <input type="checkbox" name={`cl:${c.id}`} className="accent-azul" />{c.nome}
+                        <input type="checkbox" name={`cl:${c.id}`} defaultChecked={us?.clinicas.includes(c.id)} className="accent-azul" />{c.nome}
                       </label>
                     ))}
                   </div>

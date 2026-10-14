@@ -157,6 +157,7 @@ export function Estrutura({ children }: { children: React.ReactNode }) {
         <div key={aviso.texto} role="status" className="aviso fixed bottom-6 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-2 rounded-2xl bg-texto px-4 py-3 text-sm font-medium text-white shadow-elevado">
           {aviso.erro ? <TriangleAlert className="size-4 shrink-0 text-amber-300" /> : <CheckCircle2 className="size-4 shrink-0 text-emerald-300" />}
           <span>{aviso.texto}</span>
+          {aviso.acao && <button type="button" onClick={aviso.acao.fazer} className="pressionavel ml-2 rounded-lg px-2 py-1 font-semibold text-emerald-300 hover:bg-white/10">{aviso.acao.rotulo}</button>}
         </div>
       )}
     </div>

@@ -181,6 +181,48 @@ export function salvarUsuario(b: Banco, u: Usuario, novo: Usuario): Banco {
   return { ...b, usuarios: gravarEm(b.usuarios, todas ? { ...novo, clinicas: [] } : novo) };
 }
 
+// --- exclusão: acha o item, confere a clínica e devolve um banco novo ---
+
+function achar<T extends { id: string; clinicaId: string }>(lista: T[], u: Usuario, id: string): T {
+  const item = lista.find((x) => x.id === id);
+  exigir(!!item, "Não encontrado.");
+  conferirClinica(u, item!);
+  return item!;
+}
+
+export function excluirProfissional(b: Banco, u: Usuario, id: string): Banco {
+  achar(b.profissionais, u, id);
+  return { ...b, profissionais: b.profissionais.filter((x) => x.id !== id) };
+}
+
+export function excluirExame(b: Banco, u: Usuario, id: string): Banco {
+  achar(b.exames, u, id);
+  return {
+    ...b,
+    exames: b.exames.filter((x) => x.id !== id),
+    profissionais: b.profissionais.map((p) => p.exames.includes(id) ? { ...p, exames: p.exames.filter((e) => e !== id) } : p),
+  };
+}
+
+export function excluirConvenio(b: Banco, u: Usuario, id: string): Banco {
+  const c = achar(b.convenios, u, id);
+  return limparRedes({ ...b, convenios: b.convenios.filter((x) => x.id !== id) }, c.clinicaId, new Set(c.subtipos.map((s) => s.id)));
+}
+
+export function excluirEspecialidade(b: Banco, u: Usuario, id: string): Banco {
+  achar(b.especialidades, u, id);
+  const n = b.profissionais.filter((p) => p.especialidadeId === id).length;
+  exigir(n === 0, `Mova os ${n} médicos desta especialidade antes de excluir.`);
+  return { ...b, especialidades: b.especialidades.filter((x) => x.id !== id) };
+}
+
+export function excluirUsuario(b: Banco, u: Usuario, id: string): Banco {
+  exigir(podeCriarUsuario(u), "Só o Administrador exclui usuários.");
+  exigir(id !== u.id, "Você não pode excluir o próprio usuário.");
+  exigir(b.usuarios.some((x) => x.id === id), "Não encontrado.");
+  return { ...b, usuarios: b.usuarios.filter((x) => x.id !== id) };
+}
+
 export function restaurarDemonstracao(_b: Banco, u: Usuario): Banco {
   exigir(podeCriarUsuario(u), "Só o Administrador restaura a demonstração.");
   return pontoZero();

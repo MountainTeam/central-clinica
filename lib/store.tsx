@@ -7,14 +7,15 @@ import { CHAVE, carregarProtegido, clinicasDo, dadosDaClinica, gravar } from "./
 import { pontoZero } from "./semente";
 
 export type Painel = { tipo: "exame"; id: string } | null;
+type Aviso = { texto: string; erro: boolean; acao?: { rotulo: string; fazer: () => void } };
 export type Formulario =
   | { tipo: "profissional"; id?: string }
-  | { tipo: "especialidade" }
+  | { tipo: "especialidade"; id?: string }
   | { tipo: "convenio"; id?: string }
   | { tipo: "exame"; id?: string }
   | { tipo: "organizacao" }
   | { tipo: "clinica"; id?: string }
-  | { tipo: "usuario" }
+  | { tipo: "usuario"; id?: string }
   | null;
 
 type Store = {
@@ -32,13 +33,14 @@ type Store = {
   entrar: (usuarioId: string) => boolean;
   sair: () => void;
   // aplica uma gravação do repositório; mostra o aviso de sucesso ou a mensagem de recusa
-  executar: (op: (b: Banco, u: Usuario) => Banco, sucesso: string) => boolean;
+  // com `desfazer`, o aviso ganha o botão "Desfazer", que restaura o banco anterior
+  executar: (op: (b: Banco, u: Usuario) => Banco, sucesso: string, opcoes?: { desfazer?: boolean }) => boolean;
   painel: Painel;
   abrir: (p: Painel) => void;
   form: Formulario;
   abrirForm: (f: Formulario) => void;
-  aviso: { texto: string; erro: boolean } | null;
-  avisar: (t: string, erro?: boolean) => void;
+  aviso: Aviso | null;
+  avisar: (t: string, erro?: boolean, acao?: Aviso["acao"]) => void;
 };
 
 const Ctx = createContext<Store | null>(null);
@@ -59,14 +61,14 @@ export function Provider({ children }: { children: React.ReactNode }) {
   const [carregado, setCarregado] = useState(false);
   const [painel, abrir] = useState<Painel>(null);
   const [form, abrirForm] = useState<Formulario>(null);
-  const [aviso, setAviso] = useState<{ texto: string; erro: boolean } | null>(null);
+  const [aviso, setAviso] = useState<Aviso | null>(null);
   const [protegido, setProtegido] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  const avisar = useCallback((t: string, erro = false) => {
-    setAviso({ texto: t, erro });
+  const avisar = useCallback((t: string, erro = false, acao?: Aviso["acao"]) => {
+    setAviso({ texto: t, erro, acao });
     clearTimeout(timer.current);
-    timer.current = setTimeout(() => setAviso(null), 2800);
+    timer.current = setTimeout(() => setAviso(null), acao ? 6000 : 2800);
   }, []);
 
   // ponytail: sessão no navegador só para o protótipo; na v1 vira login de verdade no servidor
@@ -131,12 +133,17 @@ export function Provider({ children }: { children: React.ReactNode }) {
     abrir(null);
     abrirForm(null);
   };
-  const executar = (op: (b: Banco, u: Usuario) => Banco, sucesso: string) => {
+  const executar = (op: (b: Banco, u: Usuario) => Banco, sucesso: string, opcoes?: { desfazer?: boolean }) => {
     if (!usuario) return false;
     if (protegido) { avisar(DADOS_ANTIGOS, true); return false; }
     try {
       setBanco(op(banco, usuario));
-      avisar(sucesso);
+      const anterior = banco;
+      avisar(sucesso, false, opcoes?.desfazer ? { rotulo: "Desfazer", fazer: () => {
+        if (protegido) { avisar(DADOS_ANTIGOS, true); return; }
+        setBanco(anterior);
+        avisar("Exclusão desfeita");
+      } } : undefined);
       return true;
     } catch (e) {
       avisar(e instanceof Error ? e.message : "Não foi possível salvar.", true);
