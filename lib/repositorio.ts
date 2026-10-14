@@ -1,7 +1,7 @@
 // Única porta de leitura e gravação dos dados. Hoje guarda um JSON no navegador;
 // na v1 estas mesmas funções passam a chamar o servidor, e as checagens de permissão vão junto.
 import { VERSAO, type Banco, type Clinica, type Convenio, type DadosClinica, type Especialidade, type Exame, type Organizacao, type Profissional, type Usuario } from "./modelo.ts";
-import { podeCriarClinica, podeCriarUsuario, podeEditar, podeVer } from "./permissoes.ts";
+import { podeCriarClinica, podeCriarUsuario, podeEditar, podeVer, podeVerInterno } from "./permissoes.ts";
 import { pontoZero } from "./semente.ts";
 
 export const CHAVE = "cartilha:v1";
@@ -32,8 +32,10 @@ const LISTAS = ["organizacoes", "clinicas", "usuarios", "especialidades", "conve
 // Leva um banco guardado para a versão atual; null quando não reconhece o formato
 export function migrar(b: unknown): Banco | null {
   if (!b || typeof b !== "object") return null;
-  const banco = b as Banco;
+  let banco = b as Banco;
   if (!LISTAS.every((l) => Array.isArray(banco[l]))) return null;
+  // versão 3 → 4: a central de atendimento ganha papel próprio
+  if (banco.versao === 3) banco = { ...banco, versao: 4, usuarios: banco.usuarios.map((u) => u.id === "central-comn" && u.papel === "recepcao" ? { ...u, papel: "central" } : u) };
   return banco.versao === VERSAO ? banco : null;
 }
 
@@ -89,12 +91,19 @@ export function gravar(b: Banco): boolean {
 
 export const clinicasDo = (b: Banco, u: Usuario): Clinica[] => b.clinicas.filter((c) => podeVer(u, c.id));
 
-export const dadosDaClinica = (b: Banco, clinicaId: string): DadosClinica => ({
-  especialidades: b.especialidades.filter((x) => x.clinicaId === clinicaId),
-  convenios: b.convenios.filter((x) => x.clinicaId === clinicaId),
-  exames: b.exames.filter((x) => x.clinicaId === clinicaId),
-  profissionais: b.profissionais.filter((x) => x.clinicaId === clinicaId),
-});
+// Recepção recebe médicos e exames sem as observações internas
+export function dadosDaClinica(b: Banco, clinicaId: string, u?: Usuario): DadosClinica {
+  const tudo = !u || podeVerInterno(u);
+  const semInterno = <T extends { observacoesInternas?: string }>({ observacoesInternas: _, ...resto }: T) => resto as T;
+  const exames = b.exames.filter((x) => x.clinicaId === clinicaId);
+  const profissionais = b.profissionais.filter((x) => x.clinicaId === clinicaId);
+  return {
+    especialidades: b.especialidades.filter((x) => x.clinicaId === clinicaId),
+    convenios: b.convenios.filter((x) => x.clinicaId === clinicaId),
+    exames: tudo ? exames : exames.map(semInterno),
+    profissionais: tudo ? profissionais : profissionais.map(semInterno),
+  };
+}
 
 // --- gravação: sempre confere a permissão antes ---
 

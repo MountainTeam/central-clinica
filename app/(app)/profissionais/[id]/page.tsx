@@ -8,7 +8,7 @@ import { useStore } from "@/lib/store";
 import { DIAS, type DadosClinica, type Profissional } from "@/lib/modelo";
 import { coberturaDaBusca, combina, subtipoInfo } from "@/lib/regras";
 import { salvarProfissional } from "@/lib/repositorio";
-import { Avatar, Botao, Chip, Icone, LogoMarca, Secao, Vazio } from "@/components/ui";
+import { Avatar, Botao, Chip, Icone, LogoMarca, ObservacaoInterna, Secao, Vazio } from "@/components/ui";
 import { EditorHorarios, lerHorarios } from "@/components/formularios";
 
 const cartao = "rounded-3xl border border-borda bg-superficie p-5 shadow-card sm:p-6";
@@ -70,7 +70,7 @@ export default function PaginaProfissional() {
                     return (
                       <li key={k} className="flex gap-3 rounded-2xl bg-alerta-claro px-4 py-3 text-[15px] text-alerta">
                         <TriangleAlert className="mt-0.5 size-4 shrink-0" />
-                        <span>{r.texto}{info && <span className="ml-1 opacity-75">({info.convenio.nome} {info.subtipo.nome})</span>}</span>
+                        <span>{r.texto}{info && <span className="ml-1 opacity-75">· {info.convenio.nome} · {info.subtipo.nome}</span>}</span>
                       </li>
                     );
                   })}
@@ -143,6 +143,7 @@ export default function PaginaProfissional() {
             ) : (
               <Vazio texto={admin ? "Nenhuma observação." : "Nenhuma observação."} />
             )}
+            {editando !== "obs" && <div className="mt-3"><ObservacaoInterna texto={p.observacoesInternas} /></div>}
           </div>
         </aside>
       </div>

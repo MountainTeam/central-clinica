@@ -69,6 +69,17 @@ export function Chip({ children, tom = "neutro" }: { children: React.ReactNode; 
   return <span className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[13px] font-medium ${t}`}>{children}</span>;
 }
 
+// Só chega aqui quando o usuário pode ver (a recepção recebe os dados sem este campo)
+export function ObservacaoInterna({ texto }: { texto?: string }) {
+  if (!texto) return null;
+  return (
+    <div className="space-y-1.5 rounded-xl border border-dashed border-borda px-3 py-2">
+      <Chip><Icones.Lock className="size-3" />Interno</Chip>
+      <p className="whitespace-pre-line text-[15px] leading-relaxed">{texto}</p>
+    </div>
+  );
+}
+
 export function TipoBadge({ tipo }: { tipo: Tipo }) {
   return tipo === "consulta"
     ? <Chip tom="verde"><Icones.Stethoscope className="size-3.5" />Consulta</Chip>

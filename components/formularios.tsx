@@ -4,11 +4,11 @@ import { useRouter } from "next/navigation";
 import { createContext, useContext, useMemo, useState } from "react";
 import { ChevronDown, Search, X } from "lucide-react";
 import { useStore, type Formulario } from "@/lib/store";
-import { DIAS, type Convenio, type DadosClinica, type Exame, type GrupoPlano, type Horario, type Papel, type Profissional } from "@/lib/modelo";
+import { DIAS, type Convenio, type DadosClinica, type Exame, type GrupoPlano, type Horario, type Papel, type Profissional, type Restricao } from "@/lib/modelo";
 import { PAPEIS } from "@/lib/permissoes";
 import { combina, corDoIndice, gruposPlanosDoConvenio, juntarRedes, montarRedes, novoId, observacoesDoConvenio, slug } from "@/lib/regras";
 import { salvarClinica, salvarConvenio, salvarEspecialidade, salvarExame, salvarExameComProfissionais, salvarOrganizacao, salvarProfissional, salvarUsuario } from "@/lib/repositorio";
-import { Botao, EnvioLogo, Gaveta, LogoMarca, useFecharGaveta } from "./ui";
+import { Botao, EnvioLogo, Gaveta, LogoMarca, SeletorConvenio, useFecharGaveta } from "./ui";
 
 export const campo = "w-full rounded-xl border border-borda bg-superficie px-3 py-2.5 text-[15px] outline-none transition placeholder:text-suave/60 focus:border-verde focus:ring-4 focus:ring-verde/15";
 const linhas = (t: FormDataEntryValue | null) => String(t ?? "").split("\n").map((x) => x.trim()).filter(Boolean);
@@ -373,6 +373,7 @@ function FormProfissional({ id }: { id?: string }) {
   const { dados, clinica, executar, abrirForm, avisar } = useStore();
   const router = useRouter();
   const p = dados.profissionais.find((x) => x.id === id);
+  const [restricoes, setRestricoes] = useState<Restricao[]>(p?.restricoes ?? []);
 
   const salvar = (f: FormData) => {
     const nome = String(f.get("nome")).trim();
@@ -394,8 +395,9 @@ function FormProfissional({ id }: { id?: string }) {
       procedimentos: String(f.get("procedimentos")).split(",").map((x) => x.trim()).filter(Boolean),
       exames: dados.exames.filter((e) => f.get(`ex:${e.id}`)).map((e) => e.id),
       atende,
-      restricoes: linhas(f.get("restricoes")).map((texto) => ({ texto })),
+      restricoes: restricoes.map(({ texto, subtipoId }) => (subtipoId ? { texto: texto.trim(), subtipoId } : { texto: texto.trim() })).filter((r) => r.texto),
       observacoes: String(f.get("observacoes")).trim(),
+      observacoesInternas: String(f.get("observacoesInternas") ?? "").trim() || undefined,
     };
     if (!executar((b, u) => salvarProfissional(b, u, novo), p ? "Ficha atualizada" : "Profissional cadastrado")) return;
     abrirForm(null);
@@ -426,13 +428,46 @@ function FormProfissional({ id }: { id?: string }) {
       <Campo rotulo="Exames que realiza">
         <SeletorExamesProfissional dados={dados} examesIniciais={p?.exames ?? []} />
       </Campo>
-      <Campo rotulo="Restrições" dica="Uma por linha.">
-        <textarea name="restricoes" rows={3} defaultValue={p?.restricoes.map((r) => r.texto).join("\n")} className={campo} />
-      </Campo>
+      <div>
+        <span className="mb-1.5 block text-sm font-semibold">Restrições</span>
+        <EditorRestricoes dados={dados} valor={restricoes} onChange={setRestricoes} />
+      </div>
       <Campo rotulo="Observações">
         <textarea name="observacoes" rows={3} defaultValue={p?.observacoes} className={campo} />
       </Campo>
+      <Campo rotulo="Observações internas" dica="A recepção não vê. Só central, coordenação e gestão.">
+        <textarea name="observacoesInternas" rows={3} defaultValue={p?.observacoesInternas} className={campo} />
+      </Campo>
     </Moldura>
+  );
+}
+
+// Cada restrição vale para tudo ou só para uma rede
+function EditorRestricoes({ dados, valor, onChange }: { dados: DadosClinica; valor: Restricao[]; onChange: (r: Restricao[]) => void }) {
+  const marcar = useContext(MarcarAlterado);
+  const mudar = (k: number, r: Partial<Restricao>) => onChange(valor.map((x, i) => (i === k ? { ...x, ...r } : x)));
+  return (
+    <div className="space-y-2">
+      {valor.map((r, k) => (
+        <div key={k} className="space-y-2 rounded-2xl border border-borda p-3">
+          <div className="flex gap-2">
+            <input name={`restricao:${k}`} value={r.texto} onChange={(e) => mudar(k, { texto: e.target.value })}
+              placeholder="Ex.: não atende gestantes" aria-label={`Restrição ${k + 1}`} className={campo} />
+            <button type="button" onClick={() => { marcar(); onChange(valor.filter((_, i) => i !== k)); }}
+              aria-label={`Remover restrição ${k + 1}`} className="shrink-0 rounded-xl px-3 text-suave hover:bg-fundo hover:text-texto">
+              <X className="size-4" />
+            </button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="text-suave">Vale só para a rede…</span>
+            <div className="min-w-[220px] flex-1">
+              <SeletorConvenio dados={dados} valor={r.subtipoId ?? ""} onChange={(v) => { marcar(); mudar(k, { subtipoId: v || undefined }); }} />
+            </div>
+          </div>
+        </div>
+      ))}
+      <Botao variante="secundario" onClick={() => { marcar(); onChange([...valor, { texto: "" }]); }}>Acrescentar restrição</Botao>
+    </div>
   );
 }
 
@@ -956,6 +991,7 @@ function FormExame({ id }: { id?: string }) {
       preparo: linhas(f.get("preparo")),
       valor: String(f.get("valor") ?? "").trim(),
       observacoes: String(f.get("observacoes") ?? "").trim(),
+      observacoesInternas: String(f.get("observacoesInternas") ?? "").trim() || undefined,
       subtipos: dados.convenios.flatMap((c) => c.subtipos).filter((s) => f.get(`s:${s.id}`)).map((s) => s.id),
     };
     const profsIds = dados.profissionais.filter((p) => f.get(`prof:${p.id}`)).map((p) => p.id);
@@ -975,6 +1011,9 @@ function FormExame({ id }: { id?: string }) {
       </Campo>
       <Campo rotulo="Observações" dica="Avisos para a central, ex.: só às terças, agendar com 7 dias de antecedência.">
         <textarea name="observacoes" rows={3} defaultValue={ex?.observacoes} className={campo} />
+      </Campo>
+      <Campo rotulo="Observações internas" dica="A recepção não vê. Só central, coordenação e gestão.">
+        <textarea name="observacoesInternas" rows={3} defaultValue={ex?.observacoesInternas} className={campo} />
       </Campo>
       <div>
         <span className="mb-2 block text-sm font-semibold">Profissionais que realizam este exame</span>

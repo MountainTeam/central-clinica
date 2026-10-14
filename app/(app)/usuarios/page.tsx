@@ -52,7 +52,7 @@ export default function Usuarios() {
               <span className="block truncate text-sm text-suave">{u.email}</span>
             </span>
             <span className="flex flex-wrap gap-2">
-              <Chip tom={u.papel === "recepcao" ? "neutro" : "verde"}>{PAPEIS[u.papel].rotulo}</Chip>
+              <Chip tom={u.papel === "recepcao" || u.papel === "central" ? "neutro" : "verde"}>{PAPEIS[u.papel].rotulo}</Chip>
               {u.clinicas.length
                 ? u.clinicas.map((id) => <Chip key={id} tom="azul"><Building2 className="size-3.5" />{nomeClinica(id)}</Chip>)
                 : <Chip tom="azul">Todas as clínicas</Chip>}

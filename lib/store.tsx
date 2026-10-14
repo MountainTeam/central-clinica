@@ -147,7 +147,7 @@ export function Provider({ children }: { children: React.ReactNode }) {
   return (
     <Ctx.Provider value={{
       banco, usuario, carregado, clinicas, clinica,
-      dados: clinica ? dadosDaClinica(banco, clinica.id) : VAZIO,
+      dados: clinica ? dadosDaClinica(banco, clinica.id, usuario ?? undefined) : VAZIO,
       podeEditarAtual: !!usuario && !!clinica && podeEditar(usuario, clinica.id),
       escolherClinica, entrar, sair, executar, painel, abrir, form, abrirForm, aviso, avisar,
     }}>

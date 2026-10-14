@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, ClipboardList, Copy, FlaskConical, Info, Pencil, Search, ShieldCheck, TriangleAlert, UserRound, X } from "lucide-react";
 import { useStore, type Painel } from "@/lib/store";
-import { coberturaDaBusca, combina, resumoHorarios } from "@/lib/regras";
+import { coberturaDaBusca, combina, resumoHorarios, subtipoInfo } from "@/lib/regras";
 import type { DadosClinica, Exame, Profissional } from "@/lib/modelo";
-import { Avatar, Botao, Chip, Janela, LogoMarca, Secao, Vazio } from "./ui";
+import { Avatar, Botao, Chip, Janela, LogoMarca, ObservacaoInterna, Secao, Vazio } from "./ui";
 
 export function Paineis() {
   const { painel, abrir, dados } = useStore();
@@ -35,8 +35,9 @@ function Filtro({ valor, onChange, placeholder }: { valor: string; onChange: (v:
 
 // Quem realiza: abre as observações e restrições do médico sem sair do exame
 function QuemRealiza({ p }: { p: Profissional }) {
+  const { dados } = useStore();
   const [aberto, setAberto] = useState(false);
-  const semNotas = !p.observacoes && !p.restricoes.length && !p.idadeMinima;
+  const semNotas = !p.observacoes && !p.observacoesInternas && !p.restricoes.length && !p.idadeMinima;
   return (
     <div className={`overflow-hidden rounded-2xl border ${aberto ? "border-verde/30" : "border-borda"}`}>
       <button type="button" onClick={() => setAberto(!aberto)} aria-expanded={aberto}
@@ -54,10 +55,16 @@ function QuemRealiza({ p }: { p: Profissional }) {
       {aberto && (
         <div className="entrar space-y-2 border-t border-borda/60 p-3 text-sm">
           {p.idadeMinima && <Chip>A partir de {p.idadeMinima} anos</Chip>}
-          {p.restricoes.map((r, k) => (
-            <p key={k} className="flex gap-2 rounded-xl bg-alerta-claro px-3 py-2 text-alerta"><TriangleAlert className="mt-0.5 size-4 shrink-0" />{r.texto}</p>
-          ))}
+          {p.restricoes.map((r, k) => {
+            const info = r.subtipoId ? subtipoInfo(dados, r.subtipoId) : undefined;
+            return (
+              <p key={k} className="flex gap-2 rounded-xl bg-alerta-claro px-3 py-2 text-alerta"><TriangleAlert className="mt-0.5 size-4 shrink-0" />
+                <span>{r.texto}{info && <span className="ml-1 opacity-75">· {info.convenio.nome} · {info.subtipo.nome}</span>}</span>
+              </p>
+            );
+          })}
           {p.observacoes && <p className="whitespace-pre-line rounded-xl bg-fundo px-3 py-2">{p.observacoes}</p>}
+          <ObservacaoInterna texto={p.observacoesInternas} />
           {semNotas && <p className="text-suave">Sem observações cadastradas.</p>}
           <Link href={`/profissionais/${p.id}`} className="inline-flex items-center gap-1 font-semibold text-verde hover:underline">
             Abrir ficha completa <ChevronRight className="size-4" />
@@ -109,6 +116,7 @@ function FichaExame({ id }: { id: string }) {
           <Info className="mt-0.5 size-4 shrink-0" />{ex.observacoes}
         </p>
       )}
+      <ObservacaoInterna texto={ex.observacoesInternas} />
 
       <Secao titulo="Convênios que cobrem" icone={<ShieldCheck className="size-4" />} i={3}>
         <ChecadorConveniosExame ex={ex} dados={dados} />

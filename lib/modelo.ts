@@ -1,7 +1,7 @@
 // Tipos do protótipo, um por futura tabela do banco. Ids são texto.
 
 export type Tipo = "consulta" | "exame";
-export type Papel = "administrador" | "comercial" | "coordenador" | "recepcao";
+export type Papel = "administrador" | "comercial" | "coordenador" | "central" | "recepcao";
 
 export const DIAS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"] as const;
 // ponytail: um intervalo por dia; dois turnos separados no mesmo dia viram lista por dia
@@ -41,6 +41,7 @@ export type Exame = {
   documentos?: string;
   valor?: string;
   observacoes?: string;
+  observacoesInternas?: string;
   subtipos: string[];
 };
 // `atende` mapeia subtipo → "c" (consulta), "e" (exame) ou "ce" (ambos)
@@ -56,10 +57,11 @@ export type Profissional = {
   atende: Record<string, string>;
   restricoes: Restricao[];
   observacoes: string;
+  observacoesInternas?: string;
 };
 
 // Sobe quando o formato muda; dado guardado com outra versão é descartado
-export const VERSAO = 3;
+export const VERSAO = 4;
 export type Banco = {
   versao: number;
   organizacoes: Organizacao[];
