@@ -60,7 +60,7 @@ export default function Login() {
             </fieldset>
           </div>
 
-          <button type="submit" className="entrar pressionavel group mt-8 bg-verde hover:bg-[#0b8573] flex h-12 w-full items-center justify-center gap-2 rounded-xl font-semibold text-white shadow-card" style={{ "--i": 4 } as React.CSSProperties}>
+          <button type="submit" className="entrar pressionavel group mt-8 bg-verde hover:bg-verde-escuro flex h-12 w-full items-center justify-center gap-2 rounded-xl font-semibold text-white shadow-card" style={{ "--i": 4 } as React.CSSProperties}>
             Entrar <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
           </button>
         </form>

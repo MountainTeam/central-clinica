@@ -324,10 +324,10 @@ function BuscaRapida() {
           <div className="entrar space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold text-texto">
-                {filtrando ? `Especialidades filtradas (${especialidadesFiltradas.length})` : "Todas as Especialidades"}
+                {filtrando ? `Especialidades filtradas (${especialidadesFiltradas.length})` : "Todas as especialidades"}
               </h2>
               <Link href="/especialidades" className="text-[13px] font-semibold text-verde hover:underline flex items-center gap-1">
-                Ver tela completa de Especialidades <ArrowRight className="size-3.5" />
+                Ver tela completa de especialidades <ArrowRight className="size-3.5" />
               </Link>
             </div>
 
@@ -450,7 +450,7 @@ function BuscaRapida() {
           <div className="entrar space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold text-texto">
-                {filtrando ? `Convênios encontrados (${conveniosFiltrados.length})` : "Todos os Convênios"}
+                {filtrando ? `Convênios encontrados (${conveniosFiltrados.length})` : "Todos os convênios"}
               </h2>
               <Link href="/convenios" className="text-[13px] font-semibold text-verde hover:underline flex items-center gap-1">
                 Ver diretório de convênios <ArrowRight className="size-3.5" />
@@ -551,10 +551,10 @@ function BuscaRapida() {
           <div className="entrar space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold text-texto">
-                {filtrando ? `Exames encontrados (${examesFiltrados.length})` : "Todos os Exames"}
+                {filtrando ? `Exames encontrados (${examesFiltrados.length})` : "Todos os exames"}
               </h2>
               <Link href="/exames" className="text-[13px] font-semibold text-verde hover:underline flex items-center gap-1">
-                Ver tela completa de Exames <ArrowRight className="size-3.5" />
+                Ver tela completa de exames <ArrowRight className="size-3.5" />
               </Link>
             </div>
 

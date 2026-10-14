@@ -27,7 +27,7 @@ const ICONES_ESPECIALIDADE: Record<string, LucideIcon> = {
   Stethoscope, Activity, Baby, Bone, Brain, Ear, Eye, Heart, HeartPulse, Microscope, Pill, ScanLine, Smile, Syringe,
 };
 export function Icone({ nome, className }: { nome: string; className?: string }) {
-  const C = ICONES_ESPECIALIDADE[nome] ?? Stethoscope;
+  const C = Object.hasOwn(ICONES_ESPECIALIDADE, nome) ? ICONES_ESPECIALIDADE[nome] : Stethoscope;
   return <C className={className} />;
 }
 
@@ -52,7 +52,7 @@ export function Botao({ children, onClick, variante = "primario", type = "button
   children: React.ReactNode; onClick?: () => void; variante?: "primario" | "secundario"; type?: "button" | "submit";
 }) {
   const estilo = variante === "primario"
-    ? "bg-verde text-white shadow-card hover:bg-[#0b8573]"
+    ? "bg-verde text-white shadow-card hover:bg-verde-escuro"
     : "bg-superficie text-texto border border-borda hover:bg-fundo";
   return (
     <button type={type} onClick={onClick} className={`pressionavel inline-flex h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold ${estilo}`}>
@@ -72,11 +72,12 @@ export function Chip({ children, tom = "neutro" }: { children: React.ReactNode; 
 }
 
 export function Atualizado({ em, por }: { em?: string; por?: string }) {
-  if (!em || !tempoDesde(em)) return null;
+  const tempo = em ? tempoDesde(em) : "";
+  if (!em || !tempo) return null;
   const velho = (Date.now() - Date.parse(em)) / 86400000 > DIAS_PARA_REVISAR;
   return (
     <Chip tom={velho ? "alerta" : "neutro"}>
-      Atualizado {tempoDesde(em)}{por && ` por ${por}`}{velho && " · pode estar desatualizado"}
+      Atualizado {tempo}{por && ` por ${por}`}{velho && " · pode estar desatualizado"}
     </Chip>
   );
 }

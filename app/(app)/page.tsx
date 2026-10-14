@@ -44,7 +44,7 @@ function CartaoOrganizacao({ org, lista, indice }: { org: Organizacao; lista: Cl
             : <h3 className="truncate text-base font-bold">{c.nome}</h3>}
         </div>
         <button type="button" onClick={abrir}
-          className={`pressionavel mt-auto flex items-center justify-between rounded-xl px-4 py-2.5 text-sm font-semibold ${atual ? "bg-verde text-white hover:bg-[#0b8573]" : "bg-fundo text-texto ring-1 ring-borda hover:text-verde"}`}>
+          className={`pressionavel mt-auto flex items-center justify-between rounded-xl px-4 py-2.5 text-sm font-semibold ${atual ? "bg-verde text-white hover:bg-verde-escuro" : "bg-fundo text-texto ring-1 ring-borda hover:text-verde"}`}>
           {atual ? "Continuar na unidade" : "Entrar na unidade"}
           <ArrowUpRight className="size-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
         </button>

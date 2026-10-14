@@ -89,7 +89,7 @@ export default function Convenios() {
               )}
               <Botao onClick={() => abrirForm({ tipo: "convenio" })}>
                 <Plus className="size-4" />
-                Novo Convênio
+                Novo convênio
               </Botao>
             </div>
           )
