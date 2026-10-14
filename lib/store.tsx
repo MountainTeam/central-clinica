@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import type { Banco, Clinica, DadosClinica, Usuario } from "./modelo";
 import { podeEditar } from "./permissoes";
-import { CHAVE, carregar, clinicasDo, dadosDaClinica, gravar } from "./repositorio";
+import { CHAVE, carregarProtegido, clinicasDo, dadosDaClinica, gravar } from "./repositorio";
 import { pontoZero } from "./semente";
 
 export type Painel = { tipo: "exame"; id: string } | null;
@@ -49,6 +49,7 @@ const lerLocal = (k: string) => { try { return localStorage.getItem(k); } catch 
 const gravarLocal = (k: string, v: string | null) => {
   try { if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch {}
 };
+const DADOS_ANTIGOS = "Os dados guardados neste navegador são de um formato antigo e não deu para copiá-los: nada foi apagado e nada será salvo. Libere espaço no navegador ou fale com o administrador.";
 const VAZIO: DadosClinica = { especialidades: [], convenios: [], exames: [], profissionais: [] };
 
 export function Provider({ children }: { children: React.ReactNode }) {
@@ -59,6 +60,7 @@ export function Provider({ children }: { children: React.ReactNode }) {
   const [painel, abrir] = useState<Painel>(null);
   const [form, abrirForm] = useState<Formulario>(null);
   const [aviso, setAviso] = useState<{ texto: string; erro: boolean } | null>(null);
+  const [protegido, setProtegido] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const avisar = useCallback((t: string, erro = false) => {
@@ -69,7 +71,10 @@ export function Provider({ children }: { children: React.ReactNode }) {
 
   // ponytail: sessão no navegador só para o protótipo; na v1 vira login de verdade no servidor
   useEffect(() => {
-    setBanco(carregar());
+    const c = carregarProtegido();
+    setBanco(c.banco);
+    setProtegido(c.protegido);
+    if (c.protegido) avisar(DADOS_ANTIGOS, true);
     setUsuarioId(lerLocal(SESSAO_USUARIO));
     setClinicaId(lerLocal(SESSAO_CLINICA));
     setCarregado(true);
@@ -78,15 +83,30 @@ export function Provider({ children }: { children: React.ReactNode }) {
   // toda mudança vai para o navegador; se não couber, o app segue em memória e avisa a cada falha
   useEffect(() => {
     if (!carregado) return;
+    if (protegido) return;
     if (!gravar(banco)) avisar("Não deu para salvar no navegador: o espaço acabou. Baixe uma cópia de segurança em Usuários.", true);
-  }, [banco, carregado, avisar]);
+  }, [banco, carregado, protegido, avisar]);
 
   // outra aba gravou: pega o banco novo, para esta aba não sobrescrever com dados velhos
   useEffect(() => {
-    const ouvir = (e: StorageEvent) => { if (e.key === CHAVE) setBanco(carregar()); };
+    const ouvir = (e: StorageEvent) => {
+      if (e.key !== CHAVE) return;
+      const c = carregarProtegido();
+      setBanco(c.banco);
+      setProtegido(c.protegido);
+    };
     window.addEventListener("storage", ouvir);
     return () => window.removeEventListener("storage", ouvir);
   }, []);
+
+  // cópia restaurada sem o usuário logado: volta ao login em vez de ficar sem usuário
+  useEffect(() => {
+    if (!carregado || !usuarioId || banco.usuarios.some((u) => u.id === usuarioId)) return;
+    setUsuarioId(null);
+    gravarLocal(SESSAO_USUARIO, null);
+    abrir(null);
+    abrirForm(null);
+  }, [banco, carregado, usuarioId]);
 
   const usuario = banco.usuarios.find((u) => u.id === usuarioId) ?? null;
   const clinicas = usuario ? clinicasDo(banco, usuario) : [];
@@ -113,6 +133,7 @@ export function Provider({ children }: { children: React.ReactNode }) {
   };
   const executar = (op: (b: Banco, u: Usuario) => Banco, sucesso: string) => {
     if (!usuario) return false;
+    if (protegido) { avisar(DADOS_ANTIGOS, true); return false; }
     try {
       setBanco(op(banco, usuario));
       avisar(sucesso);

@@ -79,7 +79,7 @@ export function Moldura({ titulo, onSalvar, children }: { titulo: string; onSalv
   const fechar = useFecharGaveta();
   const marcar = useContext(MarcarAlterado);
   return (
-    <form className="flex min-h-full flex-col" onInput={marcar}
+    <form className="flex min-h-full flex-col" onInput={(e) => { if ((e.target as HTMLInputElement).name) marcar(); }}
       // Enter num campo não salva (ficha longa); no textarea continua quebrando linha
       onKeyDown={(e) => { if (e.key === "Enter" && (e.target as HTMLElement).tagName === "INPUT") e.preventDefault(); }}
       onSubmit={(e) => { e.preventDefault(); onSalvar(new FormData(e.currentTarget)); }}>
@@ -119,7 +119,6 @@ function MatrizConvenios({ dados, atende }: { dados: DadosClinica; atende: Recor
   });
 
   const toggleCheck = (subId: string, tipo: "c" | "e") => {
-    marcar();
     setEstado((ant) => ({
       ...ant,
       [subId]: {
@@ -452,7 +451,6 @@ function SeletorExamesProfissional({
   const q = busca.trim();
 
   const toggle = (id: string) => {
-    marcar();
     setSelecionados((ant) => {
       const prox = new Set(ant);
       if (prox.has(id)) prox.delete(id);
@@ -615,7 +613,6 @@ function SeletorConveniosExame({
   const q = busca.trim();
 
   const toggleSub = (subId: string) => {
-    marcar();
     setSelecionados((ant) => {
       const prox = new Set(ant);
       if (prox.has(subId)) prox.delete(subId);
@@ -825,7 +822,6 @@ function SeletorProfissionaisExame({ dados, exameId }: { dados: DadosClinica; ex
   }, [dados.profissionais, dados.especialidades, q]);
 
   const toggle = (id: string) => {
-    marcar();
     setSelecionados((ant) => {
       const prox = new Set(ant);
       if (prox.has(id)) prox.delete(id);

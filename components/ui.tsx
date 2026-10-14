@@ -254,9 +254,12 @@ export function Gaveta({ aberta, onFechar, alterado = false, largura = "max-w-xl
 }) {
   const [descartando, setDescartando] = useState(false);
   const tentar = () => (alterado ? setDescartando(true) : onFechar());
+  // Esc com a barra aberta volta a editar; sem ela, tenta fechar
   const tentarRef = useRef(tentar);
-  tentarRef.current = tentar;
+  tentarRef.current = () => (descartando ? setDescartando(false) : tentar());
+  const barra = useRef<HTMLDivElement>(null);
   useEffect(() => { if (!aberta) setDescartando(false); }, [aberta]);
+  useEffect(() => { if (descartando) barra.current?.querySelector("button")?.focus(); }, [descartando]);
   useEffect(() => {
     if (!aberta) return;
     const esc = (e: KeyboardEvent) => e.key === "Escape" && tentarRef.current();
@@ -276,7 +279,7 @@ export function Gaveta({ aberta, onFechar, alterado = false, largura = "max-w-xl
           <div className="flex-1 overflow-y-auto">{children}</div>
         </FecharGaveta.Provider>
         {descartando && (
-          <div role="alertdialog" aria-label="Descartar as alterações?"
+          <div ref={barra} role="alertdialog" aria-label="Descartar as alterações?"
             className="entrar flex flex-wrap items-center gap-3 border-t border-borda bg-alerta-claro p-4 sm:rounded-b-3xl">
             <p className="flex-1 text-sm font-semibold text-alerta">Descartar as alterações?</p>
             <Botao variante="secundario" onClick={() => setDescartando(false)}>Continuar editando</Botao>

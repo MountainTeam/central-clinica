@@ -27,25 +27,44 @@ function conferirClinica(u: Usuario, item: { clinicaId: string }, antes?: { clin
 
 export const CHAVE_BACKUP = "cartilha:backup";
 
+const LISTAS = ["organizacoes", "clinicas", "usuarios", "especialidades", "convenios", "exames", "profissionais"] as const;
+
 // Leva um banco guardado para a versão atual; null quando não reconhece o formato
 export function migrar(b: unknown): Banco | null {
-  if (!b || typeof b !== "object" || !Array.isArray((b as Banco).clinicas)) return null;
+  if (!b || typeof b !== "object") return null;
   const banco = b as Banco;
+  if (!LISTAS.every((l) => Array.isArray(banco[l]))) return null;
   return banco.versao === VERSAO ? banco : null;
 }
 
-export function carregar(): Banco {
+// Guarda uma cópia do que não dá para ler, sem repetir a mesma cópia; false quando não coube
+function guardarCopia(bruto: string): boolean {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k?.startsWith(`${CHAVE_BACKUP}:`) && localStorage.getItem(k) === bruto) return true;
+    }
+    localStorage.setItem(`${CHAVE_BACKUP}:${new Date().toISOString()}`, bruto);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// protegido: há dados antigos que não puderam ser copiados; quem chama não deve gravar por cima
+export function carregarProtegido(): { banco: Banco; protegido: boolean } {
   let bruto: string | null;
-  try { bruto = localStorage.getItem(CHAVE); } catch { return pontoZero(); }
-  if (!bruto) return pontoZero();
+  try { bruto = localStorage.getItem(CHAVE); } catch { return { banco: pontoZero(), protegido: false }; }
+  if (!bruto) return { banco: pontoZero(), protegido: false };
   try {
     const b = migrar(JSON.parse(bruto));
-    if (b) return b;
+    if (b) return { banco: b, protegido: false };
   } catch {}
   // formato que esta versão não entende: guarda uma cópia antes de recomeçar, para não perder cadastro
-  try { localStorage.setItem(`${CHAVE_BACKUP}:${new Date().toISOString()}`, bruto); } catch {}
-  return pontoZero();
+  return { banco: pontoZero(), protegido: !guardarCopia(bruto) };
 }
+
+export const carregar = (): Banco => carregarProtegido().banco;
 
 export const exportarBackup = (b: Banco) => JSON.stringify(b, null, 2);
 
