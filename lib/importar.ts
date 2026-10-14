@@ -6,8 +6,10 @@ export type Atendimento = "c" | "e" | "ce";
 function dividir(linha: string, sep: string) {
   const celulas: string[] = [];
   let atual = "", aspas = false;
-  for (const ch of linha) {
-    if (ch === '"') aspas = !aspas;
+  for (let i = 0; i < linha.length; i++) {
+    const ch = linha[i];
+    if (ch === '"' && aspas && linha[i + 1] === '"') { atual += '"'; i++; }
+    else if (ch === '"') aspas = !aspas;
     else if (ch === sep && !aspas) { celulas.push(atual); atual = ""; }
     else atual += ch;
   }
@@ -15,11 +17,19 @@ function dividir(linha: string, sep: string) {
   return celulas;
 }
 
-// aceita colagem do Excel (tab) e CSV com ; ou ,
-export function lerTabela(texto: string): string[][] {
+// aceita colagem do Excel (tab) e CSV com ; ou ,; `separadores` restringe quais valem (nome com vírgula não pode partir)
+export function lerTabela(texto: string, separadores: string[] = ["\t", ";", ","]): string[][] {
   const linhas = texto.replace(/\r/g, "").split("\n").filter((l) => l.trim());
-  const sep = ["\t", ";", ","].find((s) => linhas.some((l) => l.includes(s)));
-  return linhas.map((l) => (sep ? dividir(l, sep) : [l]).map((c) => c.trim()));
+  const sep = separadores.find((s) => linhas.some((l) => l.includes(s))) ?? separadores[0];
+  return linhas.map((l) => dividir(l, sep).map((c) => c.trim()));
+}
+
+// CSV do Excel pt-BR costuma vir em Windows-1252: tenta UTF-8 e, se não der, cai para ele; tira o BOM
+export function decodificarCsv(bytes: ArrayBuffer | Uint8Array): string {
+  let texto: string;
+  try { texto = new TextDecoder("utf-8", { fatal: true }).decode(bytes); }
+  catch { texto = new TextDecoder("windows-1252").decode(bytes); }
+  return texto.replace(/^\uFEFF/, "");
 }
 
 const CABECALHOS = new Set(["rede", "plano", "produto", "medico", "profissional"]);
@@ -46,7 +56,7 @@ function lerAtendimento(texto: string): Atendimento {
   return t.startsWith("consulta") ? "c" : t.startsWith("exame") ? "e" : "ce";
 }
 
-export function planejarRedesPorMedico(d: DadosClinica, _c: Convenio, linhas: string[][]) {
+export function planejarRedesPorMedico(d: DadosClinica, linhas: string[][]) {
   const itens: { profissionalId: string; medico: string; rede: string; atendimento: Atendimento }[] = [];
   const semMedico: string[] = [];
   for (const [medico = "", rede = "", atendimento = ""] of linhas) {

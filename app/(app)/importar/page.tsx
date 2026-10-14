@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { FileUp } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { importarRedes, importarRedesPorMedico } from "@/lib/repositorio";
-import { lerTabela, planejarRedes, planejarRedesPorMedico, semCabecalho } from "@/lib/importar";
+import { decodificarCsv, lerTabela, planejarRedes, planejarRedesPorMedico, semCabecalho } from "@/lib/importar";
 import { Botao, CabecalhoPagina, Chip, LogoMarca, SeletorBusca, Vazio } from "@/components/ui";
 
 type Modo = "redes" | "medico";
@@ -19,26 +19,28 @@ export default function Importar() {
   const [texto, setTexto] = useState("");
 
   const convenio = dados.convenios.find((c) => c.id === convenioId);
-  const linhas = useMemo(() => semCabecalho(lerTabela(texto)), [texto]);
+  const linhas = useMemo(() => semCabecalho(lerTabela(texto, modo === "redes" ? ["\t", ";"] : undefined)), [texto, modo]);
   const planoRedes = useMemo(() => convenio && modo === "redes" ? planejarRedes(convenio, linhas.map((l) => l[0])) : null, [convenio, modo, linhas]);
-  const planoMedico = useMemo(() => convenio && modo === "medico" ? planejarRedesPorMedico(dados, convenio, linhas) : null, [convenio, modo, linhas, dados]);
+  const planoMedico = useMemo(() => convenio && modo === "medico" ? planejarRedesPorMedico(dados, linhas) : null, [convenio, modo, linhas, dados]);
+  const novasPorMedico = useMemo(() => convenio && planoMedico ? planejarRedes(convenio, planoMedico.itens.map((i) => i.rede)).novas : [], [convenio, planoMedico]);
   const total = planoRedes ? planoRedes.novas.length : planoMedico ? planoMedico.itens.length : 0;
 
   if (!podeEditarAtual) return <div><CabecalhoPagina titulo="Importar redes" /><Vazio texto="Só quem edita esta unidade pode importar." /></div>;
 
   const lerArquivo = async (arquivo?: File) => {
     if (!arquivo) return;
-    try { setTexto(await arquivo.text()); } catch { avisar("Não deu para ler o arquivo. Cole as colunas aqui ou salve como CSV.", true); }
+    try { setTexto(decodificarCsv(await arquivo.arrayBuffer())); } catch { avisar("Não deu para ler o arquivo. Cole as colunas aqui ou salve como CSV.", true); }
   };
 
   const importar = () => {
     if (!convenio || !total) return;
     const ok = planoRedes
-      ? executar((b, u) => importarRedes(b, u, convenio.id, planoRedes.novas), `${total} ${total === 1 ? "rede importada" : "redes importadas"}`, { desfazer: true })
-      : executar((b, u) => importarRedesPorMedico(b, u, convenio.id, planoMedico!.itens), `${total} ${total === 1 ? "rede importada" : "redes importadas"}`, { desfazer: true });
+      ? executar((b, u) => importarRedes(b, u, convenio.id, planoRedes.novas), `${total} ${unidade(total, true)}`, { desfazer: true })
+      : executar((b, u) => importarRedesPorMedico(b, u, convenio.id, planoMedico!.itens), `${total} ${unidade(total, true)}`, { desfazer: true });
     if (ok) { setTexto(""); router.push("/convenios"); }
   };
 
+  const unidade = (n: number, feito: boolean) => modo === "medico" ? (n === 1 ? "vínculo" : "vínculos") + (feito ? (n === 1 ? " importado" : " importados") : "") : (n === 1 ? "rede" : "redes") + (feito ? (n === 1 ? " importada" : " importadas") : "");
   const campo = "w-full rounded-xl border border-borda bg-superficie p-3 text-[15px] outline-none transition focus:border-verde focus:ring-4 focus:ring-verde/15";
   const titulo = "mb-2 text-sm font-semibold";
 
@@ -96,6 +98,10 @@ export default function Importar() {
                     ))}</tbody>
                   </table>
                 )}
+                {novasPorMedico.length > 0 && (
+                  <div><p className="mb-1 text-[13px] text-suave">{novasPorMedico.length} {novasPorMedico.length === 1 ? "rede nova será criada" : "redes novas serão criadas"} no convênio</p>
+                    <div className="flex flex-wrap gap-2">{novasPorMedico.map((n) => <Chip key={n} tom="verde">{n}</Chip>)}</div></div>
+                )}
                 {planoMedico.semMedico.length > 0 && (
                   <div>
                     <p className="mb-1 text-sm font-semibold text-alerta">Médicos não encontrados</p>
@@ -110,7 +116,7 @@ export default function Importar() {
         )}
 
         {convenio && texto.trim() && (
-          total > 0 ? <Botao onClick={importar}>Importar {total} {total === 1 ? "rede" : "redes"}</Botao> : <p className="text-sm text-suave">Nada novo para importar.</p>
+          total > 0 ? <Botao onClick={importar}>Importar {total} {unidade(total, false)}</Botao> : <p className="text-sm text-suave">Nada novo para importar.</p>
         )}
       </div>
     </div>

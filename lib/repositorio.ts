@@ -249,12 +249,16 @@ export function importarRedes(b: Banco, u: Usuario, convenioId: string, nomes: s
   return salvarConvenio(b, u, { ...c, subtipos: juntarRedes(c.id, c.subtipos, nomes) });
 }
 
-export function importarRedesPorMedico(b: Banco, u: Usuario, convenioId: string, itens: { profissionalId: string; rede: string; atendimento: "c" | "e" | "ce" }[]): Banco {
+export function importarRedesPorMedico(b: Banco, u: Usuario, convenioId: string, todos: { profissionalId: string; rede: string; atendimento: "c" | "e" | "ce" }[]): Banco {
   const c = achar(b.convenios, u, convenioId);
+  const itens = todos.filter((i) => slug(i.rede)); // nome vazio ou só de símbolos não vira rede
   const subtipos = juntarRedes(c.id, c.subtipos, itens.map((i) => i.rede));
-  const idDe = (nome: string) => subtipos.find((s) => slug(s.nome) === slug(nome))!.id;
+  const idDe = (nome: string) => subtipos.find((s) => slug(s.nome) === slug(nome))?.id;
   const porMedico = new Map<string, Record<string, "c" | "e" | "ce">>();
-  for (const i of itens) porMedico.set(i.profissionalId, { ...porMedico.get(i.profissionalId), [idDe(i.rede)]: i.atendimento });
+  for (const i of itens) {
+    const id = idDe(i.rede); // nome que o juntarRedes descarta (vazio, só símbolos) é ignorado
+    if (id) porMedico.set(i.profissionalId, { ...porMedico.get(i.profissionalId), [id]: i.atendimento });
+  }
   let novo = salvarConvenio(b, u, { ...c, subtipos });
   for (const [id, mapa] of porMedico) {
     const p = achar(novo.profissionais, u, id);
