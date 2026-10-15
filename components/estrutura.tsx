@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useRef, useState } from "react";
-import { Building2, Check, CheckCircle2, ChevronsUpDown, FileUp, FlaskConical, LayoutGrid, Lock, LogOut, PhoneCall, Search, ShieldCheck, TriangleAlert, Users } from "lucide-react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowUpRight, Building2, Check, CheckCircle2, ChevronsUpDown, FileUp, FlaskConical, LayoutGrid, Lock, LogOut, PhoneCall, Search, ShieldCheck, TriangleAlert, Users } from "lucide-react";
 import type { Usuario } from "@/lib/modelo";
 import { PAPEIS, podeCriarUsuario, podeGerenciarUnidades } from "@/lib/permissoes";
-import { subtipoInfo } from "@/lib/regras";
+import { semAcento, subtipoInfo } from "@/lib/regras";
 import { useStore } from "@/lib/store";
 import { Logo, LogoMarca, SeletorConvenio, Vazio } from "@/components/ui";
 import { Paineis } from "@/components/paineis";
@@ -269,6 +269,7 @@ function SeletorClinica({ compacto = false }: { compacto?: boolean }) {
   const router = useRouter();
   const rota = usePathname();
   const [aberto, setAberto] = useState(false);
+  const [termo, setTermo] = useState("");
   const caixa = useRef<HTMLDivElement>(null);
 
   // fecha ao clicar fora ou apertar Esc
@@ -281,48 +282,230 @@ function SeletorClinica({ compacto = false }: { compacto?: boolean }) {
     return () => { document.removeEventListener("pointerdown", fora); document.removeEventListener("keydown", esc); };
   }, [aberto]);
 
-  // sem unidade, a própria tela Unidades já é o seletor
   if (!clinica) return null;
 
   const varias = clinicas.length > 1;
   const org = banco.organizacoes.find((o) => o.id === clinica.organizacaoId);
+  const clinicasDaMesmaOrg = clinicas.filter((c) => c.organizacaoId === clinica.organizacaoId);
+
+  // Nome do grupo só agrega valor se for uma rede com mais de uma clínica e nome diferente da unidade
+  const temNomeGrupoDiferente = org && clinicasDaMesmaOrg.length > 1 && org.nome.trim().toLowerCase() !== clinica.nome.trim().toLowerCase();
+
   const escolher = (id: string) => {
     setAberto(false);
+    setTermo("");
     escolherClinica(id);
-    // a página de um médico não existe na outra clínica
     if (rota.startsWith("/profissionais/")) router.push("/busca");
   };
 
+  // Separação em grupos: redes multi-unidades vs unidades individuais
+  const grupos = useMemo(() => {
+    const q = semAcento(termo.trim());
+    const clinicasFiltradas = clinicas.filter((c) => {
+      if (!q) return true;
+      const o = banco.organizacoes.find((orgItem) => orgItem.id === c.organizacaoId);
+      return semAcento(c.nome).includes(q) || (o && semAcento(o.nome).includes(q));
+    });
+
+    const mapa = new Map<string, { org: typeof banco.organizacoes[0]; itens: typeof clinicas }>();
+    for (const c of clinicasFiltradas) {
+      const o = banco.organizacoes.find((orgItem) => orgItem.id === c.organizacaoId) ?? { id: c.organizacaoId, nome: c.nome };
+      if (!mapa.has(o.id)) mapa.set(o.id, { org: o, itens: [] });
+      mapa.get(o.id)!.itens.push(c);
+    }
+
+    const redesMulti: { org: typeof banco.organizacoes[0]; itens: typeof clinicas }[] = [];
+    const unidadesSoltas: typeof clinicas = [];
+
+    mapa.forEach((grupo) => {
+      const totalOrgNoBanco = clinicas.filter((c) => c.organizacaoId === grupo.org.id).length;
+      if (totalOrgNoBanco > 1 && grupo.org.nome.trim().toLowerCase() !== grupo.itens[0]?.nome.trim().toLowerCase()) {
+        redesMulti.push(grupo);
+      } else {
+        unidadesSoltas.push(...grupo.itens);
+      }
+    });
+
+    return { redesMulti, unidadesSoltas, total: clinicasFiltradas.length };
+  }, [banco.organizacoes, clinicas, termo]);
+
   return (
     <div ref={caixa} className="relative">
-      <button type="button" disabled={!varias} onClick={() => setAberto(!aberto)} aria-expanded={aberto}
-        className={`flex w-full items-center gap-3 rounded-2xl border border-borda bg-fundo text-left ${compacto ? "px-2.5 py-2" : "p-3"} ${varias ? "pressionavel hover:border-verde/40" : ""}`}>
-        <LogoMarca nome={clinica.nome} logo={clinica.logo} />
+      <button
+        type="button"
+        disabled={!varias}
+        onClick={() => setAberto(!aberto)}
+        aria-expanded={aberto}
+        className={`group flex w-full items-center gap-3 rounded-2xl border text-left transition-all ${
+          aberto
+            ? "border-verde/50 bg-superficie shadow-md ring-2 ring-verde/15"
+            : "border-borda bg-fundo/70 hover:border-verde/40 hover:bg-superficie hover:shadow-sm"
+        } ${compacto ? "px-2.5 py-2" : "p-3"} ${varias ? "pressionavel cursor-pointer" : "cursor-default"}`}
+      >
+        <div className="relative shrink-0">
+          <LogoMarca nome={clinica.nome} logo={clinica.logo} tamanho="md" />
+        </div>
+
         <span className="min-w-0 flex-1">
-          {!compacto && <span className="line-clamp-2 break-words text-xs font-semibold uppercase tracking-wider text-suave">{org?.nome ?? "Clínica"}</span>}
-          <span key={clinica.id} className="entrar line-clamp-2 break-words text-sm font-semibold">{clinica.nome}</span>
+          {!compacto && (
+            <span className="block truncate text-[11px] font-semibold text-suave">
+              {temNomeGrupoDiferente ? org?.nome : "Unidade ativa"}
+            </span>
+          )}
+          <span className="block truncate text-sm font-bold text-texto">
+            {clinica.nome}
+          </span>
         </span>
-        {varias
-          ? <ChevronsUpDown className="size-4 shrink-0 text-suave" />
-          : <Lock className="size-4 shrink-0 text-suave/60" aria-label="Única clínica do seu usuário" />}
+
+        {varias ? (
+          <ChevronsUpDown
+            className={`size-4 shrink-0 text-suave transition-transform duration-200 ${
+              aberto ? "rotate-180 text-verde" : "group-hover:text-texto"
+            }`}
+          />
+        ) : (
+          <Lock className="size-3.5 shrink-0 text-suave/50" aria-label="Única clínica vinculada" />
+        )}
       </button>
+
       {aberto && (
-        <div className={`entrar absolute top-full z-40 mt-2 max-h-80 overflow-y-auto rounded-2xl border border-borda bg-superficie p-2 shadow-elevado ${compacto ? "right-0 w-72" : "inset-x-0"}`}>
-          {banco.organizacoes.map((o) => {
-            const daOrg = clinicas.filter((c) => c.organizacaoId === o.id);
-            return daOrg.length > 0 && (
-              <div key={o.id} className="py-1">
-                <p className="px-2 pb-1 text-xs font-semibold uppercase tracking-wider text-suave">{o.nome}</p>
-                {daOrg.map((c) => (
-                  <button key={c.id} type="button" onClick={() => escolher(c.id)}
-                    className="flex w-full items-center justify-between gap-2 rounded-xl px-2 py-2 text-left text-sm font-semibold hover:bg-fundo">
-                    <span className="truncate">{c.nome}</span>
-                    {c.id === clinica.id && <Check className="size-4 shrink-0 text-verde" />}
-                  </button>
-                ))}
+        <div
+          className={`entrar absolute top-full z-50 mt-2 flex flex-col rounded-2xl border border-borda/80 bg-superficie shadow-elevado backdrop-blur-md transition-all ${
+            compacto ? "right-0 w-80" : "inset-x-0 w-[calc(100%+1.5rem)] -left-3"
+          }`}
+          style={{ maxHeight: "26rem" }}
+        >
+          {/* Cabeçalho do menu */}
+          <div className="flex items-center justify-between border-b border-borda/60 px-3.5 py-2.5">
+            <span className="text-xs font-bold text-texto tracking-tight">Trocar de Unidade</span>
+            <span className="rounded-full bg-fundo px-2 py-0.5 text-[11px] font-semibold text-suave">
+              {clinicas.length} disponíveis
+            </span>
+          </div>
+
+          {/* Campo de busca rápida se houver mais de 4 clínicas */}
+          {clinicas.length > 4 && (
+            <div className="p-2 border-b border-borda/40">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-suave" />
+                <input
+                  value={termo}
+                  onChange={(e) => setTermo(e.target.value)}
+                  placeholder="Buscar unidade..."
+                  className="h-8 w-full rounded-xl border border-borda/80 bg-fundo pl-8 pr-3 text-xs outline-none transition placeholder:text-suave/70 focus:border-verde focus:bg-superficie focus:ring-2 focus:ring-verde/15"
+                />
               </div>
-            );
-          })}
+            </div>
+          )}
+
+          {/* Lista de Clínicas com Scroll suave */}
+          <div className="flex-1 overflow-y-auto p-2 space-y-3 [scrollbar-width:thin]">
+            {grupos.total === 0 ? (
+              <p className="py-4 text-center text-xs text-suave">Nenhuma unidade encontrada.</p>
+            ) : (
+              <>
+                {/* 1. Redes com múltiplas unidades (ex.: Clínica de Oncologia e Mastologia -> COMN, ONCY) */}
+                {grupos.redesMulti.map(({ org: o, itens }) => (
+                  <div key={o.id} className="rounded-xl bg-fundo/40 p-1.5 space-y-1 border border-borda/40">
+                    <div className="flex items-center justify-between px-2 pt-1 pb-1">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-suave truncate">
+                        {o.nome}
+                      </span>
+                      <span className="text-[10px] font-medium text-suave/70">
+                        {itens.length} {itens.length === 1 ? "unidade" : "unidades"}
+                      </span>
+                    </div>
+
+                    {itens.map((c) => {
+                      const ativa = c.id === clinica.id;
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => escolher(c.id)}
+                          className={`group flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition-all ${
+                            ativa
+                              ? "bg-verde-claro/50 border border-verde/30 text-verde-escuro shadow-xs"
+                              : "hover:bg-superficie hover:border-borda text-texto border border-transparent"
+                          }`}
+                        >
+                          <LogoMarca nome={c.nome} logo={c.logo} tamanho="sm" />
+                          <div className="min-w-0 flex-1">
+                            <span className={`block truncate text-xs font-bold ${ativa ? "text-verde-escuro" : "text-texto"}`}>
+                              {c.nome}
+                            </span>
+                          </div>
+                          {ativa ? (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-verde px-1.5 py-0.5 text-[10px] font-bold text-white">
+                              <Check className="size-3" strokeWidth={3} /> Ativa
+                            </span>
+                          ) : (
+                            <span className="text-[11px] font-medium text-suave opacity-0 group-hover:opacity-100 transition-opacity">
+                              Acessar
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
+
+                {/* 2. Unidades Individuais / Sem subdivisão */}
+                {grupos.unidadesSoltas.length > 0 && (
+                  <div className="space-y-1">
+                    {grupos.redesMulti.length > 0 && (
+                      <p className="px-2 pt-1 text-[11px] font-bold uppercase tracking-wider text-suave">
+                        Outras Unidades
+                      </p>
+                    )}
+                    {grupos.unidadesSoltas.map((c) => {
+                      const ativa = c.id === clinica.id;
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => escolher(c.id)}
+                          className={`group flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition-all ${
+                            ativa
+                              ? "bg-verde-claro/50 border border-verde/30 text-verde-escuro shadow-xs"
+                              : "hover:bg-fundo hover:border-borda text-texto border border-transparent"
+                          }`}
+                        >
+                          <LogoMarca nome={c.nome} logo={c.logo} tamanho="sm" />
+                          <div className="min-w-0 flex-1">
+                            <span className={`block truncate text-xs font-bold ${ativa ? "text-verde-escuro" : "text-texto"}`}>
+                              {c.nome}
+                            </span>
+                          </div>
+                          {ativa ? (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-verde px-1.5 py-0.5 text-[10px] font-bold text-white">
+                              <Check className="size-3" strokeWidth={3} /> Ativa
+                            </span>
+                          ) : (
+                            <span className="text-[11px] font-medium text-suave opacity-0 group-hover:opacity-100 transition-opacity">
+                              Acessar
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Rodapé: Link para tela completa de Unidades */}
+          <div className="border-t border-borda/60 p-1.5 bg-fundo/30 rounded-b-2xl">
+            <Link
+              href="/"
+              onClick={() => setAberto(false)}
+              className="pressionavel flex w-full items-center justify-between rounded-xl px-2.5 py-1.5 text-xs font-semibold text-verde hover:bg-verde-claro/50 transition-colors"
+            >
+              <span>Ver painel de unidades</span>
+              <ArrowUpRight className="size-3.5" />
+            </Link>
+          </div>
         </div>
       )}
     </div>

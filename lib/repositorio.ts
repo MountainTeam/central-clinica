@@ -41,6 +41,17 @@ export function migrar(b: unknown): Banco | null {
   if (!banco.convenios.every((c) => c && listas(c, ["subtipos"]))) return null;
   // versão 3 → 4: a central de atendimento ganha papel próprio
   if (banco.versao === 3) banco = { ...banco, versao: 4, usuarios: banco.usuarios.map((u) => u.id === "central-comn" && u.papel === "recepcao" ? { ...u, papel: "central" } : u) };
+
+  // Atualiza ou preenche logos das unidades padrão
+  const semente = pontoZero();
+  banco = {
+    ...banco,
+    clinicas: banco.clinicas.map((c) => {
+      const padrao = semente.clinicas.find((sc) => sc.id === c.id);
+      return !c.logo && padrao?.logo ? { ...c, logo: padrao.logo } : c;
+    }),
+  };
+
   return banco.versao === VERSAO ? banco : null;
 }
 

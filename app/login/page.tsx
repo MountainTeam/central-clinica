@@ -25,8 +25,14 @@ export default function Login() {
         <div className="bolha absolute -left-24 top-1/4 size-96 rounded-full bg-verde/20 blur-3xl" />
         <div className="bolha absolute -right-16 bottom-10 size-80 rounded-full bg-azul/20 blur-3xl" style={{ animationDelay: "-7s" }} />
         <div className="entrar absolute left-10 top-10 z-30"><Logo claro /></div>
-        {/* eslint-disable-next-line @next/next/no-img-element -- imagem estática decorativa */}
-        <img src="/Fundo%20Login.png" alt="" className="entrar relative z-10 max-h-[75vh] w-full max-w-[880px] object-contain p-6 drop-shadow-[0_16px_40px_rgb(0_0_0/0.22)]" />
+        {/* eslint-disable-next-line @next/next/no-img-element -- imagem da marca */}
+        <div className="relative z-10 flex flex-col items-center justify-center p-6 text-center">
+          <img
+            src="/Fundo%20Login.png?v=2"
+            alt="OncologyGroup"
+            className="entrar max-h-[55vh] w-auto max-w-[500px] object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.25)]"
+          />
+        </div>
       </div>
 
       {/* Formulário */}

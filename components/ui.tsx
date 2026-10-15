@@ -11,12 +11,14 @@ import type { DadosClinica, Profissional, Tipo } from "@/lib/modelo";
 
 export function Logo({ claro = false }: { claro?: boolean }) {
   return (
-    <div className="flex items-center gap-2.5">
-      <div className={`grid size-9 place-items-center rounded-xl ${claro ? "bg-white/15 ring-1 ring-white/30" : "gradiente-marca shadow-card"}`}>
-        <Icones.Plus className="size-5 text-white" strokeWidth={3} />
+    <div className="flex items-center gap-3">
+      <div className={`grid size-10 place-items-center rounded-xl p-1.5 ${claro ? "bg-white/15 ring-1 ring-white/30" : "gradiente-marca shadow-card"}`}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/Fundo%20Login.png" alt="OncologyGroup" className="h-full w-full object-contain" />
       </div>
       <div className="leading-tight">
-        <p className={`text-[15px] font-bold ${claro ? "text-white" : "text-texto"}`}>Guia Comercial</p>
+        <p className={`text-[15px] font-bold tracking-tight ${claro ? "text-white" : "text-texto"}`}>OncologyGroup</p>
+        <p className={`text-[11px] font-medium ${claro ? "text-white/75" : "text-suave"}`}>Guia Comercial</p>
       </div>
     </div>
   );
