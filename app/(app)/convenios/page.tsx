@@ -9,7 +9,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { combina, gruposPlanosDoConvenio, novoId, observacoesDoConvenio } from "@/lib/regras";
+import { combina, gruposPlanosDoConvenio, novoId, observacoesDoConvenio, resumoRedes } from "@/lib/regras";
 import { salvarConvenio } from "@/lib/repositorio";
 import type { Convenio } from "@/lib/modelo";
 import { Botao, CabecalhoPagina, LogoMarca, Vazio } from "@/components/ui";
@@ -120,6 +120,9 @@ export default function Convenios() {
             const countAtende = gAtende?.planos.length ?? 0;
             const countSomente = gSomente?.planos.length ?? 0;
             const countNao = gNao?.planos.length ?? 0;
+            const redes = resumoRedes(conv, dados);
+            const comMedico = redes.filter((r) => r.consultas || r.exames).length;
+            const gruposVazios = !countAtende && !countSomente && !countNao;
 
             return (
               <Link
@@ -140,31 +143,31 @@ export default function Convenios() {
 
                   <div className="mt-5 space-y-2 border-t border-borda/60 pt-4 text-[13px] font-medium">
                     <div className="flex items-center justify-between text-texto">
-                      <span className="flex items-center gap-2">
-                        <span className="size-2 rounded-full bg-verde" />
-                        Consultas e exames
-                      </span>
-                      <span className={`font-bold ${countAtende ? "text-texto" : "text-suave"}`}>{countAtende} planos</span>
+                      <span>Redes cadastradas</span>
+                      <span className={`font-bold ${redes.length ? "text-texto" : "text-suave"}`}>{redes.length}</span>
                     </div>
-
                     <div className="flex items-center justify-between text-texto">
-                      <span className="flex items-center gap-2">
-                        <span className="size-2 rounded-full bg-alerta" />
-                        Somente exames
-                      </span>
-                      <span className={`font-bold ${countSomente ? "text-texto" : "text-suave"}`}>{countSomente} planos</span>
+                      <span>Redes com médico</span>
+                      <span className={`font-bold ${comMedico ? "text-texto" : "text-alerta"}`}>{comMedico}</span>
                     </div>
-
-                    {countNao > 0 && (
-                      <div className="flex items-center justify-between text-texto">
-                        <span className="flex items-center gap-2">
-                          <span className="size-2 rounded-full bg-perigo" />
-                          Não atendidos
-                        </span>
-                        <span className="font-bold text-texto">{countNao} planos</span>
-                      </div>
+                    {!gruposVazios && (
+                      <>
+                        <div className="flex items-center justify-between text-texto">
+                          <span className="flex items-center gap-2"><span className="size-2 rounded-full bg-verde" />Consultas e exames</span>
+                          <span className="font-bold">{countAtende} planos</span>
+                        </div>
+                        <div className="flex items-center justify-between text-texto">
+                          <span className="flex items-center gap-2"><span className="size-2 rounded-full bg-alerta" />Somente exames</span>
+                          <span className="font-bold">{countSomente} planos</span>
+                        </div>
+                        {countNao > 0 && (
+                          <div className="flex items-center justify-between text-texto">
+                            <span className="flex items-center gap-2"><span className="size-2 rounded-full bg-perigo" />Não atendidos</span>
+                            <span className="font-bold">{countNao} planos</span>
+                          </div>
+                        )}
+                      </>
                     )}
-
                     {obs.length > 0 && (
                       <div className="flex items-center justify-between text-suave pt-1">
                         <span className="flex items-center gap-1.5">

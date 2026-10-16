@@ -152,11 +152,26 @@ export function observacoesDoConvenio(c: Convenio): string[] {
   return [];
 }
 
-// planos em "Não atendemos" que também são redes com médico ou exame vinculado
+// planos em "Não atendemos" que têm médico ou exame vinculado, e planos em "Somente exames" com médico de consulta
 export function conflitosPlanos(c: Convenio, d: DadosClinica): string[] {
   const usadas = new Set([...d.profissionais.flatMap((p) => Object.keys(p.atende)), ...d.exames.flatMap((e) => e.subtipos)]);
+  const comConsulta = new Set(c.subtipos.filter((s) => d.profissionais.some((p) => atende(p, s.id, "consulta"))).map((s) => slug(s.nome)));
   const nomesUsados = new Set(c.subtipos.filter((s) => usadas.has(s.id)).map((s) => slug(s.nome)));
-  return (c.gruposPlanos ?? []).filter((g) => g.status === "nao_atende").flatMap((g) => g.planos).filter((p) => nomesUsados.has(slug(p)));
+  const grupos = c.gruposPlanos ?? [];
+  return [
+    ...grupos.filter((g) => g.status === "nao_atende").flatMap((g) => g.planos).filter((p) => nomesUsados.has(slug(p))),
+    ...grupos.filter((g) => g.status === "somente_exames").flatMap((g) => g.planos).filter((p) => comConsulta.has(slug(p))),
+  ];
+}
+
+// Por rede: quantos médicos atendem consulta, quantos atendem exame e quantos exames a rede cobre
+export function resumoRedes(c: Convenio, d: DadosClinica) {
+  return c.subtipos.map((subtipo) => ({
+    subtipo,
+    consultas: d.profissionais.filter((p) => atende(p, subtipo.id, "consulta")).length,
+    exames: d.profissionais.filter((p) => atende(p, subtipo.id, "exame")).length,
+    examesCobertos: d.exames.filter((e) => e.subtipos.includes(subtipo.id)).length,
+  }));
 }
 
 // Redes do convênio ao salvar o formulário: as que ficaram (mesmo id), as novas da caixa e, só se
