@@ -13,13 +13,14 @@ import { Botao, EnvioLogo, Gaveta, LogoMarca, SeletorConvenio, useFecharGaveta }
 export const campo = "w-full rounded-xl border border-borda bg-superficie px-3 py-2.5 text-[15px] outline-none transition placeholder:text-suave focus:border-verde focus:ring-4 focus:ring-verde/15";
 const linhas = (t: FormDataEntryValue | null) => String(t ?? "").split("\n").map((x) => x.trim()).filter(Boolean);
 
-export function Campo({ rotulo, children, dica }: { rotulo: string; children: React.ReactNode; dica?: string }) {
+export function Campo({ rotulo, children, dica, grupo }: { rotulo: string; children: React.ReactNode; dica?: string; grupo?: boolean }) {
+  const Tag = grupo ? "div" : "label";
   return (
-    <label className="block">
+    <Tag className="block" role={grupo ? "group" : undefined} aria-label={grupo ? rotulo : undefined}>
       <span className="mb-1.5 block text-sm font-semibold">{rotulo}</span>
       {children}
       {dica && <span className="mt-1 block text-[13px] text-suave">{dica}</span>}
-    </label>
+    </Tag>
   );
 }
 
@@ -437,13 +438,13 @@ function FormProfissional({ id }: { id?: string }) {
         <span className="mb-1.5 block text-sm font-semibold">Dias e horários de atendimento</span>
         <EditorHorarios valor={p?.horarios ?? []} />
       </div>
-      <Campo rotulo="Convênios atendidos">
+      <Campo rotulo="Convênios atendidos" grupo>
         <MatrizConvenios dados={dados} atende={p?.atende ?? {}} />
       </Campo>
       <Campo rotulo="Procedimentos que realiza" dica="Separe por vírgula.">
         <input name="procedimentos" defaultValue={p?.procedimentos.join(", ")} placeholder="Lobuloplastia, Biópsia de pele" className={campo} />
       </Campo>
-      <Campo rotulo="Exames que realiza">
+      <Campo rotulo="Exames que realiza" grupo>
         <SeletorExamesProfissional dados={dados} examesIniciais={p?.exames ?? []} />
       </Campo>
       <div>
@@ -1009,6 +1010,7 @@ function FormExame({ id }: { id?: string }) {
       preparo: linhas(f.get("preparo")),
       valor: String(f.get("valor") ?? "").trim(),
       observacoes: String(f.get("observacoes") ?? "").trim(),
+      documentos: String(f.get("documentos") ?? "").trim() || undefined,
       observacoesInternas: String(f.get("observacoesInternas") ?? "").trim() || undefined,
       subtipos: dados.convenios.flatMap((c) => c.subtipos).filter((s) => f.get(`s:${s.id}`)).map((s) => s.id),
     };
@@ -1028,6 +1030,9 @@ function FormExame({ id }: { id?: string }) {
       <Campo rotulo="Nome do exame"><input name="nome" defaultValue={ex?.nome} className={campo} /></Campo>
       <Campo rotulo="Preparo" dica="Um passo por linha. Inclua o que o paciente deve trazer no dia.">
         <textarea name="preparo" rows={5} defaultValue={ex?.preparo.join("\n")} placeholder={"Jejum de 4 horas\nTrazer exames anteriores e pedido médico"} className={campo} />
+      </Campo>
+      <Campo rotulo="Documentos necessários" dica="O que o paciente precisa trazer além do preparo, ex.: pedido médico e carteirinha.">
+        <input name="documentos" defaultValue={ex?.documentos} className={campo} />
       </Campo>
       <Campo rotulo="Valor particular" dica="Só o valor sem convênio. O que o convênio paga fica com o faturamento.">
         <input name="valor" defaultValue={ex?.valor} placeholder="Ex.: R$ 150,00" className={campo} />
