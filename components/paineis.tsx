@@ -92,6 +92,7 @@ function FichaExame({ id }: { id: string }) {
     const texto = [
       ex.nome,
       ex.preparo.length ? `Preparo:\n${ex.preparo.map((x, i) => `${i + 1}. ${x}`).join("\n")}` : "",
+      ex.documentos ? `Trazer: ${ex.documentos}` : "",
       ex.valor ? `Valor particular: ${ex.valor}` : "",
       ex.observacoes ? `Observações: ${ex.observacoes}` : "",
     ].filter(Boolean).join("\n\n");
@@ -148,7 +149,8 @@ function FichaExame({ id }: { id: string }) {
               </li>
             ))}
           </ol>
-        ) : <Vazio texto="Sem preparo cadastrado." />}
+        ) : !ex.documentos && <Vazio texto="Sem preparo cadastrado." />}
+        {ex.documentos && <p className={`${ex.preparo.length ? "mt-3 " : ""}rounded-2xl bg-verde-claro px-4 py-3 text-[15px] font-semibold text-verde`}>Trazer: {ex.documentos}</p>}
       </Secao>
 
       <Secao titulo={`Quem realiza (${quemFaz.length})`} icone={<UserRound className="size-4" />} i={5}>

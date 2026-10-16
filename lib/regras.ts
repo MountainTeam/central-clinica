@@ -158,10 +158,10 @@ export function conflitosPlanos(c: Convenio, d: DadosClinica): string[] {
   const comConsulta = new Set(c.subtipos.filter((s) => d.profissionais.some((p) => atende(p, s.id, "consulta"))).map((s) => slug(s.nome)));
   const nomesUsados = new Set(c.subtipos.filter((s) => usadas.has(s.id)).map((s) => slug(s.nome)));
   const grupos = c.gruposPlanos ?? [];
-  return [
+  return [...new Set([
     ...grupos.filter((g) => g.status === "nao_atende").flatMap((g) => g.planos).filter((p) => nomesUsados.has(slug(p))),
     ...grupos.filter((g) => g.status === "somente_exames").flatMap((g) => g.planos).filter((p) => comConsulta.has(slug(p))),
-  ];
+  ])];
 }
 
 // Por rede: quantos médicos atendem consulta, quantos atendem exame e quantos exames a rede cobre

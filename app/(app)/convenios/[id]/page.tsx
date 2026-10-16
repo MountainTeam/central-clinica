@@ -261,7 +261,7 @@ export default function PaginaConvenioDetalhes() {
                   <div className="flex flex-wrap gap-2">
                     {redesFiltradas.map((r) => {
                       const vinculo = r.consultas || r.exames
-                        ? `${r.consultas} consulta${r.consultas === 1 ? "" : "s"} · ${r.exames} exame${r.exames === 1 ? "" : "s"}`
+                        ? `${r.consultas} ${r.consultas === 1 ? "médico" : "médicos"} de consulta · ${r.exames} de exame`
                         : "sem médico";
                       return (
                         <button key={r.subtipo.id} type="button" onClick={() => { setSubId(r.subtipo.id); setAba("corpo"); }}
