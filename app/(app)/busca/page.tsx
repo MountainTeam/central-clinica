@@ -48,6 +48,9 @@ function BuscaRapida() {
   // depois que a pessoa escolhe uma aba nesta busca, a busca não troca de aba sozinha
   const clicouAba = useRef(false);
   const campo = useRef<HTMLInputElement>(null);
+  const tipoManual = useRef(false);
+  // texto em que o atendimento já mudou sozinho: uma troca por texto, sem vaivém
+  const tipoAuto = useRef("");
   const chaveRecentes = `cartilha:recentes:${clinica?.id}`;
 
   useEffect(() => {
@@ -61,7 +64,7 @@ function BuscaRapida() {
 
   useEffect(() => {
     const focar = () => { campo.current?.focus(); campo.current?.select(); };
-    const limpar = () => { setTexto(""); clicouAba.current = false; };
+    const limpar = () => { setTexto(""); clicouAba.current = false; tipoManual.current = false; };
     window.addEventListener("cartilha:focar-busca", focar);
     window.addEventListener("cartilha:nova-ligacao", limpar);
     return () => { window.removeEventListener("cartilha:focar-busca", focar); window.removeEventListener("cartilha:nova-ligacao", limpar); };
@@ -135,7 +138,7 @@ function BuscaRapida() {
   };
   const chaveContagem = ABAS.map((a) => contagem[a.id]).join(",");
 
-  useEffect(() => { if (!q) clicouAba.current = false; }, [q]);
+  useEffect(() => { if (!q) { clicouAba.current = false; tipoManual.current = false; tipoAuto.current = ""; } }, [q]);
   // aba atual sem resultado e outra com resultado: vai para a que tem mais
   useEffect(() => {
     if (!q || clicouAba.current || contagem[secaoAtiva] > 0) return;
@@ -151,6 +154,13 @@ function BuscaRapida() {
     ...especialidadesFiltradas.map((x) => ({ aba: "especialidades" as const, id: x.id, nome: x.nome })),
   ], q) : undefined;
   const mostrarPrincipal = principal && principal.aba !== secaoAtiva ? principal : undefined;
+  // sem clique no seletor, o atendimento segue o que foi digitado: exame → Exame, médico/especialidade → Consulta
+  const tipoSugerido = principal?.aba === "exames" ? "exame" : principal?.aba === "profissionais" || principal?.aba === "especialidades" ? "consulta" : undefined;
+  useEffect(() => {
+    if (!plano || tipoManual.current || !tipoSugerido || plano.tipo === tipoSugerido || tipoAuto.current === q) return;
+    tipoAuto.current = q;
+    escolherPlano({ ...plano, tipo: tipoSugerido });
+  }, [plano, tipoSugerido, q]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sugestoes = q.length >= 2 ? sugestoesDePlano(dados.convenios, q).filter((x) => x.subtipo.id !== subtipo) : [];
   const abertos = q ? [] : recentes.flatMap((r) => {
@@ -255,12 +265,13 @@ function BuscaRapida() {
                   <Segmentado
                     valor={tipo}
                     desativado={!plano}
-                    onChange={(t) => plano && escolherPlano({ ...plano, tipo: t })}
+                    onChange={(t) => { tipoManual.current = true; if (plano) escolherPlano({ ...plano, tipo: t }); }}
                     opcoes={[
                       { valor: "consulta", rotulo: "Consulta" },
                       { valor: "exame", rotulo: "Exame" },
                     ]}
                   />
+                  {plano && !tipoManual.current && tipoSugerido && <span className="mt-1 block text-[12px] text-suave">Definido pela busca</span>}
                 </div>
               </div>
               <SeletorEspecialidade dados={dados} valor={espOk} onChange={setEsp} />
