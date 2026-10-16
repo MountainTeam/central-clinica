@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import {
-  type Recente, combina, gruposPlanosDoConvenio, idsDeRedes, lembrarRecente, observacoesDoConvenio, pontuacao, resultadoPrincipal, sugestoesDePlano, atende,
+  type Recente, combina, gruposPlanosDoConvenio, idsDeRedes, lembrarRecente, observacoesDoConvenio, pontuacao, resultadoPrincipal, sugestaoParaBusca, sugestoesDePlano, atende,
 } from "@/lib/regras";
 import { CartaoProfissional, Chip, Destaque, Icone, LogoMarca, Segmentado, SeletorConvenio, SeletorEspecialidade, Vazio } from "@/components/ui";
 
@@ -172,6 +172,24 @@ function BuscaRapida() {
     setSecaoAtiva(prox);
     document.getElementById(`aba-${prox}`)?.focus();
   };
+
+  const unidadeVazia = !dados.profissionais.length && !dados.exames.length && !dados.convenios.length;
+  const sugestaoTexto = q ? sugestaoParaBusca([...dados.exames, ...dados.profissionais, ...dados.convenios, ...dados.especialidades].map((x) => x.nome), q) : undefined;
+  // "especialidade" é feminino: Nenhuma especialidade cadastrada/encontrada
+  const vazio = (oQue: string, a = oQue === "especialidade" ? "a" : "o") => unidadeVazia
+    ? <Vazio texto="Esta unidade ainda não tem cadastro. Quem coordena a unidade cadastra médicos, convênios e exames." />
+    : !filtrando
+      ? <Vazio texto={`Nenhum${a === "a" ? "a" : ""} ${oQue} cadastrad${a} nesta unidade.`} />
+      : (
+        <div className="space-y-2 text-center">
+          <Vazio texto={`Nenhum${a === "a" ? "a" : ""} ${oQue} encontrad${a} com os filtros atuais.`} />
+          {sugestaoTexto && (
+            <button type="button" onClick={() => setTexto(sugestaoTexto)} className="pressionavel text-sm font-semibold text-verde hover:underline">
+              Você quis dizer “{sugestaoTexto}”?
+            </button>
+          )}
+        </div>
+      );
 
   return (
     <div className="space-y-6">
@@ -363,7 +381,7 @@ function BuscaRapida() {
                 ))}
               </div>
             ) : (
-              <Vazio texto="Nenhuma especialidade encontrada para a busca." />
+              vazio("especialidade")
             )}
           </div>
         )}
@@ -414,7 +432,7 @@ function BuscaRapida() {
                 })}
               </div>
             ) : (
-              <Vazio texto="Nenhum profissional encontrado com os filtros atuais." />
+              vazio("profissional")
             )}
           </div>
         )}
@@ -515,7 +533,7 @@ function BuscaRapida() {
                 })}
               </div>
             ) : (
-              <Vazio texto="Nenhum convênio encontrado com os filtros atuais." />
+              vazio("convênio")
             )}
           </div>
         )}
@@ -577,7 +595,7 @@ function BuscaRapida() {
                 })}
               </div>
             ) : (
-              <Vazio texto="Nenhum exame encontrado com os filtros atuais." />
+              vazio("exame")
             )}
           </div>
         )}

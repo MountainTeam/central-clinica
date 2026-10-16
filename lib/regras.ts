@@ -54,7 +54,7 @@ function umErro(a: string, b: string) {
 
 const achaPalavra = (w: string, ts: string[]) =>
   ts.some((t) => t.startsWith(w) || (w.length >= 4 && t.includes(w))
-    || (w.length >= 5 && (umErro(w, t) || umErro(w, t.slice(0, w.length)))));
+    || (w.length >= 6 && (umErro(w, t) || umErro(w, t.slice(0, w.length)))));
 
 // "humana gold" acha "Humana Saúde · Gold": todas as palavras, em qualquer ordem
 export function combina(texto: string, q: string) {
@@ -231,4 +231,30 @@ export function resultadoPrincipal<T extends { nome: string }>(itens: T[], q: st
     if (n > p) { p = n; melhor = x; }
   }
   return melhor;
+}
+
+// Distância de edição clássica (troca, falta, sobra), para a sugestão "você quis dizer"
+function distancia(a: string, b: string) {
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++)
+    for (let j = 1; j <= b.length; j++)
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d[a.length][b.length];
+}
+
+// Quando a busca não acha nada: o nome cuja alguma palavra fica a até 2 erros de alguma palavra buscada
+export function sugestaoParaBusca(nomes: string[], q: string): string | undefined {
+  const ws = palavras(q).filter((w) => w.length >= 4);
+  if (!ws.length) return undefined;
+  let melhor: { nome: string; dist: number } | undefined;
+  for (const nome of nomes) {
+    for (const t of palavras(nome)) {
+      for (const w of ws) {
+        const dist = distancia(w, t.slice(0, Math.max(w.length, t.length)));
+        if (dist <= 2 && (!melhor || dist < melhor.dist)) melhor = { nome, dist };
+      }
+    }
+  }
+  return melhor?.nome;
 }
