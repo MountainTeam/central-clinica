@@ -173,7 +173,7 @@ function BuscaRapida() {
     document.getElementById(`aba-${prox}`)?.focus();
   };
 
-  const unidadeVazia = !dados.profissionais.length && !dados.exames.length && !dados.convenios.length;
+  const unidadeVazia = !dados.profissionais.length && !dados.exames.length && !dados.convenios.length && !dados.especialidades.length;
   const sugestaoTexto = q ? sugestaoParaBusca([...dados.exames, ...dados.profissionais, ...dados.convenios, ...dados.especialidades].map((x) => x.nome), q) : undefined;
   // "especialidade" é feminino: Nenhuma especialidade cadastrada/encontrada
   const vazio = (oQue: string, a = oQue === "especialidade" ? "a" : "o") => unidadeVazia
@@ -184,7 +184,7 @@ function BuscaRapida() {
         <div className="space-y-2 text-center">
           <Vazio texto={`Nenhum${a === "a" ? "a" : ""} ${oQue} encontrad${a} com os filtros atuais.`} />
           {sugestaoTexto && (
-            <button type="button" onClick={() => setTexto(sugestaoTexto)} className="pressionavel text-sm font-semibold text-verde hover:underline">
+            <button type="button" onClick={() => { clicouAba.current = false; setTexto(sugestaoTexto); }} className="pressionavel text-sm font-semibold text-verde hover:underline">
               Você quis dizer “{sugestaoTexto}”?
             </button>
           )}

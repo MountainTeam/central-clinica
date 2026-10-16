@@ -249,9 +249,10 @@ export function sugestaoParaBusca(nomes: string[], q: string): string | undefine
   if (!ws.length) return undefined;
   let melhor: { nome: string; dist: number } | undefined;
   for (const nome of nomes) {
+    if (combina(nome, q)) continue; // a busca já acha: sugerir seria repetir o termo
     for (const t of palavras(nome)) {
       for (const w of ws) {
-        const dist = distancia(w, t.slice(0, Math.max(w.length, t.length)));
+        const dist = distancia(w, t);
         if (dist <= 2 && (!melhor || dist < melhor.dist)) melhor = { nome, dist };
       }
     }
