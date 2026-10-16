@@ -1,16 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Building2, Download, Plus, RotateCcw, ShieldCheck, Upload, UserRound } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { PAPEIS, podeCriarUsuario } from "@/lib/permissoes";
-import { exportarBackup, importarBackup, restaurarDemonstracao } from "@/lib/repositorio";
+import { exportarBackup, importarBackup, listarCopias, restaurarDemonstracao } from "@/lib/repositorio";
 import { Botao, CabecalhoPagina, Chip, Vazio } from "@/components/ui";
 
 export default function Usuarios() {
   const { banco, usuario, abrirForm, executar } = useStore();
   const [confirmando, setConfirmando] = useState(false);
   const [copia, setCopia] = useState<string | null>(null);
+  const copias = useMemo(() => listarCopias(), []);
   if (!usuario || !podeCriarUsuario(usuario)) return <Vazio texto="Só o Administrador gerencia usuários." />;
 
   const nomeClinica = (id: string) => banco.clinicas.find((c) => c.id === id)?.nome ?? id;
@@ -18,14 +19,15 @@ export default function Usuarios() {
     if (executar((b, u) => restaurarDemonstracao(b, u), "Demonstração restaurada")) setConfirmando(false);
   };
 
-  const baixar = () => {
-    const url = URL.createObjectURL(new Blob([exportarBackup(banco)], { type: "application/json" }));
+  const baixarTexto = (texto: string, nome: string) => {
+    const url = URL.createObjectURL(new Blob([texto], { type: "application/json" }));
     const a = document.createElement("a");
     a.href = url;
-    a.download = `cartilha-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = nome;
     a.click();
     URL.revokeObjectURL(url);
   };
+  const baixar = () => baixarTexto(exportarBackup(banco), `cartilha-${new Date().toISOString().slice(0, 10)}.json`);
   const lerCopia = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const arquivo = e.target.files?.[0];
     e.target.value = "";
@@ -78,6 +80,17 @@ export default function Usuarios() {
               <Upload className="size-4" />Restaurar cópia
               <input type="file" accept=".json,application/json" onChange={lerCopia} className="sr-only" />
             </label>
+          </div>
+        )}
+        {copias.length > 0 && (
+          <div className="mt-4 space-y-2">
+            <p className="text-sm font-semibold">Cópias guardadas automaticamente</p>
+            {copias.map((c) => (
+              <div key={c.chave} className="flex items-center justify-between rounded-xl border border-borda px-3 py-2 text-sm">
+                <span>{new Date(c.quando).toLocaleString("pt-BR")}</span>
+                <Botao variante="secundario" onClick={() => baixarTexto(c.texto, `cartilha-copia-${c.quando.slice(0, 10)}.json`)}><Download className="size-4" />Baixar</Botao>
+              </div>
+            ))}
           </div>
         )}
       </section>

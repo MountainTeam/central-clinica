@@ -90,6 +90,7 @@ export function Provider({ children }: { children: React.ReactNode }) {
     setBanco(c.banco);
     setProtegido(c.protegido);
     if (c.protegido) avisar(DADOS_ANTIGOS, true);
+    if (c.copiaGuardada) avisar("Os dados guardados eram de um formato antigo e o sistema recomeçou do zero. Uma cópia foi guardada: o Administrador pode baixá-la em Usuários.", true);
     setUsuarioId(lerLocal(SESSAO_USUARIO));
     setClinicaId(lerLocal(SESSAO_CLINICA));
     setCarregado(true);
@@ -113,6 +114,7 @@ export function Provider({ children }: { children: React.ReactNode }) {
       const c = carregarProtegido();
       setBanco(c.banco);
       setProtegido(c.protegido);
+      if (c.copiaGuardada) avisar("Os dados guardados eram de um formato antigo e o sistema recomeçou do zero. Uma cópia foi guardada: o Administrador pode baixá-la em Usuários.", true);
     };
     window.addEventListener("storage", ouvir);
     return () => window.removeEventListener("storage", ouvir);
