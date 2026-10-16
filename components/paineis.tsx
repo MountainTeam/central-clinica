@@ -182,7 +182,7 @@ function ChecadorConveniosExame({ ex, dados }: { ex: Exame; dados: DadosClinica 
   );
 
   if (!dados.convenios.length) return <Vazio texto="Nenhum convênio cadastrado nesta clínica." />;
-  if (!porConvenio.length) return <Vazio texto="Disponível exclusivamente para atendimento Particular." />;
+  if (!porConvenio.length) return <Vazio texto="Nenhum convênio marcado para este exame. Se for só particular, o valor está acima; se não, edite o exame e marque as redes." />;
 
   return (
     <div className="space-y-3">

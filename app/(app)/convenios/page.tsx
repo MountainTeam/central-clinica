@@ -71,7 +71,7 @@ export default function Convenios() {
       ],
     };
 
-    executar((b, u) => salvarConvenio(b, u, modelo), "Convênio modelo Saúde Mais adicionado com sucesso!");
+    executar((b, u) => salvarConvenio(b, u, modelo), "Convênio de exemplo (fictício) adicionado. Apague antes de usar com dados reais.");
   };
 
   return (
@@ -84,7 +84,7 @@ export default function Convenios() {
               {dados.convenios.length === 0 && (
                 <Botao variante="secundario" onClick={criarConvenioModelo}>
                   <Sparkles className="size-4 text-verde" />
-                  Carregar modelo (Saúde Mais)
+                  Inserir exemplo fictício (Saúde Mais)
                 </Botao>
               )}
               <Botao onClick={() => abrirForm({ tipo: "convenio" })}>
@@ -196,7 +196,7 @@ export default function Convenios() {
           {podeEditarAtual && !busca && (
             <div className="mt-4 flex justify-center gap-3">
               <Botao onClick={criarConvenioModelo}>
-                <Sparkles className="size-4" /> Inserir convênio modelo (Saúde Mais)
+                <Sparkles className="size-4" /> Inserir exemplo fictício (Saúde Mais)
               </Botao>
               <Botao variante="secundario" onClick={() => abrirForm({ tipo: "convenio" })}>
                 <Plus className="size-4" /> Cadastrar novo convênio
