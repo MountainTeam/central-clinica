@@ -368,14 +368,18 @@ function ChecadorConveniosProfissional({ dados, p }: { dados: DadosClinica; p: P
               })}
 
               {/* Convênios da clínica que este médico NÃO atende */}
-              {resultadoBusca.filter((r) => !r.cobre.length).map(({ convenio: c, naoCobre }) => (
+              {resultadoBusca.filter((r) => !r.cobre.length).map(({ convenio: c, naoCobre }) => {
+                const atendeAlgumaRede = c.subtipos.some((s) => (p.atende[s.id] ?? "") !== "");
+                return (
                 <div key={c.id} className="flex items-center justify-between rounded-2xl border border-borda bg-fundo/40 p-3.5 text-sm">
                   <div className="flex items-center gap-2.5 opacity-70">
                     <LogoMarca nome={c.nome} logo={c.logo} cor={c.cor} tamanho="sm" />
                     <div>
                       <span className="font-semibold text-texto">{c.nome}</span>
-                      {naoCobre.length > 0 && <p className="text-[13px] text-suave">Convênio atendido, mas não nesta rede</p>}
-                      {naoCobre.length > 0 && (
+                      <p className="text-[13px] text-suave">
+                        {atendeAlgumaRede ? "Convênio atendido, mas não nesta rede" : "Este médico não atende este convênio"}
+                      </p>
+                      {atendeAlgumaRede && naoCobre.length > 0 && (
                         <div className="mt-1.5 flex flex-wrap gap-1">
                           {naoCobre.map((s) => <Chip key={s.id} tom="alerta">{s.nome} · não cobre</Chip>)}
                         </div>
@@ -386,7 +390,8 @@ function ChecadorConveniosProfissional({ dados, p }: { dados: DadosClinica; p: P
                     Não atende
                   </span>
                 </div>
-              ))}
+                );
+              })}
             </>
           )}
         </div>
