@@ -281,7 +281,8 @@ export function importarRedesPorMedico(b: Banco, u: Usuario, convenioId: string,
   for (const [id, mapa] of porMedico) {
     const p = achar(novo.profissionais, u, id);
     exigir(p.clinicaId === c.clinicaId, "O médico é de outra clínica.");
-    novo = salvarProfissional(novo, u, { ...p, atende: { ...p.atende, ...mapa } });
+    const unido = Object.fromEntries(Object.entries(mapa).map(([id, v]) => [id, unirAtendimento(p.atende[id] as "c" | "e" | "ce" | undefined, v)]));
+    novo = salvarProfissional(novo, u, { ...p, atende: { ...p.atende, ...unido } });
   }
   return novo;
 }
