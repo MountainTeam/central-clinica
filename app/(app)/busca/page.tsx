@@ -336,60 +336,31 @@ function BuscaRapida() {
 
             {especialidadesFiltradas.length > 0 ? (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {especialidadesFiltradas.map((e, i) => {
-                  const medicosDesta = dados.profissionais.filter((p) => p.especialidadeId === e.id);
-                  return (
-                    <div
-                      key={e.id}
-                      style={{ "--i": Math.min(i, 10) } as React.CSSProperties}
-                      className="entrar pressionavel levanta group flex flex-col justify-between rounded-3xl border border-borda bg-superficie p-5 text-left shadow-card transition-all hover:border-verde/40"
-                    >
-                      <div>
-                        <div className="flex items-center justify-between">
-                          <span className="grid size-12 place-items-center rounded-2xl bg-verde-claro text-verde transition-colors group-hover:bg-verde group-hover:text-white">
-                            <Icone nome={e.icone} className="size-6" />
-                          </span>
-                          <span className="rounded-xl bg-fundo px-2.5 py-1 text-[13px] font-semibold text-suave">
-                            {medicosDesta.length} {medicosDesta.length === 1 ? "médico" : "médicos"}
-                          </span>
-                        </div>
-                        <h3 className="mt-4 text-lg font-bold text-texto group-hover:text-verde transition-colors">
-                          <Destaque texto={e.nome} q={q} />
-                        </h3>
-
-                        {medicosDesta.length > 0 ? (
-                          <div className="mt-2.5 flex flex-wrap gap-1.5">
-                            {medicosDesta.slice(0, 3).map((m) => (
-                              <span key={m.id} className="rounded-md bg-fundo px-2 py-0.5 text-[13px] font-medium text-suave">
-                                {m.nome}
-                              </span>
-                            ))}
-                            {medicosDesta.length > 3 && (
-                              <span className="rounded-md bg-fundo px-2 py-0.5 text-[13px] font-medium text-suave">
-                                +{medicosDesta.length - 3} mais
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <p className="mt-2.5 text-[13px] text-suave">Nenhum profissional vinculado.</p>
-                        )}
-                      </div>
-
-                      <div className="mt-5 flex items-center justify-between border-t border-borda/60 pt-3 text-[13px] font-semibold">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEsp(e.id);
-                            setSecaoAtiva("profissionais");
-                          }}
-                          className="inline-flex items-center gap-1 text-verde hover:underline"
-                        >
-                          Ver médicos da área <ChevronRight className="size-3.5" />
-                        </button>
-                      </div>
+                {especialidadesFiltradas.map((e, i) => (
+                  <button
+                    key={e.id}
+                    type="button"
+                    onClick={() => {
+                      setEsp(e.id);
+                      setSecaoAtiva("profissionais");
+                    }}
+                    style={{ "--i": Math.min(i, 10) } as React.CSSProperties}
+                    className="entrar pressionavel levanta group flex flex-col justify-between rounded-3xl border border-borda bg-superficie p-5 text-left shadow-card transition-all hover:border-verde/40 hover:shadow-elevado cursor-pointer"
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <span className="grid size-12 place-items-center rounded-2xl bg-verde-claro text-verde transition-colors group-hover:bg-verde group-hover:text-white">
+                        <Icone nome={e.icone} className="size-6" />
+                      </span>
+                      <span className="grid size-8 place-items-center rounded-xl bg-fundo text-suave/60 transition-all group-hover:bg-verde-claro group-hover:text-verde group-hover:translate-x-0.5">
+                        <ChevronRight className="size-4" />
+                      </span>
                     </div>
-                  );
-                })}
+
+                    <h3 className="mt-4 text-lg font-bold text-texto group-hover:text-verde transition-colors">
+                      <Destaque texto={e.nome} q={q} />
+                    </h3>
+                  </button>
+                ))}
               </div>
             ) : (
               <Vazio texto="Nenhuma especialidade encontrada para a busca." />
