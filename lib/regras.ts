@@ -54,7 +54,7 @@ function umErro(a: string, b: string) {
 
 const achaPalavra = (w: string, ts: string[]) =>
   ts.some((t) => t.startsWith(w) || (w.length >= 4 && t.includes(w))
-    || (w.length >= 5 && (umErro(w, t) || umErro(w, t.slice(0, w.length)))));
+    || (w.length >= 6 && (umErro(w, t) || umErro(w, t.slice(0, w.length)))));
 
 // "humana gold" acha "Humana Saúde · Gold": todas as palavras, em qualquer ordem
 export function combina(texto: string, q: string) {
@@ -152,11 +152,26 @@ export function observacoesDoConvenio(c: Convenio): string[] {
   return [];
 }
 
-// planos em "Não atendemos" que também são redes com médico ou exame vinculado
+// planos em "Não atendemos" que têm médico ou exame vinculado, e planos em "Somente exames" com médico de consulta
 export function conflitosPlanos(c: Convenio, d: DadosClinica): string[] {
   const usadas = new Set([...d.profissionais.flatMap((p) => Object.keys(p.atende)), ...d.exames.flatMap((e) => e.subtipos)]);
+  const comConsulta = new Set(c.subtipos.filter((s) => d.profissionais.some((p) => atende(p, s.id, "consulta"))).map((s) => slug(s.nome)));
   const nomesUsados = new Set(c.subtipos.filter((s) => usadas.has(s.id)).map((s) => slug(s.nome)));
-  return (c.gruposPlanos ?? []).filter((g) => g.status === "nao_atende").flatMap((g) => g.planos).filter((p) => nomesUsados.has(slug(p)));
+  const grupos = c.gruposPlanos ?? [];
+  return [...new Set([
+    ...grupos.filter((g) => g.status === "nao_atende").flatMap((g) => g.planos).filter((p) => nomesUsados.has(slug(p))),
+    ...grupos.filter((g) => g.status === "somente_exames").flatMap((g) => g.planos).filter((p) => comConsulta.has(slug(p))),
+  ])];
+}
+
+// Por rede: quantos médicos atendem consulta, quantos atendem exame e quantos exames a rede cobre
+export function resumoRedes(c: Convenio, d: DadosClinica) {
+  return c.subtipos.map((subtipo) => ({
+    subtipo,
+    consultas: d.profissionais.filter((p) => atende(p, subtipo.id, "consulta")).length,
+    exames: d.profissionais.filter((p) => atende(p, subtipo.id, "exame")).length,
+    examesCobertos: d.exames.filter((e) => e.subtipos.includes(subtipo.id)).length,
+  }));
 }
 
 // Redes do convênio ao salvar o formulário: as que ficaram (mesmo id), as novas da caixa e, só se
@@ -216,4 +231,31 @@ export function resultadoPrincipal<T extends { nome: string }>(itens: T[], q: st
     if (n > p) { p = n; melhor = x; }
   }
   return melhor;
+}
+
+// Distância de edição clássica (troca, falta, sobra), para a sugestão "você quis dizer"
+function distancia(a: string, b: string) {
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++)
+    for (let j = 1; j <= b.length; j++)
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d[a.length][b.length];
+}
+
+// Quando a busca não acha nada: o nome cuja alguma palavra fica a até 2 erros de alguma palavra buscada
+export function sugestaoParaBusca(nomes: string[], q: string): string | undefined {
+  const ws = palavras(q).filter((w) => w.length >= 4);
+  if (!ws.length) return undefined;
+  let melhor: { nome: string; dist: number } | undefined;
+  for (const nome of nomes) {
+    if (combina(nome, q)) continue; // a busca já acha: sugerir seria repetir o termo
+    for (const t of palavras(nome)) {
+      for (const w of ws) {
+        const dist = distancia(w, t);
+        if (dist <= 2 && (!melhor || dist < melhor.dist)) melhor = { nome, dist };
+      }
+    }
+  }
+  return melhor?.nome;
 }

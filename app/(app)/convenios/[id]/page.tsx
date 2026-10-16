@@ -16,7 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { useItemDeOutraUnidade, useStore } from "@/lib/store";
-import { atende, combina, conflitosPlanos, gruposPlanosDoConvenio, observacoesDoConvenio } from "@/lib/regras";
+import { atende, combina, conflitosPlanos, gruposPlanosDoConvenio, observacoesDoConvenio, resumoRedes } from "@/lib/regras";
 import { salvarConvenio } from "@/lib/repositorio";
 import type { GrupoPlano, GrupoPlanoStatus, Profissional, Tipo } from "@/lib/modelo";
 import { Atualizado, Avatar, Botao, LogoMarca, Segmentado, SeletorBusca, Vazio } from "@/components/ui";
@@ -40,6 +40,7 @@ export default function PaginaConvenioDetalhes() {
   const conflitos = conv ? conflitosPlanos(conv, dados) : [];
   const grupos = useMemo(() => (conv ? gruposPlanosDoConvenio(conv) : []), [conv]);
   const observacoes = useMemo(() => (conv ? observacoesDoConvenio(conv) : []), [conv]);
+  const redes = useMemo(() => (conv ? resumoRedes(conv, dados) : []), [conv, dados]);
 
   const quem = (tipo: Tipo) => dados.profissionais.filter((p) => atende(p, subId, tipo));
   const exames = dados.exames.filter((e) => e.subtipos.includes(subId));
@@ -94,6 +95,8 @@ export default function PaginaConvenioDetalhes() {
 
   const totalPlanosEncontrados =
     planosAtendeFiltrados.length + planosSomenteFiltrados.length + planosNaoFiltrados.length;
+  const redesFiltradas = redes.filter((r) => combina(r.subtipo.nome, termo));
+  const todosGruposVazios = !gAtende.planos.length && !gSomente.planos.length && !gNao.planos.length;
 
   const salvarNovaObservacao = () => {
     const texto = novaObs.trim();
@@ -163,7 +166,7 @@ export default function PaginaConvenioDetalhes() {
       {conflitos.length > 0 && (
         <div role="alert" className="flex items-start gap-2 rounded-2xl bg-alerta-claro px-4 py-3 text-sm font-medium text-alerta">
           <TriangleAlert className="mt-0.5 size-4 shrink-0" />
-          <span>{conflitos.join(", ")} {conflitos.length === 1 ? "está" : "estão"} em “Não atendemos”, mas {conflitos.length === 1 ? "aparece" : "aparecem"} como cobertos em médicos ou exames. Confira o cadastro.</span>
+          <span>{conflitos.join(", ")} {conflitos.length === 1 ? "está" : "estão"} em “Não atendemos” ou “Somente exames”, mas {conflitos.length === 1 ? "aparece" : "aparecem"} com médico ou exame que contradiz o grupo. Confira o cadastro.</span>
         </div>
       )}
       {/* Migalha de Pão (Breadcrumb) */}
@@ -220,7 +223,7 @@ export default function PaginaConvenioDetalhes() {
               type="text"
               value={buscaPlano}
               onChange={(e) => setBuscaPlano(e.target.value)}
-              placeholder="Buscar plano da carteirinha..."
+              placeholder="Buscar rede ou plano da carteirinha..."
               className="h-12 w-full rounded-2xl border border-borda bg-superficie pl-11 pr-10 text-[15px] outline-none transition focus:border-verde focus:ring-4 focus:ring-verde/15"
             />
             {buscaPlano && (
@@ -237,7 +240,7 @@ export default function PaginaConvenioDetalhes() {
 
           {termo && (
             <p className="text-xs font-semibold uppercase tracking-wider text-suave">
-              {totalPlanosEncontrados} {totalPlanosEncontrados === 1 ? "plano encontrado" : "planos encontrados"} para &ldquo;{buscaPlano}&rdquo;
+              {redesFiltradas.length} {redesFiltradas.length === 1 ? "rede" : "redes"} e {totalPlanosEncontrados} {totalPlanosEncontrados === 1 ? "plano" : "planos"} para &ldquo;{buscaPlano}&rdquo;
             </p>
           )}
 
@@ -245,36 +248,67 @@ export default function PaginaConvenioDetalhes() {
           <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
             {/* Coluna da Esquerda: Grupos de Status */}
             <div className="space-y-4">
-              {[
-                { g: gAtende, lista: planosAtendeFiltrados, ponto: "bg-verde ring-verde/20", chip: "border-borda/80 bg-fundo text-texto hover:border-verde/50 hover:bg-superficie" },
-                { g: gSomente, lista: planosSomenteFiltrados, ponto: "bg-alerta ring-alerta/20", chip: "border-alerta/30 bg-alerta-claro text-texto hover:border-alerta/60" },
-                { g: gNao, lista: planosNaoFiltrados, ponto: "bg-perigo ring-perigo/20", chip: "border-perigo/30 bg-perigo-claro text-perigo line-through decoration-perigo/50 hover:border-perigo/60" },
-              ].map(({ g, lista, ponto, chip }) => lista.length === 0 ? (
-                <p key={g.status} className="flex items-center gap-2.5 px-2 text-sm text-suave">
-                  <span className={`size-2 rounded-full ring-4 ${ponto}`} />Nenhum plano em {g.titulo}
-                </p>
-              ) : (
-                <div key={g.status} className="entrar rounded-3xl border border-borda bg-superficie p-5 shadow-card">
-                  <div className="mb-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <span className={`size-2.5 rounded-full ring-4 ${ponto}`} />
-                      <h2 className="text-base font-bold text-texto">{g.titulo}</h2>
-                    </div>
-                    <span className="text-[13px] font-semibold text-suave">{lista.length} {lista.length === 1 ? "plano" : "planos"}</span>
-                  </div>
-                  {g.nota && (
-                    <div className="mb-3.5 flex items-center gap-2 rounded-xl bg-alerta-claro px-3 py-1.5 text-[13px] font-medium text-alerta ring-1 ring-alerta/20">
-                      <TriangleAlert className="size-3.5 shrink-0 text-alerta" />
-                      <span>{g.nota}</span>
-                    </div>
-                  )}
-                  <div className="flex flex-wrap gap-2">
-                    {lista.map((plano) => (
-                      <span key={plano} className={`inline-flex items-center rounded-xl border px-3.5 py-1.5 text-sm font-medium shadow-sm transition ${chip}`}>{plano}</span>
-                    ))}
-                  </div>
+              <div className="entrar rounded-3xl border border-borda bg-superficie p-5 shadow-card">
+                <div className="mb-3 flex items-center justify-between">
+                  <h2 className="text-base font-bold text-texto">Redes cadastradas</h2>
+                  <span className="text-[13px] font-semibold text-suave">{redesFiltradas.length} de {redes.length}</span>
                 </div>
-              ))}
+                {redes.length === 0 ? (
+                  <p className="text-sm text-suave">Nenhuma rede cadastrada. Edite o convênio para incluir as redes da carteirinha.</p>
+                ) : redesFiltradas.length === 0 ? (
+                  <p className="text-sm text-suave">Nenhuma rede com &ldquo;{buscaPlano}&rdquo;.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {redesFiltradas.map((r) => {
+                      const vinculo = r.consultas || r.exames
+                        ? `${r.consultas} ${r.consultas === 1 ? "médico" : "médicos"} de consulta · ${r.exames} de exame`
+                        : "sem médico";
+                      return (
+                        <button key={r.subtipo.id} type="button" onClick={() => { setSubId(r.subtipo.id); setAba("corpo"); }}
+                          title="Ver quem atende nesta rede"
+                          className={`pressionavel inline-flex items-center gap-2 rounded-xl border px-3 py-1.5 text-sm font-medium shadow-sm transition ${r.consultas || r.exames ? "border-verde/30 bg-verde-claro/40 text-texto hover:border-verde" : "border-borda bg-fundo text-suave hover:border-alerta/60"}`}>
+                          {r.subtipo.nome}
+                          <span className="text-[12px] text-suave">{vinculo}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+              {todosGruposVazios && !termo ? (
+                <p className="px-2 text-sm text-suave">Os grupos da carteirinha (atende, somente exames, não atendemos) ainda não foram preenchidos.</p>
+              ) : (
+                [
+                  { g: gAtende, lista: planosAtendeFiltrados, ponto: "bg-verde ring-verde/20", chip: "border-borda/80 bg-fundo text-texto hover:border-verde/50 hover:bg-superficie" },
+                  { g: gSomente, lista: planosSomenteFiltrados, ponto: "bg-alerta ring-alerta/20", chip: "border-alerta/30 bg-alerta-claro text-texto hover:border-alerta/60" },
+                  { g: gNao, lista: planosNaoFiltrados, ponto: "bg-perigo ring-perigo/20", chip: "border-perigo/30 bg-perigo-claro text-perigo line-through decoration-perigo/50 hover:border-perigo/60" },
+                ].map(({ g, lista, ponto, chip }) => lista.length === 0 ? (
+                  <p key={g.status} className="flex items-center gap-2.5 px-2 text-sm text-suave">
+                    <span className={`size-2 rounded-full ring-4 ${ponto}`} />Nenhum plano em {g.titulo}
+                  </p>
+                ) : (
+                  <div key={g.status} className="entrar rounded-3xl border border-borda bg-superficie p-5 shadow-card">
+                    <div className="mb-3 flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <span className={`size-2.5 rounded-full ring-4 ${ponto}`} />
+                        <h2 className="text-base font-bold text-texto">{g.titulo}</h2>
+                      </div>
+                      <span className="text-[13px] font-semibold text-suave">{lista.length} {lista.length === 1 ? "plano" : "planos"}</span>
+                    </div>
+                    {g.nota && (
+                      <div className="mb-3.5 flex items-center gap-2 rounded-xl bg-alerta-claro px-3 py-1.5 text-[13px] font-medium text-alerta ring-1 ring-alerta/20">
+                        <TriangleAlert className="size-3.5 shrink-0 text-alerta" />
+                        <span>{g.nota}</span>
+                      </div>
+                    )}
+                    <div className="flex flex-wrap gap-2">
+                      {lista.map((plano) => (
+                        <span key={plano} className={`inline-flex items-center rounded-xl border px-3.5 py-1.5 text-sm font-medium shadow-sm transition ${chip}`}>{plano}</span>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
 
             {/* Coluna da Direita: Card Fixo de Observações Gerais */}
@@ -359,7 +393,7 @@ export default function PaginaConvenioDetalhes() {
       {aba === "corpo" && (
         <div className="entrar space-y-6">
           <div>
-            <p className="mb-2 text-sm font-semibold text-suave">Selecione o tipo de rede técnica:</p>
+            <p className="mb-2 text-sm font-semibold text-suave">Rede ou plano:</p>
             {conv.subtipos.length > 0 ? (
               <div className="max-w-xl">
                 {conv.subtipos.length > 6 ? (
@@ -372,7 +406,7 @@ export default function PaginaConvenioDetalhes() {
                 )}
               </div>
             ) : (
-              <Vazio texto="Nenhuma rede técnica vinculada." />
+              <Vazio texto="Nenhuma rede cadastrada." />
             )}
           </div>
 
@@ -396,7 +430,7 @@ export default function PaginaConvenioDetalhes() {
                 ))}
               </div>
             ) : (
-              <Vazio texto="Nenhum exame credenciado nesta rede técnica." />
+              <Vazio texto="Nenhum exame credenciado nesta rede." />
             )}
           </div>
         </div>

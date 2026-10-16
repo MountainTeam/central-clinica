@@ -41,7 +41,7 @@ export default function Exames() {
                 <b className="text-texto">{medicos}</b> {medicos === 1 ? "médico" : "médicos"} · cobre <b className="text-texto">{convenios}</b> {convenios === 1 ? "convênio" : "convênios"}
               </p>
               <div className="mt-auto flex flex-wrap gap-2 pt-3">
-                {!convenios && <span className="rounded-lg bg-fundo px-2 py-0.5 text-[13px] font-semibold text-suave">Só particular</span>}
+                {!convenios && <span className="rounded-lg bg-fundo px-2 py-0.5 text-[13px] font-semibold text-suave">Sem convênio cadastrado</span>}
                 {!medicos && <span className="rounded-lg bg-alerta-claro px-2 py-0.5 text-[13px] font-semibold text-alerta">Nenhum médico vinculado</span>}
                 {cobre != null && (cobre
                   ? <span className="rounded-lg bg-verde-claro px-2 py-0.5 text-[13px] font-semibold text-verde">✓ cobre</span>

@@ -39,6 +39,8 @@ export function migrar(b: unknown): Banco | null {
   const listas = (x: object, campos: string[]) => campos.every((c) => Array.isArray((x as Record<string, unknown>)[c]));
   if (!banco.profissionais.every((p) => p && typeof p.atende === "object" && p.atende !== null && listas(p, ["horarios", "exames", "procedimentos", "restricoes"]))) return null;
   if (!banco.convenios.every((c) => c && listas(c, ["subtipos"]))) return null;
+  if (!banco.exames.every((e) => e && listas(e, ["preparo", "subtipos"]))) return null;
+  if (!banco.usuarios.every((u) => u && listas(u, ["clinicas"]))) return null;
   // versão 3 → 4: a central de atendimento ganha papel próprio
   if (banco.versao === 3) banco = { ...banco, versao: 4, usuarios: banco.usuarios.map((u) => u.id === "central-comn" && u.papel === "recepcao" ? { ...u, papel: "central" } : u) };
 
@@ -70,16 +72,29 @@ function guardarCopia(bruto: string): boolean {
 }
 
 // protegido: há dados antigos que não puderam ser copiados; quem chama não deve gravar por cima
-export function carregarProtegido(): { banco: Banco; protegido: boolean } {
+export function carregarProtegido(): { banco: Banco; protegido: boolean; copiaGuardada: boolean } {
   let bruto: string | null;
-  try { bruto = localStorage.getItem(CHAVE); } catch { return { banco: pontoZero(), protegido: false }; }
-  if (!bruto) return { banco: pontoZero(), protegido: false };
+  try { bruto = localStorage.getItem(CHAVE); } catch { return { banco: pontoZero(), protegido: false, copiaGuardada: false }; }
+  if (!bruto) return { banco: pontoZero(), protegido: false, copiaGuardada: false };
   try {
     const b = migrar(JSON.parse(bruto));
-    if (b) return { banco: b, protegido: false };
+    if (b) return { banco: b, protegido: false, copiaGuardada: false };
   } catch {}
   // formato que esta versão não entende: guarda uma cópia antes de recomeçar, para não perder cadastro
-  return { banco: pontoZero(), protegido: !guardarCopia(bruto) };
+  const guardou = guardarCopia(bruto);
+  return { banco: pontoZero(), protegido: !guardou, copiaGuardada: guardou };
+}
+
+// Cópias automáticas guardadas quando o formato não foi reconhecido (mais recente primeiro)
+export function listarCopias(): { chave: string; quando: string; texto: string }[] {
+  const lista: { chave: string; quando: string; texto: string }[] = [];
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k?.startsWith(`${CHAVE_BACKUP}:`)) lista.push({ chave: k, quando: k.slice(CHAVE_BACKUP.length + 1), texto: localStorage.getItem(k) ?? "" });
+    }
+  } catch {}
+  return lista.sort((a, b) => b.quando.localeCompare(a.quando));
 }
 
 export const carregar = (): Banco => carregarProtegido().banco;
@@ -281,7 +296,8 @@ export function importarRedesPorMedico(b: Banco, u: Usuario, convenioId: string,
   for (const [id, mapa] of porMedico) {
     const p = achar(novo.profissionais, u, id);
     exigir(p.clinicaId === c.clinicaId, "O médico é de outra clínica.");
-    novo = salvarProfissional(novo, u, { ...p, atende: { ...p.atende, ...mapa } });
+    const unido = Object.fromEntries(Object.entries(mapa).map(([id, v]) => [id, unirAtendimento(p.atende[id] as "c" | "e" | "ce" | undefined, v)]));
+    novo = salvarProfissional(novo, u, { ...p, atende: { ...p.atende, ...unido } });
   }
   return novo;
 }

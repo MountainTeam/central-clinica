@@ -403,7 +403,7 @@ export function CartaoProfissional({ p, especialidade, destaque, i, q = "", onAb
 }) {
   return (
     <Link href={`/profissionais/${p.id}`} onClick={onAbrir} style={{ "--i": Math.min(i, 10) } as React.CSSProperties}
-      className="entrar pressionavel levanta group flex w-full flex-col gap-4 rounded-3xl border border-borda bg-superficie p-5 text-left shadow-card">
+      className="entrar pressionavel levanta group flex h-full w-full flex-col gap-4 rounded-3xl border border-borda bg-superficie p-5 text-left shadow-card">
       <div className="flex items-center gap-3">
         <Avatar nome={p.nome} />
         <div className="min-w-0 flex-1">

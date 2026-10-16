@@ -48,7 +48,7 @@ type Store = {
   form: Formulario;
   abrirForm: (f: Formulario) => void;
   aviso: Aviso | null;
-  avisar: (t: string, erro?: boolean, acao?: Aviso["acao"]) => void;
+  avisar: (t: string, erro?: boolean, acao?: Aviso["acao"], duracao?: number) => void;
 };
 
 const Ctx = createContext<Store | null>(null);
@@ -60,6 +60,7 @@ const gravarLocal = (k: string, v: string | null) => {
   try { if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch {}
 };
 const DADOS_ANTIGOS = "Os dados guardados neste navegador são de um formato antigo e não deu para copiá-los: nada foi apagado e nada será salvo. Libere espaço no navegador ou fale com o administrador.";
+const COPIA_GUARDADA = "Os dados guardados eram de um formato antigo e o sistema recomeçou do zero. Uma cópia foi guardada: o Administrador pode baixá-la em Usuários.";
 const VAZIO: DadosClinica = { especialidades: [], convenios: [], exames: [], profissionais: [] };
 
 export function Provider({ children }: { children: React.ReactNode }) {
@@ -78,10 +79,10 @@ export function Provider({ children }: { children: React.ReactNode }) {
   const excluido = useRef<Banco | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  const avisar = useCallback((t: string, erro = false, acao?: Aviso["acao"]) => {
+  const avisar = useCallback((t: string, erro = false, acao?: Aviso["acao"], duracao?: number) => {
     setAviso({ texto: t, erro, acao });
     clearTimeout(timer.current);
-    timer.current = setTimeout(() => setAviso(null), acao ? 6000 : 2800);
+    timer.current = setTimeout(() => setAviso(null), duracao ?? (acao ? 6000 : 2800));
   }, []);
 
   // ponytail: sessão no navegador só para o protótipo; na v1 vira login de verdade no servidor
@@ -90,6 +91,7 @@ export function Provider({ children }: { children: React.ReactNode }) {
     setBanco(c.banco);
     setProtegido(c.protegido);
     if (c.protegido) avisar(DADOS_ANTIGOS, true);
+    if (c.copiaGuardada) avisar(COPIA_GUARDADA, true, undefined, 15000);
     setUsuarioId(lerLocal(SESSAO_USUARIO));
     setClinicaId(lerLocal(SESSAO_CLINICA));
     setCarregado(true);
@@ -113,6 +115,7 @@ export function Provider({ children }: { children: React.ReactNode }) {
       const c = carregarProtegido();
       setBanco(c.banco);
       setProtegido(c.protegido);
+      if (c.copiaGuardada) avisar(COPIA_GUARDADA, true, undefined, 15000);
     };
     window.addEventListener("storage", ouvir);
     return () => window.removeEventListener("storage", ouvir);

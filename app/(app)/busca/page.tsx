@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import {
-  type Recente, combina, gruposPlanosDoConvenio, idsDeRedes, lembrarRecente, observacoesDoConvenio, pontuacao, resultadoPrincipal, sugestoesDePlano, atende,
+  type Recente, combina, gruposPlanosDoConvenio, idsDeRedes, lembrarRecente, observacoesDoConvenio, pontuacao, resultadoPrincipal, sugestaoParaBusca, sugestoesDePlano, atende,
 } from "@/lib/regras";
 import { CartaoProfissional, Chip, Destaque, Icone, LogoMarca, Segmentado, SeletorConvenio, SeletorEspecialidade, Vazio } from "@/components/ui";
 
@@ -48,6 +48,10 @@ function BuscaRapida() {
   // depois que a pessoa escolhe uma aba nesta busca, a busca não troca de aba sozinha
   const clicouAba = useRef(false);
   const campo = useRef<HTMLInputElement>(null);
+  // escolha manual de Consulta/Exame fica na URL: sobrevive à volta da ficha
+  const [tipoManual, setTipoManual] = useState(() => params.get("tipo") === "manual");
+  // texto em que o atendimento já mudou sozinho: uma troca por texto, sem vaivém
+  const tipoAuto = useRef("");
   const chaveRecentes = `cartilha:recentes:${clinica?.id}`;
 
   useEffect(() => {
@@ -61,7 +65,7 @@ function BuscaRapida() {
 
   useEffect(() => {
     const focar = () => { campo.current?.focus(); campo.current?.select(); };
-    const limpar = () => { setTexto(""); clicouAba.current = false; };
+    const limpar = () => { setTexto(""); clicouAba.current = false; setTipoManual(false); };
     window.addEventListener("cartilha:focar-busca", focar);
     window.addEventListener("cartilha:nova-ligacao", limpar);
     return () => { window.removeEventListener("cartilha:focar-busca", focar); window.removeEventListener("cartilha:nova-ligacao", limpar); };
@@ -74,9 +78,10 @@ function BuscaRapida() {
     por("q", texto.trim());
     por("aba", secaoAtiva === "profissionais" ? "" : secaoAtiva);
     por("esp", esp);
+    por("tipo", tipoManual ? "manual" : "");
     const s = p.toString();
     if (s !== params.toString()) router.replace(s ? `${rota}?${s}` : rota, { scroll: false });
-  }, [texto, secaoAtiva, esp, params, rota, router]);
+  }, [texto, secaoAtiva, esp, tipoManual, params, rota, router]);
 
   const q = texto.trim();
   // especialidade de outra unidade (ou apagada) não filtra nada; sai da URL quando os dados já carregaram
@@ -135,7 +140,7 @@ function BuscaRapida() {
   };
   const chaveContagem = ABAS.map((a) => contagem[a.id]).join(",");
 
-  useEffect(() => { if (!q) clicouAba.current = false; }, [q]);
+  useEffect(() => { if (!q) { clicouAba.current = false; setTipoManual(false); tipoAuto.current = ""; } }, [q]);
   // aba atual sem resultado e outra com resultado: vai para a que tem mais
   useEffect(() => {
     if (!q || clicouAba.current || contagem[secaoAtiva] > 0) return;
@@ -151,6 +156,13 @@ function BuscaRapida() {
     ...especialidadesFiltradas.map((x) => ({ aba: "especialidades" as const, id: x.id, nome: x.nome })),
   ], q) : undefined;
   const mostrarPrincipal = principal && principal.aba !== secaoAtiva ? principal : undefined;
+  // sem clique no seletor, o atendimento segue o que foi digitado: exame → Exame, médico/especialidade → Consulta
+  const tipoSugerido = principal?.aba === "exames" ? "exame" : principal?.aba === "profissionais" || principal?.aba === "especialidades" ? "consulta" : undefined;
+  useEffect(() => {
+    if (!plano || tipoManual || !tipoSugerido || plano.tipo === tipoSugerido || tipoAuto.current === q) return;
+    tipoAuto.current = q;
+    escolherPlano({ ...plano, tipo: tipoSugerido });
+  }, [plano, tipoSugerido, q, tipoManual]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sugestoes = q.length >= 2 ? sugestoesDePlano(dados.convenios, q).filter((x) => x.subtipo.id !== subtipo) : [];
   const abertos = q ? [] : recentes.flatMap((r) => {
@@ -172,6 +184,24 @@ function BuscaRapida() {
     setSecaoAtiva(prox);
     document.getElementById(`aba-${prox}`)?.focus();
   };
+
+  const unidadeVazia = !dados.profissionais.length && !dados.exames.length && !dados.convenios.length && !dados.especialidades.length;
+  const sugestaoTexto = q ? sugestaoParaBusca([...dados.exames, ...dados.profissionais, ...dados.convenios, ...dados.especialidades].map((x) => x.nome), q) : undefined;
+  // "especialidade" é feminino: Nenhuma especialidade cadastrada/encontrada
+  const vazio = (oQue: string, a = oQue === "especialidade" ? "a" : "o") => unidadeVazia
+    ? <Vazio texto="Esta unidade ainda não tem cadastro. Quem coordena a unidade cadastra médicos, convênios e exames." />
+    : !filtrando
+      ? <Vazio texto={`Nenhum${a === "a" ? "a" : ""} ${oQue} cadastrad${a} nesta unidade.`} />
+      : (
+        <div className="space-y-2 text-center">
+          <Vazio texto={`Nenhum${a === "a" ? "a" : ""} ${oQue} encontrad${a} com os filtros atuais.`} />
+          {sugestaoTexto && (
+            <button type="button" onClick={() => { clicouAba.current = false; setTexto(sugestaoTexto); }} className="pressionavel text-sm font-semibold text-verde hover:underline">
+              Você quis dizer “{sugestaoTexto}”?
+            </button>
+          )}
+        </div>
+      );
 
   return (
     <div className="space-y-6">
@@ -237,12 +267,13 @@ function BuscaRapida() {
                   <Segmentado
                     valor={tipo}
                     desativado={!plano}
-                    onChange={(t) => plano && escolherPlano({ ...plano, tipo: t })}
+                    onChange={(t) => { setTipoManual(true); if (plano) escolherPlano({ ...plano, tipo: t }); }}
                     opcoes={[
                       { valor: "consulta", rotulo: "Consulta" },
                       { valor: "exame", rotulo: "Exame" },
                     ]}
                   />
+                  {plano && !tipoManual && tipoSugerido && plano.tipo === tipoSugerido && <span className="mt-1 block text-[12px] text-suave">Definido pela busca</span>}
                 </div>
               </div>
               <SeletorEspecialidade dados={dados} valor={espOk} onChange={setEsp} />
@@ -363,7 +394,7 @@ function BuscaRapida() {
                 ))}
               </div>
             ) : (
-              <Vazio texto="Nenhuma especialidade encontrada para a busca." />
+              vazio("especialidade")
             )}
           </div>
         )}
@@ -414,7 +445,7 @@ function BuscaRapida() {
                 })}
               </div>
             ) : (
-              <Vazio texto="Nenhum profissional encontrado com os filtros atuais." />
+              vazio("profissional")
             )}
           </div>
         )}
@@ -515,7 +546,7 @@ function BuscaRapida() {
                 })}
               </div>
             ) : (
-              <Vazio texto="Nenhum convênio encontrado com os filtros atuais." />
+              vazio("convênio")
             )}
           </div>
         )}
@@ -577,7 +608,7 @@ function BuscaRapida() {
                 })}
               </div>
             ) : (
-              <Vazio texto="Nenhum exame encontrado com os filtros atuais." />
+              vazio("exame")
             )}
           </div>
         )}

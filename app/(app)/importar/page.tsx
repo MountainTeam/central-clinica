@@ -64,7 +64,7 @@ export default function Importar() {
                 className={`pressionavel h-10 rounded-xl border px-4 text-sm font-semibold ${modo === m ? "border-transparent bg-verde-claro text-verde" : "border-borda bg-superficie text-suave hover:text-texto"}`}>{r}</button>
             ))}
           </div>
-          {modo === "medico" && <p className="mt-2 text-[13px] text-suave">Atendimento é opcional: &quot;consulta&quot;, &quot;exame&quot; ou vazio/&quot;ambos&quot;.</p>}
+          {modo === "medico" && <p className="mt-2 text-[13px] text-suave">Atendimento é opcional: &quot;consulta&quot;, &quot;exame&quot; ou vazio/&quot;ambos&quot;. Coluna de atendimento vazia vale &quot;consulta e exame&quot;. O que o médico já tinha é mantido; a planilha só acrescenta.</p>}
         </section>
 
         <section>
