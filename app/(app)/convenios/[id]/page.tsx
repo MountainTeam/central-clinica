@@ -166,7 +166,7 @@ export default function PaginaConvenioDetalhes() {
       {conflitos.length > 0 && (
         <div role="alert" className="flex items-start gap-2 rounded-2xl bg-alerta-claro px-4 py-3 text-sm font-medium text-alerta">
           <TriangleAlert className="mt-0.5 size-4 shrink-0" />
-          <span>{conflitos.join(", ")} {conflitos.length === 1 ? "está" : "estão"} em “Não atendemos”, mas {conflitos.length === 1 ? "aparece" : "aparecem"} como cobertos em médicos ou exames. Confira o cadastro.</span>
+          <span>{conflitos.join(", ")} {conflitos.length === 1 ? "está" : "estão"} em “Não atendemos” ou “Somente exames”, mas {conflitos.length === 1 ? "aparece" : "aparecem"} com médico ou exame que contradiz o grupo. Confira o cadastro.</span>
         </div>
       )}
       {/* Migalha de Pão (Breadcrumb) */}
