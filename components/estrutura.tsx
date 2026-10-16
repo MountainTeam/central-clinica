@@ -282,22 +282,6 @@ function SeletorClinica({ compacto = false }: { compacto?: boolean }) {
     return () => { document.removeEventListener("pointerdown", fora); document.removeEventListener("keydown", esc); };
   }, [aberto]);
 
-  if (!clinica) return null;
-
-  const varias = clinicas.length > 1;
-  const org = banco.organizacoes.find((o) => o.id === clinica.organizacaoId);
-  const clinicasDaMesmaOrg = clinicas.filter((c) => c.organizacaoId === clinica.organizacaoId);
-
-  // Nome do grupo só agrega valor se for uma rede com mais de uma clínica e nome diferente da unidade
-  const temNomeGrupoDiferente = org && clinicasDaMesmaOrg.length > 1 && org.nome.trim().toLowerCase() !== clinica.nome.trim().toLowerCase();
-
-  const escolher = (id: string) => {
-    setAberto(false);
-    setTermo("");
-    escolherClinica(id);
-    if (rota.startsWith("/profissionais/")) router.push("/busca");
-  };
-
   // Separação em grupos: redes multi-unidades vs unidades individuais
   const grupos = useMemo(() => {
     const q = semAcento(termo.trim());
@@ -328,6 +312,22 @@ function SeletorClinica({ compacto = false }: { compacto?: boolean }) {
 
     return { redesMulti, unidadesSoltas, total: clinicasFiltradas.length };
   }, [banco.organizacoes, clinicas, termo]);
+
+  if (!clinica) return null;
+
+  const varias = clinicas.length > 1;
+  const org = banco.organizacoes.find((o) => o.id === clinica.organizacaoId);
+  const clinicasDaMesmaOrg = clinicas.filter((c) => c.organizacaoId === clinica.organizacaoId);
+
+  // Nome do grupo só agrega valor se for uma rede com mais de uma clínica e nome diferente da unidade
+  const temNomeGrupoDiferente = org && clinicasDaMesmaOrg.length > 1 && org.nome.trim().toLowerCase() !== clinica.nome.trim().toLowerCase();
+
+  const escolher = (id: string) => {
+    setAberto(false);
+    setTermo("");
+    escolherClinica(id);
+    if (rota.startsWith("/profissionais/")) router.push("/busca");
+  };
 
   return (
     <div ref={caixa} className="relative">
