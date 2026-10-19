@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Check, Copy, ChevronRight, ClipboardList, Clock, FlaskConical, NotebookPen, Pencil, Search, ShieldCheck, TriangleAlert, X } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ArrowLeft, Check, ChevronDown, ChevronRight, ClipboardList, Clock, Copy, FlaskConical, NotebookPen, Pencil, ShieldCheck, TriangleAlert, X } from "lucide-react";
 import { useItemDeOutraUnidade, useStore } from "@/lib/store";
 import { DIAS, type DadosClinica, type Profissional } from "@/lib/modelo";
-import { coberturaDaBusca, combina, formatarValor, gruposHorarios, subtipoInfo } from "@/lib/regras";
+import { atende, coberturaDaBusca, combina, gruposHorarios, subtipoInfo } from "@/lib/regras";
 import { salvarProfissional } from "@/lib/repositorio";
-import { Atualizado, Avatar, Botao, Chip, Icone, LogoMarca, ObservacaoInterna, Secao, Vazio } from "@/components/ui";
+import { Atualizado, Avatar, Botao, Chip, Filtro, Icone, LogoMarca, ObservacaoInterna, Secao, Vazio, useHoje } from "@/components/ui";
 import { EditorHorarios, lerHorarios } from "@/components/formularios";
 
 const cartao = "rounded-3xl border border-borda bg-superficie p-5 shadow-card sm:p-6";
@@ -33,11 +33,13 @@ export default function PaginaProfissional() {
 
 function Ficha({ p }: { p: Profissional }) {
   const router = useRouter();
-  const { dados, podeEditarAtual, abrir, abrirForm, executar, avisar } = useStore();
+  const { dados, podeEditarAtual, abrir, abrirForm, executar, avisar, plano } = useStore();
   const [editando, setEditando] = useState<"horarios" | "obs" | null>(null);
-  // dia da semana só no navegador, para não divergir do HTML do servidor
-  const [hoje, setHoje] = useState<string | null>(null);
-  useEffect(() => setHoje(DIAS[new Date().getDay() - 1] ?? null), []);
+  const hoje = useHoje();
+  // a pergunta da ligação: este médico atende o plano do paciente?
+  const infoPlano = plano ? subtipoInfo(dados, plano.subtipoId) : undefined;
+  const atendePlano = !!plano && atende(p, plano.subtipoId, plano.tipo);
+  const restricoesDoPlano = plano ? p.restricoes.filter((r) => r.subtipoId === plano.subtipoId) : [];
 
   const esp = dados.especialidades.find((e) => e.id === p.especialidadeId);
   const admin = podeEditarAtual; // pode editar esta clínica
@@ -49,7 +51,7 @@ function Ficha({ p }: { p: Profissional }) {
     const texto = [
       p.nome,
       esp?.nome,
-      p.valor ? `Valor particular: ${formatarValor(p.valor)}` : "",
+      p.valor ? `Valor particular: ${p.valor}` : "",
       p.horarios.length ? `Horários:\n${gruposHorarios(p.horarios).join("\n")}` : "",
       p.restricoes.length ? `Restrições:\n${p.restricoes.map((r) => `- ${r.texto}`).join("\n")}` : "",
       p.observacoes ? `Observações: ${p.observacoes}` : "",
@@ -77,9 +79,16 @@ function Ficha({ p }: { p: Profissional }) {
               ? <Chip tom="verde"><span className="pulso size-1.5 rounded-full bg-verde" />Atende hoje · {atendeHoje.inicio}–{atendeHoje.fim}</Chip>
               : <Chip>Não atende hoje</Chip>)}
           </div>
-          <p className="mt-2 text-sm text-suave">
-            Particular: <b className="text-base text-verde">{formatarValor(p.valor) || "consulte a recepção"}</b>
-          </p>
+          {plano && infoPlano && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {atendePlano
+                ? <Chip tom="verde"><Check className="size-3.5" />Atende {infoPlano.subtipo.nome} para {plano.tipo === "consulta" ? "consulta" : "exame"}</Chip>
+                : <Chip tom="perigo"><X className="size-3.5" />Não atende {infoPlano.subtipo.nome} para {plano.tipo === "consulta" ? "consulta" : "exame"}</Chip>}
+              {restricoesDoPlano.map((r, k) => <Chip key={k} tom="alerta"><TriangleAlert className="size-3.5 shrink-0" />{r.texto}</Chip>)}
+            </div>
+          )}
+          {/* só quando cadastrado: a maioria dos médicos fica sem valor por um bom tempo */}
+          {p.valor && <p className="mt-2 text-sm text-suave">Particular: <b className="text-base text-verde">{p.valor}</b></p>}
           <div className="mt-2"><Atualizado em={p.atualizadoEm} por={p.atualizadoPor} /></div>
         </div>
         <Botao variante="secundario" onClick={copiar}><Copy className="size-4" />Copiar</Botao>
@@ -156,7 +165,8 @@ function Ficha({ p }: { p: Profissional }) {
             )}
           </div>
 
-          <div className={`entrar ${cartao}`} style={{ "--i": 3 } as React.CSSProperties}>
+          {/* sem observação e sem permissão para escrever, o cartão não tem o que mostrar */}
+          {(admin || p.observacoes || p.observacoesInternas) && <div className={`entrar ${cartao}`} style={{ "--i": 3 } as React.CSSProperties}>
             <TituloCartao icone={<NotebookPen className="size-4" />} titulo="Observações"
               acao={admin && editando !== "obs" && <BotaoEditar onClick={() => setEditando("obs")} />} />
             {editando === "obs" ? (
@@ -168,10 +178,10 @@ function Ficha({ p }: { p: Profissional }) {
             ) : p.observacoes ? (
               <p key="ve" className="entrar whitespace-pre-line text-[15px] leading-relaxed">{p.observacoes}</p>
             ) : (
-              <Vazio texto={admin ? "Nenhuma observação." : "Nenhuma observação."} />
+              <Vazio texto="Nenhuma observação." />
             )}
             {editando !== "obs" && <div className="mt-3"><ObservacaoInterna texto={p.observacoesInternas} /></div>}
-          </div>
+          </div>}
         </aside>
       </div>
     </div>
@@ -206,6 +216,7 @@ function Acoes({ onCancelar }: { onCancelar: () => void }) {
 
 function ChecadorConveniosProfissional({ dados, p }: { dados: DadosClinica; p: Profissional }) {
   const [busca, setBusca] = useState("");
+  const [abertos, setAbertos] = useState<Record<string, boolean>>({});
 
   const conveniosAtendidos = useMemo(() => {
     return dados.convenios
@@ -235,7 +246,7 @@ function ChecadorConveniosProfissional({ dados, p }: { dados: DadosClinica; p: P
         <p className="text-sm font-semibold text-texto">Atendimento exclusivamente particular</p>
         <p className="mt-1 text-xs text-suave">Este profissional não atende convênios nesta unidade.</p>
         {p.valor && (
-          <p className="mt-2 text-sm font-bold text-verde">Valor da consulta: {formatarValor(p.valor)}</p>
+          <p className="mt-2 text-sm font-bold text-verde">Valor da consulta: {p.valor}</p>
         )}
       </div>
     );
@@ -249,25 +260,7 @@ function ChecadorConveniosProfissional({ dados, p }: { dados: DadosClinica; p: P
 
   return (
     <div className="space-y-3">
-      {/* Campo de Busca Rápida e Direta */}
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-suave" />
-        <input
-          value={busca}
-          onChange={(e) => setBusca(e.target.value)}
-          placeholder={`Buscar convênio ou plano do paciente (${formatContagem()})...`}
-          className="h-11 w-full rounded-2xl border border-borda bg-superficie pl-10 pr-9 text-sm outline-none transition placeholder:text-suave focus:border-verde focus:ring-4 focus:ring-verde/15"
-        />
-        {busca && (
-          <button
-            onClick={() => setBusca("")}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-lg p-1 text-suave hover:bg-borda/40 hover:text-texto"
-            title="Limpar consulta"
-          >
-            <X className="size-4" />
-          </button>
-        )}
-      </div>
+      <Filtro valor={busca} onChange={setBusca} placeholder={`Buscar convênio ou plano do paciente (${formatContagem()})`} />
 
       {/* RESULTADO DA BUSCA ATIVA */}
       {busca && resultadoBusca ? (
@@ -353,7 +346,8 @@ function ChecadorConveniosProfissional({ dados, p }: { dados: DadosClinica; p: P
           )}
         </div>
       ) : (
-        /* LISTA DIRETA E LIMPA DOS CONVÊNIOS ATENDIDOS */
+        /* Lista dos convênios atendidos. Convênio uniforme (todas as redes iguais) começa recolhido:
+           abrir rede por rede só vale quando há exceção. */
         <div className="space-y-2.5 pt-1">
           {conveniosAtendidos.map(({ c, subs }) => {
             const restricoesConvenio = p.restricoes.filter((r) =>
@@ -361,33 +355,30 @@ function ChecadorConveniosProfissional({ dados, p }: { dados: DadosClinica; p: P
             );
             const todasConsultas = subs.every((s) => p.atende[s.id]?.includes("c"));
             const todosExames = subs.every((s) => p.atende[s.id]?.includes("e"));
+            const todasRedes = subs.length === c.subtipos.length;
+            const uniforme = new Set(subs.map((s) => p.atende[s.id])).size === 1;
+            const listaAberta = !uniforme || abertos[c.id];
+            const rotulo = todasConsultas && todosExames ? "Consulta e Exame" : todasConsultas ? "Consulta" : todosExames ? "Exame" : null;
 
             return (
               <div key={c.id} className="overflow-hidden rounded-2xl border border-borda bg-superficie shadow-sm transition-all hover:border-verde/40">
-                <div className="flex flex-wrap items-center justify-between gap-2 bg-fundo/40 px-3.5 py-2.5">
-                  <div className="flex items-center gap-2.5">
+                <button type="button" aria-expanded={listaAberta} disabled={!uniforme}
+                  onClick={() => setAbertos((a) => ({ ...a, [c.id]: !a[c.id] }))}
+                  className="flex w-full flex-wrap items-center justify-between gap-2 bg-fundo/40 px-3.5 py-2.5 text-left enabled:hover:bg-fundo/70">
+                  <span className="flex items-center gap-2.5">
                     <LogoMarca nome={c.nome} logo={c.logo} cor={c.cor} tamanho="sm" />
                     <span className="font-bold text-[14px] text-texto">{c.nome}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-[12px]">
-                    {todasConsultas && todosExames ? (
-                      <span className="rounded-lg bg-verde-claro px-2.5 py-0.5 font-semibold text-verde">
-                        Consulta e Exame
-                      </span>
-                    ) : todasConsultas ? (
-                      <span className="rounded-lg bg-verde-claro px-2.5 py-0.5 font-semibold text-verde">
-                        Consulta
-                      </span>
-                    ) : todosExames ? (
-                      <span className="rounded-lg bg-azul-claro px-2.5 py-0.5 font-semibold text-azul">
-                        Exame
-                      </span>
-                    ) : null}
+                  </span>
+                  <span className="flex items-center gap-1.5 text-[12px]">
+                    {rotulo && (
+                      <span className={`rounded-lg px-2.5 py-0.5 font-semibold ${rotulo === "Exame" ? "bg-azul-claro text-azul" : "bg-verde-claro text-verde"}`}>{rotulo}</span>
+                    )}
                     <span className="rounded-lg bg-fundo px-2 py-0.5 font-medium text-suave">
-                      {subs.length} {subs.length === 1 ? "rede" : "redes"}
+                      {todasRedes ? `todas as ${subs.length} redes` : `${subs.length} de ${c.subtipos.length} redes`}
                     </span>
-                  </div>
-                </div>
+                    {uniforme && <ChevronDown className={`size-4 text-suave transition-transform duration-200 ${listaAberta ? "rotate-180" : ""}`} />}
+                  </span>
+                </button>
 
                 {restricoesConvenio.length > 0 && (
                   <div className="border-t border-alerta/30 bg-alerta-claro/40 px-3.5 py-2 text-[12px] text-alerta flex items-center gap-2">
@@ -396,7 +387,7 @@ function ChecadorConveniosProfissional({ dados, p }: { dados: DadosClinica; p: P
                   </div>
                 )}
 
-                <div className="border-t border-borda/60 divide-y divide-borda/40">
+                {listaAberta && <div className="entrar border-t border-borda/60 divide-y divide-borda/40">
                   {subs.map((s) => {
                     const podeC = p.atende[s.id]?.includes("c");
                     const podeE = p.atende[s.id]?.includes("e");
@@ -417,7 +408,7 @@ function ChecadorConveniosProfissional({ dados, p }: { dados: DadosClinica; p: P
                       </div>
                     );
                   })}
-                </div>
+                </div>}
               </div>
             );
           })}
@@ -454,22 +445,7 @@ function SecaoExamesProfissional({
 
   return (
     <div className="space-y-3">
-      {lista.length > 0 && (
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-suave" />
-          <input
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            placeholder={`Buscar entre os ${lista.length} exames...`}
-            className="h-9 w-full rounded-xl border border-borda bg-superficie pl-9 pr-8 text-sm outline-none transition focus:border-verde focus:ring-2 focus:ring-verde/15"
-          />
-          {busca && (
-            <button onClick={() => setBusca("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-suave hover:text-texto">
-              <X className="size-3.5" />
-            </button>
-          )}
-        </div>
-      )}
+      {lista.length > 3 && <Filtro valor={busca} onChange={setBusca} placeholder={`Buscar entre os ${lista.length} exames`} />}
 
       {filtrados.length ? (
         <div className="space-y-2">

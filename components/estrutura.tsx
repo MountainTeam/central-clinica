@@ -234,9 +234,13 @@ function ExameNaUrl() {
 // O plano do paciente da ligação atual, visível em todas as telas da unidade
 function FaixaPlano() {
   const { dados, plano, escolherPlano, novaLigacao } = useStore();
+  const rota = usePathname();
   const [trocando, setTrocando] = useState(false);
   const info = plano && subtipoInfo(dados, plano.subtipoId);
-  if (!plano || !info) return null;
+  // telas de gestão não são de atendimento: a ligação não aparece lá
+  if (!plano || !info || /^\/(importar|usuarios|clinicas)/.test(rota)) return null;
+  // "Unimed · Unimed Intercâmbio" vira só "Unimed Intercâmbio"
+  const redeRepeteConvenio = info.subtipo.nome.toLowerCase().startsWith(info.convenio.nome.toLowerCase());
   return (
     <div className="entrar mb-6 flex flex-wrap items-center gap-3 rounded-2xl border border-verde/30 bg-verde-claro/40 px-3 py-2">
       {/* no celular o plano ocupa a linha inteira e quebra; "Trocar" e "Nova ligação" descem */}
@@ -244,7 +248,9 @@ function FaixaPlano() {
         <LogoMarca nome={info.convenio.nome} logo={info.convenio.logo} cor={info.convenio.cor} tamanho="sm" />
         <p className="min-w-0 flex-1 text-sm sm:truncate">
           <span className="text-suave">Paciente: </span>
-          <strong className="font-semibold text-texto">{info.convenio.nome}</strong> · {info.subtipo.nome} · {plano.tipo === "consulta" ? "Consulta" : "Exame"}
+          {redeRepeteConvenio
+            ? <strong className="font-semibold text-texto">{info.subtipo.nome}</strong>
+            : <><strong className="font-semibold text-texto">{info.convenio.nome}</strong> · {info.subtipo.nome}</>} · {plano.tipo === "consulta" ? "Consulta" : "Exame"}
         </p>
       </div>
       {trocando ? (

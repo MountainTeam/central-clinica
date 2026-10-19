@@ -260,25 +260,23 @@ export function sugestaoParaBusca(nomes: string[], q: string): string | undefine
   return melhor?.nome;
 }
 
-// Formata texto ou número como valor monetário em Real (ex.: "250" -> "R$ 250,00")
+// Formata o que foi digitado como valor em Real ("250" -> "R$ 250,00", "1.500" -> "R$ 1.500,00").
+// Texto que não é número volta como está, para a tela mostrar o que foi digitado.
 export function formatarValor(v?: string): string {
-  if (!v) return "";
-  const limpo = v.trim();
-  if (!limpo) return "";
-  const semCifrao = limpo.replace(/^R\$\s*/i, "").trim();
-  if (!semCifrao) return "";
-  const numStr = semCifrao.includes(",") ? semCifrao.replace(/\./g, "").replace(",", ".") : semCifrao;
-  const n = parseFloat(numStr);
-  if (!isNaN(n) && /^[\d.,]+$/.test(semCifrao)) {
-    return `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  }
-  return `R$ ${semCifrao}`;
+  const s = (v ?? "").trim().replace(/^R\$\s*/i, "");
+  if (!s) return "";
+  if (!/^[\d.,]+$/.test(s)) return s;
+  // com vírgula, o ponto é milhar; só pontos a cada 3 dígitos também é milhar; senão o ponto é decimal
+  const n = parseFloat(
+    s.includes(",") ? s.replace(/\./g, "").replace(",", ".")
+    : /^\d{1,3}(\.\d{3})+$/.test(s) ? s.replace(/\./g, "")
+    : s,
+  );
+  if (isNaN(n)) return s;
+  return `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-// Retorna apenas a parte numérica formatada sem o "R$" (ex.: "250" -> "250,00")
+// Só a parte numérica, para o campo de edição ("R$ 250,00" -> "250,00")
 export function valorSemCifrao(v?: string): string {
-  if (!v) return "";
-  const f = formatarValor(v);
-  return f.replace(/^R\$\s*/i, "").trim();
+  return formatarValor(v).replace(/^R\$\s*/i, "");
 }
-

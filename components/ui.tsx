@@ -6,7 +6,7 @@ import { createContext, useContext, useEffect, useId, useMemo, useRef, useState 
 import * as Icones from "lucide-react";
 import { Activity, Baby, Bone, Brain, Ear, Eye, Heart, HeartPulse, Microscope, Pill, ScanLine, Smile, Stethoscope, Syringe, X, type LucideIcon } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { DIAS_PARA_REVISAR, combina, formatarValor, iniciais, subtipoInfo, tempoDesde, trechosDestaque } from "@/lib/regras";
+import { DIAS_PARA_REVISAR, combina, gruposHorarios, iniciais, subtipoInfo, tempoDesde, trechosDestaque } from "@/lib/regras";
 import { DIAS, type DadosClinica, type Profissional, type Tipo } from "@/lib/modelo";
 
 export function Logo({ claro = false }: { claro?: boolean }) {
@@ -398,20 +398,43 @@ export function Vazio({ texto }: { texto: string }) {
   return <p className="rounded-xl border border-dashed border-borda px-4 py-6 text-center text-sm text-suave">{texto}</p>;
 }
 
+// Dia da semana ("Seg".."Sáb", null no domingo) só no navegador, para não divergir do HTML do servidor
+export function useHoje() {
+  const [hoje, setHoje] = useState<string | null>(null);
+  useEffect(() => setHoje(DIAS[new Date().getDay() - 1] ?? null), []);
+  return hoje;
+}
+
+// Caixa de busca local: lupa, campo e botão de limpar
+export function Filtro({ valor, onChange, placeholder }: { valor: string; onChange: (v: string) => void; placeholder: string }) {
+  return (
+    <div className="relative">
+      <Icones.Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-suave" />
+      <input value={valor} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} aria-label={placeholder}
+        className="h-10 w-full rounded-xl border border-borda bg-superficie pl-9 pr-9 text-sm outline-none transition focus:border-verde focus:ring-4 focus:ring-verde/15" />
+      {valor && (
+        <button type="button" onClick={() => onChange("")} aria-label="Limpar"
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-suave hover:bg-borda/40 hover:text-texto">
+          <X className="size-3.5" />
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function CartaoProfissional({ p, especialidade, destaque, i, q = "", onAbrir }: {
   p: Profissional; especialidade?: string; destaque?: React.ReactNode; i: number; q?: string; onAbrir?: () => void;
 }) {
-  const [hoje, setHoje] = useState<string | null>(null);
-  useEffect(() => {
-    setHoje(DIAS[new Date().getDay() - 1] ?? null);
-  }, []);
-
-  const atendeHoje = hoje ? p.horarios.some((h) => h.dia === hoje) : false;
-  const temChips = atendeHoje || p.restricoes.length > 0 || !!p.valor;
+  const { plano } = useStore();
+  const hoje = useHoje();
+  const atendeHoje = !!hoje && p.horarios.some((h) => h.dia === hoje);
+  // restrições ligadas ao plano da ligação aparecem por extenso; as demais viram só a contagem
+  const doPlano = plano ? p.restricoes.filter((r) => r.subtipoId === plano.subtipoId) : [];
+  const outras = p.restricoes.length - doPlano.length;
 
   return (
     <Link href={`/profissionais/${p.id}`} onClick={onAbrir} style={{ "--i": Math.min(i, 10) } as React.CSSProperties}
-      className="entrar pressionavel levanta group flex h-full w-full flex-col justify-between gap-4 rounded-3xl border border-borda bg-superficie p-5 text-left shadow-card">
+      className="entrar pressionavel levanta group flex h-full w-full flex-col gap-4 rounded-3xl border border-borda bg-superficie p-5 text-left shadow-card">
       <div className="flex items-center gap-3">
         <Avatar nome={p.nome} />
         <div className="min-w-0 flex-1">
@@ -420,21 +443,19 @@ export function CartaoProfissional({ p, especialidade, destaque, i, q = "", onAb
         </div>
         <Icones.ChevronRight className="size-5 text-suave/50 transition-transform group-hover:translate-x-0.5 group-hover:text-verde" />
       </div>
-      {temChips && (
+      {/* dias e horários ficam no cartão: a atendente decide sem abrir a ficha */}
+      <div className="flex items-start gap-1.5 text-sm text-suave">
+        <Icones.CalendarDays className="mt-0.5 size-4 shrink-0" />
+        <div>{p.horarios.length ? gruposHorarios(p.horarios).map((g) => <p key={g}>{g}</p>) : "Horários não informados"}</div>
+      </div>
+      {(atendeHoje || p.restricoes.length > 0 || p.valor) && (
         <div className="flex flex-wrap items-center gap-2">
-          {atendeHoje && (
-            <Chip tom="verde">
-              <span className="pulso size-1.5 rounded-full bg-verde" />
-              Atende hoje
-            </Chip>
+          {atendeHoje && <Chip tom="verde"><span className="pulso size-1.5 rounded-full bg-verde" />Atende hoje</Chip>}
+          {doPlano.map((r, k) => <Chip key={k} tom="alerta"><Icones.TriangleAlert className="size-3.5 shrink-0" />{r.texto}</Chip>)}
+          {outras > 0 && (
+            <Chip tom="alerta"><Icones.TriangleAlert className="size-3.5" />{outras === 1 ? "1 restrição" : `${outras} restrições`}</Chip>
           )}
-          {p.restricoes.length > 0 && (
-            <Chip tom="alerta">
-              <Icones.TriangleAlert className="size-3.5" />
-              {p.restricoes.length === 1 ? "1 restrição" : `${p.restricoes.length} restrições`}
-            </Chip>
-          )}
-          {p.valor && <Chip tom="verde">Particular: {formatarValor(p.valor)}</Chip>}
+          {p.valor && <Chip tom="verde">Particular: {p.valor}</Chip>}
         </div>
       )}
       {destaque}

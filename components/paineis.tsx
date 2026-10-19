@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Check, ChevronDown, ChevronRight, ClipboardList, Copy, FlaskConical, Info, Pencil, Search, ShieldCheck, TriangleAlert, UserRound, X } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, ClipboardList, Copy, FlaskConical, Info, Pencil, ShieldCheck, TriangleAlert, UserRound, X } from "lucide-react";
 import { useStore, type Painel } from "@/lib/store";
-import { atende, coberturaDaBusca, combina, formatarValor, gruposHorarios, subtipoInfo } from "@/lib/regras";
-import { DIAS, type DadosClinica, type Exame, type Profissional } from "@/lib/modelo";
-import { Atualizado, Avatar, Botao, Chip, Janela, LogoMarca, ObservacaoInterna, Secao, Vazio } from "./ui";
+import { atende, coberturaDaBusca, combina, subtipoInfo } from "@/lib/regras";
+import type { DadosClinica, Exame, Profissional } from "@/lib/modelo";
+import { Atualizado, Avatar, Botao, Chip, Filtro, Janela, LogoMarca, ObservacaoInterna, Secao, Vazio, useHoje } from "./ui";
 
 export function Paineis() {
   const { painel, abrir, dados } = useStore();
@@ -23,24 +23,14 @@ export function Paineis() {
   );
 }
 
-function Filtro({ valor, onChange, placeholder }: { valor: string; onChange: (v: string) => void; placeholder: string }) {
-  return (
-    <div className="relative">
-      <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-suave" />
-      <input value={valor} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} aria-label={placeholder}
-        className="h-10 w-full rounded-xl border border-borda bg-superficie pl-9 pr-3 text-sm outline-none transition focus:border-verde focus:ring-4 focus:ring-verde/15" />
-    </div>
-  );
-}
-
 // Quem realiza: exibe o médico de forma compacta (nome, especialidade, atende hoje) com detalhes expansíveis
-function QuemRealiza({ p, cobre, dados }: { p: Profissional; cobre: boolean; dados: DadosClinica }) {
-  const { plano } = useStore();
+function QuemRealiza({ p, cobre }: { p: Profissional; cobre: boolean }) {
+  const { dados, plano } = useStore();
   const rede = plano ? subtipoInfo(dados, plano.subtipoId)?.subtipo : undefined;
   const [aberto, setAberto] = useState(false);
   const espNome = dados.especialidades.find((e) => e.id === p.especialidadeId)?.nome;
-  const hoje = DIAS[new Date().getDay() - 1];
-  const atendeHoje = hoje ? p.horarios.some((h) => h.dia === hoje) : false;
+  const hoje = useHoje();
+  const atendeHoje = !!hoje && p.horarios.some((h) => h.dia === hoje);
   const semNotas = !p.observacoes && !p.observacoesInternas && !p.restricoes.length && !p.idadeMinima;
 
   return (
@@ -53,12 +43,7 @@ function QuemRealiza({ p, cobre, dados }: { p: Profissional; cobre: boolean; dad
       >
         <Avatar nome={p.nome} />
         <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-2 font-semibold">
-            <span className="line-clamp-1 text-sm text-texto">{p.nome}</span>
-            {p.restricoes.length > 0 && (
-              <TriangleAlert className="size-3.5 shrink-0 text-alerta" aria-label="Tem restrições" />
-            )}
-          </span>
+          <span className="line-clamp-1 text-sm font-semibold text-texto">{p.nome}</span>
           {espNome && <span className="block text-xs text-suave">{espNome}</span>}
           <span className="mt-1 flex flex-wrap items-center gap-1.5">
             {atendeHoje && (
@@ -121,7 +106,7 @@ function FichaExame({ id }: { id: string }) {
       ex.nome,
       ex.preparo.length ? `Preparo:\n${ex.preparo.map((x, i) => `${i + 1}. ${x}`).join("\n")}` : "",
       ex.documentos ? `Trazer: ${ex.documentos}` : "",
-      ex.valor ? `Valor particular: ${formatarValor(ex.valor)}` : "",
+      ex.valor ? `Valor particular: ${ex.valor}` : "",
       ex.observacoes ? `Observações: ${ex.observacoes}` : "",
     ].filter(Boolean).join("\n\n");
     try { await navigator.clipboard.writeText(texto); avisar("Orientações copiadas"); } catch { avisar("Não foi possível copiar", true); }
@@ -145,7 +130,7 @@ function FichaExame({ id }: { id: string }) {
         <div className="min-w-0 flex-1">
           {/* a resposta mais pedida na ligação: quanto custa sem convênio */}
           <p className="text-sm text-suave">
-            Particular: <b className="text-lg text-verde">{formatarValor(ex.valor) || "consulte a recepção"}</b>
+            Particular: <b className="text-lg text-verde">{ex.valor || "consulte a recepção"}</b>
           </p>
           <div className="mt-2"><Atualizado em={ex.atualizadoEm} por={ex.atualizadoPor} /></div>
         </div>
@@ -205,28 +190,11 @@ function ChecadorConveniosExame({ ex, dados }: { ex: Exame; dados: DadosClinica 
     [dados.convenios, ex.subtipos, q],
   );
 
+  if (!dados.convenios.length) return <Vazio texto="Nenhum convênio cadastrado nesta clínica." />;
+
   return (
     <div className="space-y-3">
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-suave" />
-        <input
-          value={busca}
-          onChange={(e) => setBusca(e.target.value)}
-          placeholder={`Pesquisar se um convênio cobre este exame (${porConvenio.length} credenciados)...`}
-          aria-label="Pesquisar se um convênio cobre este exame"
-          className="h-10 w-full rounded-xl border border-borda bg-superficie pl-9 pr-9 text-sm outline-none transition focus:border-verde focus:ring-4 focus:ring-verde/15"
-        />
-        {busca && (
-          <button
-            type="button"
-            onClick={() => setBusca("")}
-            aria-label="Limpar consulta"
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-suave hover:bg-borda/40 hover:text-texto"
-          >
-            <X className="size-3.5" />
-          </button>
-        )}
-      </div>
+      <Filtro valor={busca} onChange={setBusca} placeholder={`Pesquisar se um convênio cobre este exame (${porConvenio.length} credenciados)`} />
 
       {resultadoBusca ? (
         resultadoBusca.length === 0 ? (
@@ -313,7 +281,7 @@ function ChecadorMedicosExame({
     [dados.profissionais, ex.id],
   );
 
-  const hoje = DIAS[new Date().getDay() - 1];
+  const hoje = useHoje();
 
   const resultadoBusca = useMemo(() => {
     if (!q) return null;
@@ -329,26 +297,7 @@ function ChecadorMedicosExame({
 
   return (
     <div className="space-y-3">
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-suave" />
-        <input
-          value={busca}
-          onChange={(e) => setBusca(e.target.value)}
-          placeholder={`Pesquisar se um médico realiza este exame (${quemFaz.length} vinculados)...`}
-          aria-label="Pesquisar se um médico realiza este exame"
-          className="h-10 w-full rounded-xl border border-borda bg-superficie pl-9 pr-9 text-sm outline-none transition focus:border-verde focus:ring-4 focus:ring-verde/15"
-        />
-        {busca && (
-          <button
-            type="button"
-            onClick={() => setBusca("")}
-            aria-label="Limpar consulta"
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-suave hover:bg-borda/40 hover:text-texto"
-          >
-            <X className="size-3.5" />
-          </button>
-        )}
-      </div>
+      <Filtro valor={busca} onChange={setBusca} placeholder={`Pesquisar se um médico realiza este exame (${quemFaz.length} vinculados)`} />
 
       {resultadoBusca ? (
         resultadoBusca.length === 0 ? (
@@ -406,7 +355,7 @@ function ChecadorMedicosExame({
       ) : quemFaz.length > 0 ? (
         <div className="space-y-2">
           {quemFaz.map((p) => (
-            <QuemRealiza key={p.id} p={p} cobre={cobre} dados={dados} />
+            <QuemRealiza key={p.id} p={p} cobre={cobre} />
           ))}
         </div>
       ) : (

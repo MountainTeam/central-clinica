@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Plus, Search } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { combina, formatarValor, idsDeRedes, pontuacao } from "@/lib/regras";
+import { combina, idsDeRedes, pontuacao } from "@/lib/regras";
 import { Botao, CabecalhoPagina, Vazio } from "@/components/ui";
 
 export default function Exames() {
@@ -35,7 +35,7 @@ export default function Exames() {
               className="entrar pressionavel levanta flex flex-col rounded-3xl border border-borda bg-superficie p-5 text-left shadow-card">
               <p className="line-clamp-2 font-semibold">{e.nome}</p>
               {e.valor?.trim()
-                ? <p className="mt-2 text-lg font-bold text-verde">{formatarValor(e.valor)}</p>
+                ? <p className="mt-2 text-lg font-bold text-verde">{e.valor}</p>
                 : <p className="mt-2 text-sm text-suave">Valor não cadastrado</p>}
               <p className="mt-1 text-sm text-suave">
                 <b className="text-texto">{medicos}</b> {medicos === 1 ? "médico" : "médicos"} · cobre <b className="text-texto">{convenios}</b> {convenios === 1 ? "convênio" : "convênios"}

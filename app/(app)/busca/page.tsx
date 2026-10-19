@@ -21,10 +21,10 @@ import {
 import { CartaoProfissional, Chip, Destaque, Icone, LogoMarca, Segmentado, SeletorConvenio, SeletorEspecialidade, Vazio } from "@/components/ui";
 
 const ABAS = [
-  { id: "especialidades", rotulo: "Especialidades" },
+  { id: "profissionais", rotulo: "Profissionais" },
   { id: "exames", rotulo: "Exames" },
   { id: "convenios", rotulo: "Convênios" },
-  { id: "profissionais", rotulo: "Profissionais" },
+  { id: "especialidades", rotulo: "Especialidades" },
 ] as const;
 type Secao = (typeof ABAS)[number]["id"];
 
@@ -40,9 +40,7 @@ function BuscaRapida() {
   const params = useSearchParams();
   const [texto, setTexto] = useState(() => params.get("q") ?? "");
   const [esp, setEsp] = useState(() => params.get("esp") ?? "");
-  const [secaoAtiva, setSecaoAtiva] = useState<Secao>(() => ABAS.find((a) => a.id === params.get("aba"))?.id ?? "especialidades");
-  // "Filtrar médicos" abre o seletor de convênio já buscando pelo nome do convênio
-  const [filtroConvenio, setFiltroConvenio] = useState<string | null>(null);
+  const [secaoAtiva, setSecaoAtiva] = useState<Secao>(() => ABAS.find((a) => a.id === params.get("aba"))?.id ?? "profissionais");
   const [recentes, setRecentes] = useState<Recente[]>([]);
   // depois que a pessoa escolhe uma aba nesta busca, a busca não troca de aba sozinha
   const clicouAba = useRef(false);
@@ -75,7 +73,7 @@ function BuscaRapida() {
     const p = new URLSearchParams(params.toString());
     const por = (k: string, v: string) => (v ? p.set(k, v) : p.delete(k));
     por("q", texto.trim());
-    por("aba", secaoAtiva === "especialidades" ? "" : secaoAtiva);
+    por("aba", secaoAtiva === "profissionais" ? "" : secaoAtiva);
     por("esp", esp);
     por("tipo", tipoManual ? "manual" : "");
     const s = p.toString();
@@ -132,10 +130,10 @@ function BuscaRapida() {
 
   const filtrando = !!(q || subtipo || espOk);
   const contagem: Record<Secao, number> = {
-    especialidades: especialidadesFiltradas.length,
+    profissionais: profissionaisFiltrados.length,
     exames: examesFiltrados.length,
     convenios: conveniosFiltrados.length,
-    profissionais: profissionaisFiltrados.length,
+    especialidades: especialidadesFiltradas.length,
   };
   const chaveContagem = ABAS.map((a) => contagem[a.id]).join(",");
 
@@ -149,10 +147,10 @@ function BuscaRapida() {
 
   // o item cujo nome mais combina, quando ele não está na aba aberta ("mamo" → Mamografia com Profissionais aberto)
   const principal = q ? resultadoPrincipal([
-    ...especialidadesFiltradas.map((x) => ({ aba: "especialidades" as const, id: x.id, nome: x.nome })),
+    ...profissionaisFiltrados.map((x) => ({ aba: "profissionais" as const, id: x.id, nome: x.nome })),
     ...examesFiltrados.map((x) => ({ aba: "exames" as const, id: x.id, nome: x.nome })),
     ...conveniosFiltrados.map((x) => ({ aba: "convenios" as const, id: x.id, nome: x.nome })),
-    ...profissionaisFiltrados.map((x) => ({ aba: "profissionais" as const, id: x.id, nome: x.nome })),
+    ...especialidadesFiltradas.map((x) => ({ aba: "especialidades" as const, id: x.id, nome: x.nome })),
   ], q) : undefined;
   const mostrarPrincipal = principal && principal.aba !== secaoAtiva ? principal : undefined;
   // sem clique no seletor, o atendimento segue o que foi digitado: exame → Exame, médico/especialidade → Consulta
@@ -248,18 +246,7 @@ function BuscaRapida() {
             )}
 
             <div className="mt-3 grid gap-3 md:grid-cols-[1.3fr_1fr_1fr]">
-              <SeletorConvenio
-                key={filtroConvenio ?? ""}
-                dados={dados}
-                valor={subtipo}
-                abertoInicial={filtroConvenio !== null}
-                buscaInicial={filtroConvenio ?? ""}
-                onFechar={() => setFiltroConvenio(null)}
-                onChange={(v) => {
-                  escolherPlano(v ? { subtipoId: v, tipo } : null);
-                  if (filtroConvenio !== null) setSecaoAtiva("profissionais");
-                }}
-              />
+              <SeletorConvenio dados={dados} valor={subtipo} onChange={(v) => escolherPlano(v ? { subtipoId: v, tipo } : null)} />
               <div className="flex items-center gap-2" title={plano ? undefined : "Escolha o convênio do paciente para filtrar por atendimento"}>
                 <span className="text-sm font-semibold text-suave">Atendimento</span>
                 <div className="flex-1">

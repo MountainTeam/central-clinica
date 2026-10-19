@@ -160,6 +160,7 @@ export function Provider({ children }: { children: React.ReactNode }) {
     abrir(null);
   };
   const entrar = (id: string) => {
+    escolherPlano(null); // a ligação de quem saiu não passa para quem entra
     setUsuarioId(id);
     gravarLocal(SESSAO_USUARIO, id);
     const u = banco.usuarios.find((x) => x.id === id);

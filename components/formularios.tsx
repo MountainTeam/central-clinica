@@ -24,30 +24,17 @@ export function Campo({ rotulo, children, dica, grupo }: { rotulo: string; child
   );
 }
 
-// Campo de valor monetário com prefixo fixo R$ e formatação automática ao perder o foco
-export function InputMoeda({ name, defaultValue, placeholder = "0,00" }: { name: string; defaultValue?: string; placeholder?: string }) {
+// Campo de valor em Real: prefixo R$ fixo, só aceita dígitos, ponto e vírgula, e arruma ao sair do campo
+export function InputMoeda({ name, defaultValue }: { name: string; defaultValue?: string }) {
   const [val, setVal] = useState(() => valorSemCifrao(defaultValue));
-
   return (
     <div className="relative flex items-center">
       <span className="pointer-events-none absolute left-3.5 text-sm font-bold text-verde">R$</span>
-      <input
-        name={name}
-        value={val}
-        onChange={(e) => setVal(e.target.value.replace(/^R\$\s*/i, ""))}
-        onBlur={() => {
-          if (val.trim()) {
-            setVal(valorSemCifrao(val));
-          }
-        }}
-        inputMode="decimal"
-        placeholder={placeholder}
-        className={`${campo} pl-11 font-medium`}
-      />
+      <input name={name} value={val} onChange={(e) => setVal(e.target.value.replace(/[^\d.,]/g, ""))}
+        onBlur={() => setVal(valorSemCifrao(val))} inputMode="decimal" placeholder="0,00" className={`${campo} pl-11 font-medium`} />
     </div>
   );
 }
-
 
 // Dias e horários: um intervalo por dia, com campos nativos de hora
 export function EditorHorarios({ valor }: { valor: Horario[] }) {
@@ -119,7 +106,7 @@ export function Moldura({ titulo, onSalvar, onExcluir, rotuloExcluir, children }
       <div className="flex-1 space-y-6 p-6 sm:p-8">{children}</div>
       {excluindo && onExcluir ? (
         <div className="entrar sticky bottom-0 flex flex-wrap items-center justify-end gap-2 border-t border-borda bg-perigo-claro p-4">
-          <p className="flex-1 text-sm font-semibold text-perigo">Excluir {rotuloExcluir}? Esta ação some da cartilha para todos.</p>
+          <p className="min-w-[14rem] flex-1 text-sm font-semibold text-perigo">Excluir {rotuloExcluir}? Some da cartilha para todos.</p>
           <Botao variante="secundario" onClick={() => setExcluindo(false)}>Cancelar</Botao>
           <button type="button" onClick={onExcluir} className="pressionavel inline-flex h-10 items-center rounded-xl bg-perigo px-4 text-sm font-semibold text-white hover:brightness-110">Excluir</button>
         </div>
@@ -252,7 +239,7 @@ function MatrizConvenios({ dados, atende }: { dados: DadosClinica; atende: Recor
           <input
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
-            placeholder="Buscar entre os 50+ convênios ou redes..."
+            placeholder="Buscar convênio ou rede"
             className="h-10 w-full rounded-xl border border-borda bg-superficie pl-9 pr-8 text-sm outline-none transition focus:border-verde focus:ring-2 focus:ring-verde/15"
           />
           {busca && (
@@ -431,7 +418,7 @@ function FormProfissional({ id }: { id?: string }) {
       especialidadeId: String(f.get("especialidade")),
       horarios: lerHorarios(f),
       idadeMinima: Number(f.get("idade")) || undefined,
-      valor: String(f.get("valor") ?? "").trim() ? formatarValor(String(f.get("valor") ?? "").trim()) : undefined,
+      valor: formatarValor(String(f.get("valor") ?? "")) || undefined,
       procedimentos: String(f.get("procedimentos")).split(",").map((x) => x.trim()).filter(Boolean),
       exames: dados.exames.filter((e) => f.get(`ex:${e.id}`)).map((e) => e.id),
       atende,
@@ -452,7 +439,7 @@ function FormProfissional({ id }: { id?: string }) {
         router.push("/especialidades");
       })} rotuloExcluir={p?.nome}>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Campo rotulo="Nome"><input name="nome" defaultValue={p?.nome} placeholder="Dra. Nome Sobrenome" className={campo} /></Campo>
+        <Campo rotulo="Nome"><input name="nome" required defaultValue={p?.nome} placeholder="Dra. Nome Sobrenome" className={campo} /></Campo>
         <Campo rotulo="Especialidade" dica={dados.especialidades.length ? undefined : "Cadastre uma especialidade antes."}>
           <select name="especialidade" defaultValue={p?.especialidadeId} className={campo}>
             {dados.especialidades.map((e) => <option key={e.id} value={e.id}>{e.nome}</option>)}
@@ -662,7 +649,7 @@ function SeletorExamesProfissional({
                   />
                   <span className="truncate">{e.nome}</span>
                 </div>
-                {e.valor && <span className="text-[13px] font-normal text-suave">{formatarValor(e.valor)}</span>}
+                {e.valor && <span className="text-[13px] font-normal text-suave">{e.valor}</span>}
               </label>
             );
           })
@@ -760,7 +747,7 @@ function SeletorConveniosExame({
           <input
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
-            placeholder="Buscar entre os 50+ convênios ou redes..."
+            placeholder="Buscar convênio ou rede"
             className="h-9 w-full rounded-xl border border-borda bg-superficie pl-9 pr-8 text-sm outline-none transition focus:border-azul focus:ring-2 focus:ring-azul/15"
           />
           {busca && (
@@ -1037,7 +1024,7 @@ function FormExame({ id }: { id?: string }) {
       clinicaId: clinica.id,
       nome,
       preparo: linhas(f.get("preparo")),
-      valor: String(f.get("valor") ?? "").trim() ? formatarValor(String(f.get("valor") ?? "").trim()) : "",
+      valor: formatarValor(String(f.get("valor") ?? "")),
       observacoes: String(f.get("observacoes") ?? "").trim(),
       documentos: String(f.get("documentos") ?? "").trim() || undefined,
       observacoesInternas: String(f.get("observacoesInternas") ?? "").trim() || undefined,
@@ -1056,7 +1043,7 @@ function FormExame({ id }: { id?: string }) {
         abrirForm(null);
         abrir(null);
       })} rotuloExcluir={ex?.nome}>
-      <Campo rotulo="Nome do exame"><input name="nome" defaultValue={ex?.nome} className={campo} /></Campo>
+      <Campo rotulo="Nome do exame"><input name="nome" required defaultValue={ex?.nome} className={campo} /></Campo>
       <Campo rotulo="Preparo" dica="Um passo por linha. Inclua o que o paciente deve trazer no dia.">
         <textarea name="preparo" rows={5} defaultValue={ex?.preparo.join("\n")} placeholder={"Jejum de 4 horas\nTrazer exames anteriores e pedido médico"} className={campo} />
       </Campo>
@@ -1098,7 +1085,7 @@ function FormEspecialidade({ id }: { id?: string }) {
     <Moldura titulo={esp ? "Editar especialidade" : "Nova especialidade"} onSalvar={salvar}
       onExcluir={esp && (() => { if (executar((b, u) => excluirEspecialidade(b, u, esp.id), `${esp.nome} excluída`, { desfazer: true, desfeito: "Exclusão desfeita" })) abrirForm(null); })}
       rotuloExcluir={esp?.nome}>
-      <Campo rotulo="Nome"><input name="nome" defaultValue={esp?.nome} placeholder="Ex.: Mastologia" className={campo} /></Campo>
+      <Campo rotulo="Nome"><input name="nome" required defaultValue={esp?.nome} placeholder="Ex.: Mastologia" className={campo} /></Campo>
     </Moldura>
   );
 }
@@ -1183,7 +1170,7 @@ function FormConvenio({ id }: { id?: string }) {
       rotuloExcluir={c?.nome}>
       <EnvioLogo nome={nomeAtual} cor={c?.cor ?? corDoIndice(dados.convenios.length)} valor={logo} onChange={(l) => { marcar(); setLogo(l); }} />
       <Campo rotulo="Nome do convênio">
-        <input name="nome" defaultValue={c?.nome} onChange={(e) => setNomeAtual(e.target.value)} placeholder="Ex.: Unimed" className={campo} />
+        <input name="nome" required defaultValue={c?.nome} onChange={(e) => setNomeAtual(e.target.value)} placeholder="Ex.: Unimed" className={campo} />
       </Campo>
 
       <div className="border-t border-borda pt-4 space-y-4">
@@ -1289,7 +1276,7 @@ function FormOrganizacao() {
   };
   return (
     <Moldura titulo="Nova organização" onSalvar={salvar}>
-      <Campo rotulo="Nome da organização"><input name="nome" placeholder="Ex.: Clínica de Oncologia e Mastologia" className={campo} /></Campo>
+      <Campo rotulo="Nome da organização"><input name="nome" required placeholder="Ex.: Clínica de Oncologia e Mastologia" className={campo} /></Campo>
     </Moldura>
   );
 }
@@ -1318,7 +1305,7 @@ function FormClinica({ id }: { id?: string }) {
         </Campo>
       )}
       <Campo rotulo="Nome da clínica">
-        <input name="nome" defaultValue={c?.nome} onChange={(e) => setNomeAtual(e.target.value)} placeholder="Ex.: COMN" className={campo} />
+        <input name="nome" required defaultValue={c?.nome} onChange={(e) => setNomeAtual(e.target.value)} placeholder="Ex.: COMN" className={campo} />
       </Campo>
     </Moldura>
   );
@@ -1344,7 +1331,7 @@ function FormUsuario({ id }: { id?: string }) {
       onExcluir={us && (() => { if (executar((b, u) => excluirUsuario(b, u, us.id), `${us.nome} excluído`, { desfazer: true, desfeito: "Exclusão desfeita" })) abrirForm(null); })}
       rotuloExcluir={us?.nome}>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Campo rotulo="Nome"><input name="nome" defaultValue={us?.nome} placeholder="Ex.: Recepção COMN tarde" className={campo} /></Campo>
+        <Campo rotulo="Nome"><input name="nome" required defaultValue={us?.nome} placeholder="Ex.: Recepção COMN tarde" className={campo} /></Campo>
         <Campo rotulo="E-mail"><input name="email" type="email" defaultValue={us?.email} placeholder="nome@clinica.com.br" className={campo} /></Campo>
       </div>
       <fieldset>

@@ -18,8 +18,8 @@ import {
 import { useItemDeOutraUnidade, useStore, type Painel } from "@/lib/store";
 import { atende, combina, conflitosPlanos, gruposPlanosDoConvenio, observacoesDoConvenio, resumoRedes } from "@/lib/regras";
 import { salvarConvenio } from "@/lib/repositorio";
-import { DIAS, type Exame, type GrupoPlano, type GrupoPlanoStatus, type Profissional, type Tipo } from "@/lib/modelo";
-import { Atualizado, Avatar, Botao, Chip, LogoMarca, Segmentado, SeletorBusca, Vazio } from "@/components/ui";
+import type { Exame, GrupoPlano, GrupoPlanoStatus, Profissional, Tipo } from "@/lib/modelo";
+import { Atualizado, Avatar, Botao, Chip, Filtro, LogoMarca, Segmentado, SeletorBusca, Vazio, useHoje } from "@/components/ui";
 
 export default function PaginaConvenioDetalhes() {
   const { id } = useParams<{ id: string }>();
@@ -401,7 +401,7 @@ function BlocoProfissionaisRede({
     return profissionais.filter((p) => combina(p.nome, q) || combina(esp(p) ?? "", q));
   }, [profissionais, esp, q]);
 
-  const hoje = DIAS[new Date().getDay() - 1];
+  const hoje = useHoje();
 
   return (
     <div className="rounded-3xl border border-borda bg-superficie p-5 shadow-card space-y-3">
@@ -419,30 +419,13 @@ function BlocoProfissionaisRede({
         <span className="ml-auto text-sm font-medium text-suave">{profissionais.length}</span>
       </div>
 
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-suave" />
-        <input
-          value={busca}
-          onChange={(e) => setBusca(e.target.value)}
-          placeholder={`Pesquisar profissional por nome ou especialidade...`}
-          className="h-9 w-full rounded-xl border border-borda bg-fundo pl-9 pr-8 text-xs outline-none transition focus:border-verde focus:ring-2 focus:ring-verde/15"
-        />
-        {busca && (
-          <button
-            type="button"
-            onClick={() => setBusca("")}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-suave hover:text-texto"
-          >
-            <X className="size-3.5" />
-          </button>
-        )}
-      </div>
+      {profissionais.length > 3 && <Filtro valor={busca} onChange={setBusca} placeholder="Pesquisar por nome ou especialidade" />}
 
       {profissionais.length ? (
         filtrados.length ? (
           <div className="space-y-1.5 max-h-96 overflow-y-auto pr-1">
             {filtrados.map((p, i) => {
-              const atendeHoje = hoje ? p.horarios.some((h) => h.dia === hoje) : false;
+              const atendeHoje = !!hoje && p.horarios.some((h) => h.dia === hoje);
               return (
                 <Link
                   key={p.id}
@@ -492,26 +475,7 @@ function BlocoExamesRede({ exames, abrir }: { exames: Exame[]; abrir: (p: Painel
         <h3 className="text-base font-bold text-texto">Exames cobertos nesta rede</h3>
         <span className="text-sm font-medium text-suave">{exames.length}</span>
       </div>
-      {exames.length > 6 && (
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-suave" />
-          <input
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            placeholder={`Buscar entre os ${exames.length} exames cobertos...`}
-            className="h-9 w-full rounded-xl border border-borda bg-fundo pl-9 pr-8 text-xs outline-none transition focus:border-verde focus:ring-2 focus:ring-verde/15"
-          />
-          {busca && (
-            <button
-              type="button"
-              onClick={() => setBusca("")}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-suave hover:text-texto"
-            >
-              <X className="size-3.5" />
-            </button>
-          )}
-        </div>
-      )}
+      {exames.length > 3 && <Filtro valor={busca} onChange={setBusca} placeholder={`Buscar entre os ${exames.length} exames cobertos`} />}
       {exames.length > 0 ? (
         filtrados.length > 0 ? (
           <div className="flex flex-wrap gap-2">
@@ -534,4 +498,3 @@ function BlocoExamesRede({ exames, abrir }: { exames: Exame[]; abrir: (p: Painel
     </div>
   );
 }
-
