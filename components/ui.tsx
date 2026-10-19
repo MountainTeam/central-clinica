@@ -6,8 +6,8 @@ import { ViewTransition, createContext, useContext, useEffect, useId, useMemo, u
 import * as Icones from "lucide-react";
 import { Activity, Baby, Bone, Brain, Dna, Droplets, Ear, Eye, Heart, HeartPulse, Microscope, Pill, Radiation, Ribbon, ScanLine, Scissors, Smile, Stethoscope, Sun, Syringe, X, type LucideIcon } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { DIAS_PARA_REVISAR, combina, gruposHorarios, iniciais, subtipoInfo, tempoDesde, trechosDestaque } from "@/lib/regras";
-import { DIAS, type DadosClinica, type Profissional, type Tipo } from "@/lib/modelo";
+import { DIAS_PARA_REVISAR, combina, iniciais, subtipoInfo, tempoDesde, trechosDestaque } from "@/lib/regras";
+import { DIAS, type DadosClinica, type Horario, type Profissional, type Tipo } from "@/lib/modelo";
 
 export function Logo({ claro = false }: { claro?: boolean }) {
   return (
@@ -457,10 +457,7 @@ export function CartaoProfissional({ p, especialidade, destaque, i, q = "", onAb
         <Icones.ChevronRight className="size-5 text-suave/50 transition-transform group-hover:translate-x-0.5 group-hover:text-verde" />
       </div>
       {/* dias e horários ficam no cartão: a atendente decide sem abrir a ficha */}
-      <div className="flex items-start gap-1.5 text-sm text-suave">
-        <Icones.CalendarDays className="mt-0.5 size-4 shrink-0" />
-        <div>{p.horarios.length ? gruposHorarios(p.horarios).map((g) => <p key={g}>{g}</p>) : "Horários não informados"}</div>
-      </div>
+      <FaixaSemana horarios={p.horarios} hoje={hoje} />
       {/* chips e destaque colam no rodapé: cartões da mesma linha ficam alinhados */}
       {(atendeHoje || p.restricoes.length > 0 || p.valor) && (
         <div className="mt-auto flex flex-wrap items-center gap-2">
@@ -474,6 +471,28 @@ export function CartaoProfissional({ p, especialidade, destaque, i, q = "", onAb
       )}
       {destaque && <div className="mt-auto">{destaque}</div>}
     </Link>
+  );
+}
+
+// Semana em seis colunas: dia com atendimento em verde e o horário embaixo; sem atendimento, apagado
+export function FaixaSemana({ horarios, hoje }: { horarios: Horario[]; hoje: string | null }) {
+  if (!horarios.length) return <p className="text-sm text-suave">Horários não informados</p>;
+  return (
+    <div className="grid grid-cols-6 gap-1 text-center" aria-label="Dias e horários de atendimento">
+      {DIAS.map((d) => {
+        const h = horarios.find((x) => x.dia === d);
+        const eHoje = d === hoje;
+        return (
+          <div key={d} title={h ? `${d} · ${h.inicio}–${h.fim}` : `${d}: não atende`}
+            className={`rounded-lg py-1.5 ${h ? "bg-verde-claro/70" : "bg-fundo/70"} ${h && eHoje ? "ring-1 ring-verde/50" : ""}`}>
+            <p className={`text-xs font-bold ${h ? "text-verde-escuro" : "text-suave/40"}`}>{d}</p>
+            {h
+              ? <p className="mt-0.5 text-xs leading-tight tabular-nums text-texto">{h.inicio}<br />{h.fim}</p>
+              : <p className="mt-0.5 text-xs leading-tight text-suave/30">—<br />&nbsp;</p>}
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
