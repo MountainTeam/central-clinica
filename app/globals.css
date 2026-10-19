@@ -26,9 +26,23 @@
 }
 
 body {
-  background: var(--color-fundo);
+  /* leve clarão da marca no topo: dá profundidade sem tirar leitura */
+  background: radial-gradient(900px 360px at 18% -8%, rgb(11 122 105 / 0.10), transparent 70%), var(--color-fundo);
   color: var(--color-texto);
 }
+
+/* Troca de tela (React <ViewTransition>): o avatar e o nome do cartão viram o cabeçalho da ficha */
+::view-transition-old(*), ::view-transition-new(*) { animation-duration: 240ms; }
+::view-transition-group(*) { animation-duration: 420ms; animation-timing-function: var(--ease-saida); }
+
+/* Blocos que abrem e fecham animando a altura: <div class="desdobra" data-aberta><div>...</div></div> */
+.desdobra {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 320ms var(--ease-saida);
+}
+.desdobra[data-aberta="false"] { grid-template-rows: 0fr; }
+.desdobra > * { min-height: 0; overflow: hidden; }
 
 .gradiente-marca {
   background-image: linear-gradient(135deg, #0f9680 0%, #2559c4 100%);
@@ -96,10 +110,12 @@ body {
   0% { box-shadow: 0 0 0 0 rgb(11 122 105 / 0.45); }
   100% { box-shadow: 0 0 0 10px rgb(11 122 105 / 0); }
 }
-.pulso { animation: pulsar 2s ease-out infinite; }
+.pulso { animation: pulsar 2s ease-out infinite; animation-delay: calc(var(--i, 0) * -350ms); }
 
 @media (prefers-reduced-motion: reduce) {
   .entrar { animation: none; }
+  .desdobra { transition: none; }
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none; }
   .bolha, .pulso { animation: none; }
   .ecg { animation: none; stroke-dashoffset: 0; }
   .gaveta, .gaveta[data-aberta="true"] { transition: opacity 200ms ease; }

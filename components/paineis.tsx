@@ -67,8 +67,8 @@ function QuemRealiza({ p, cobre }: { p: Profissional; cobre: boolean }) {
         <ChevronDown className={`size-4 shrink-0 text-suave transition-transform duration-200 ${aberto ? "rotate-180" : ""}`} />
       </button>
 
-      {aberto && (
-        <div className="entrar space-y-2.5 border-t border-borda/60 bg-fundo/40 p-3.5 text-sm">
+      <div className="desdobra" data-aberta={aberto} inert={!aberto}><div>
+        <div className="space-y-2.5 border-t border-borda/60 bg-fundo/40 p-3.5 text-sm">
           {p.idadeMinima && <Chip>A partir de {p.idadeMinima} anos</Chip>}
           {p.restricoes.map((r, k) => {
             const info = r.subtipoId ? subtipoInfo(dados, r.subtipoId) : undefined;
@@ -88,7 +88,7 @@ function QuemRealiza({ p, cobre }: { p: Profissional; cobre: boolean }) {
             </Link>
           </div>
         </div>
-      )}
+      </div></div>
     </div>
   );
 }
@@ -220,8 +220,8 @@ function ChecadorConveniosExame({ ex, dados }: { ex: Exame; dados: DadosClinica 
                 )}
                 {naoCobre.length > 0 && cobre.length > 0 && (
                   <div className="flex flex-wrap gap-1 text-xs text-suave pt-1">
-                    <span className="text-[11px] font-medium text-suave self-center mr-1">Demais redes sem cobertura:</span>
-                    {naoCobre.map((s) => <span key={s.id} className="rounded-md bg-fundo px-1.5 py-0.5 text-[11px] text-suave">{s.nome}</span>)}
+                    <span className="text-xs font-medium text-suave self-center mr-1">Demais redes sem cobertura:</span>
+                    {naoCobre.map((s) => <span key={s.id} className="rounded-md bg-fundo px-1.5 py-0.5 text-xs text-suave">{s.nome}</span>)}
                   </div>
                 )}
               </div>
@@ -245,13 +245,11 @@ function ChecadorConveniosExame({ ex, dados }: { ex: Exame; dados: DadosClinica 
                   <Chip tom="verde">{subs.length} {subs.length === 1 ? "rede" : "redes"}</Chip>
                   <ChevronDown className={`size-4 shrink-0 text-suave transition-transform duration-200 ${sel ? "rotate-180" : ""}`} />
                 </button>
-                {sel && (
-                  <div className="entrar space-y-2 border-t border-borda/60 bg-fundo/40 p-3">
-                    <div className="flex flex-wrap gap-1">
-                      {subs.map((s) => <Chip key={s.id} tom="verde">{s.nome}</Chip>)}
-                    </div>
+                <div className="desdobra" data-aberta={sel} inert={!sel}><div>
+                  <div className="flex flex-wrap gap-1 border-t border-borda/60 bg-fundo/40 p-3">
+                    {subs.map((s) => <Chip key={s.id} tom="verde">{s.nome}</Chip>)}
                   </div>
-                )}
+                </div></div>
               </li>
             );
           })}

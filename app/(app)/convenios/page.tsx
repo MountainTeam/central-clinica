@@ -168,15 +168,14 @@ export default function Convenios() {
                         )}
                       </>
                     )}
-                    {obs.length > 0 && (
-                      <div className="flex items-center justify-between text-suave pt-1">
-                        <span className="flex items-center gap-1.5">
-                          <ShieldAlert className="size-3.5 text-alerta" />
-                          Regras operacionais
-                        </span>
-                        <span className="font-semibold text-texto">{obs.length} ativas</span>
-                      </div>
-                    )}
+                    {/* linha sempre presente: os rodapés dos cartões ficam na mesma altura */}
+                    <div className="flex items-center justify-between text-suave pt-1">
+                      <span className="flex items-center gap-1.5">
+                        <ShieldAlert className={`size-3.5 ${obs.length ? "text-alerta" : "text-suave/60"}`} />
+                        Regras operacionais
+                      </span>
+                      <span className={obs.length ? "font-semibold text-texto" : ""}>{obs.length ? `${obs.length} ativas` : "nenhuma"}</span>
+                    </div>
                   </div>
                 </div>
 

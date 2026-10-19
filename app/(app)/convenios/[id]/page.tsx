@@ -219,7 +219,7 @@ export default function PaginaConvenioDetalhes() {
                 ) : redesFiltradas.length === 0 ? (
                   <p className="text-sm text-suave">Nenhuma rede com &ldquo;{buscaPlano}&rdquo;.</p>
                 ) : (
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                     {redesFiltradas.map((r) => {
                       const vinculo = r.consultas || r.exames
                         ? `${r.consultas} ${r.consultas === 1 ? "médico" : "médicos"} de consulta · ${r.exames} de exame`
@@ -227,9 +227,9 @@ export default function PaginaConvenioDetalhes() {
                       return (
                         <button key={r.subtipo.id} type="button" onClick={() => { setSubId(r.subtipo.id); setAba("corpo"); }}
                           title="Ver quem atende nesta rede"
-                          className={`pressionavel inline-flex items-center gap-2 rounded-xl border px-3 py-1.5 text-sm font-medium shadow-sm transition ${r.consultas || r.exames ? "border-verde/30 bg-verde-claro/40 text-texto hover:border-verde" : "border-borda bg-fundo text-suave hover:border-alerta/60"}`}>
-                          {r.subtipo.nome}
-                          <span className="text-[12px] text-suave">{vinculo}</span>
+                          className={`pressionavel flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left text-sm font-medium shadow-sm transition ${r.consultas || r.exames ? "border-verde/30 bg-verde-claro/40 text-texto hover:border-verde" : "border-borda bg-fundo text-suave hover:border-alerta/60"}`}>
+                          <span className="truncate">{r.subtipo.nome}</span>
+                          <span className="shrink-0 text-xs text-suave">{vinculo}</span>
                         </button>
                       );
                     })}

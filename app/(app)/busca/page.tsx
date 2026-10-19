@@ -18,7 +18,7 @@ import { useStore } from "@/lib/store";
 import {
   type Recente, combina, gruposPlanosDoConvenio, idsDeRedes, lembrarRecente, observacoesDoConvenio, pontuacao, resultadoPrincipal, sugestaoParaBusca, sugestoesDePlano, atende,
 } from "@/lib/regras";
-import { CartaoProfissional, Chip, Destaque, Icone, LogoMarca, Segmentado, SeletorConvenio, SeletorEspecialidade, Vazio } from "@/components/ui";
+import { CartaoProfissional, Chip, Destaque, Icone, LogoMarca, Segmentado, SeletorConvenio, SeletorEspecialidade, Vazio, iconeDaEspecialidade } from "@/components/ui";
 
 const ABAS = [
   { id: "profissionais", rotulo: "Profissionais" },
@@ -136,6 +136,13 @@ function BuscaRapida() {
     especialidades: especialidadesFiltradas.length,
   };
   const chaveContagem = ABAS.map((a) => contagem[a.id]).join(",");
+  // posição da pílula sob a aba ativa (as abas têm larguras diferentes, então mede no DOM)
+  const abas = useRef<HTMLDivElement>(null);
+  const [pilula, setPilula] = useState({ left: 0, width: 0 });
+  useEffect(() => {
+    const el = abas.current?.querySelector<HTMLElement>('[aria-selected="true"]');
+    if (el) setPilula({ left: el.offsetLeft, width: el.offsetWidth });
+  }, [secaoAtiva, chaveContagem]);
 
   useEffect(() => { if (!q) { clicouAba.current = false; setTipoManual(false); tipoAuto.current = ""; } }, [q]);
   // aba atual sem resultado e outra com resultado: vai para a que tem mais
@@ -264,6 +271,32 @@ function BuscaRapida() {
               </div>
               <SeletorEspecialidade dados={dados} valor={espOk} onChange={setEsp} />
             </div>
+            {/* abas dentro do cartão: menos faixas antes do primeiro resultado; a pílula desliza até a aba ativa */}
+            <div ref={abas} role="tablist" aria-label="Resultados" onKeyDown={teclaAbas} className="relative mt-4 flex gap-1 overflow-x-auto border-t border-borda pt-3">
+              <span aria-hidden className="pointer-events-none absolute top-3 h-9 rounded-xl bg-verde-claro transition-[left,width] duration-300 ease-saida"
+                style={{ left: pilula.left, width: pilula.width, opacity: pilula.width ? 1 : 0 }} />
+              {ABAS.map((a) => {
+                const ativo = secaoAtiva === a.id;
+                return (
+                  <button
+                    key={a.id}
+                    id={`aba-${a.id}`}
+                    type="button"
+                    role="tab"
+                    aria-selected={ativo}
+                    tabIndex={ativo ? 0 : -1}
+                    aria-controls="resultados-busca"
+                    onClick={() => { clicouAba.current = true; setSecaoAtiva(a.id); }}
+                    className={`pressionavel relative flex h-9 shrink-0 items-center gap-2 rounded-xl px-3 text-sm font-semibold transition-colors ${
+                      ativo ? "text-verde-escuro" : "text-suave hover:text-texto"
+                    }`}
+                  >
+                    {a.rotulo}
+                    <span className={`tabular-nums ${ativo ? "text-verde-escuro" : "text-suave"}`}>{contagem[a.id]}</span>
+                  </button>
+                );
+              })}
+            </div>
       </div>
 
       {abertos.length > 0 && (
@@ -313,30 +346,6 @@ function BuscaRapida() {
         );
       })()}
 
-      <div role="tablist" aria-label="Resultados" onKeyDown={teclaAbas} className="flex gap-1 overflow-x-auto rounded-2xl border border-borda bg-superficie p-1">
-        {ABAS.map((a) => {
-          const ativo = secaoAtiva === a.id;
-          return (
-            <button
-              key={a.id}
-              id={`aba-${a.id}`}
-              type="button"
-              role="tab"
-              aria-selected={ativo}
-              tabIndex={ativo ? 0 : -1}
-              aria-controls="resultados-busca"
-              onClick={() => { clicouAba.current = true; setSecaoAtiva(a.id); }}
-              className={`pressionavel flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${
-                ativo ? "bg-verde-claro text-verde" : "text-suave hover:bg-fundo hover:text-texto"
-              }`}
-            >
-              {a.rotulo}
-              <span className={`tabular-nums ${ativo ? "text-verde" : "text-suave"}`}>{contagem[a.id]}</span>
-            </button>
-          );
-        })}
-      </div>
-
       {/* ÁREA DE RESULTADOS: só a aba ativa */}
       <div id="resultados-busca" role="tabpanel" aria-labelledby={`aba-${secaoAtiva}`}>
         {/* ==================== 1. SEÇÃO ESPECIALIDADES ==================== */}
@@ -366,7 +375,7 @@ function BuscaRapida() {
                   >
                     <div className="flex items-center justify-between w-full">
                       <span className="grid size-12 place-items-center rounded-2xl bg-verde-claro text-verde transition-colors group-hover:bg-verde group-hover:text-white">
-                        <Icone nome={e.icone} className="size-6" />
+                        <Icone nome={iconeDaEspecialidade(e)} className="size-6" />
                       </span>
                       <span className="grid size-8 place-items-center rounded-xl bg-fundo text-suave/60 transition-all group-hover:bg-verde-claro group-hover:text-verde group-hover:translate-x-0.5">
                         <ChevronRight className="size-4" />

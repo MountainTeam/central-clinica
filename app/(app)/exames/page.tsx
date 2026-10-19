@@ -34,9 +34,10 @@ export default function Exames() {
             <button key={e.id} onClick={() => abrir({ tipo: "exame", id: e.id })} style={{ "--i": Math.min(i, 10) } as React.CSSProperties}
               className="entrar pressionavel levanta flex flex-col rounded-3xl border border-borda bg-superficie p-5 text-left shadow-card">
               <p className="line-clamp-2 font-semibold">{e.nome}</p>
+              {/* mesma altura nos dois casos: os cartões da linha alinham */}
               {e.valor?.trim()
-                ? <p className="mt-2 text-lg font-bold text-verde">{e.valor}</p>
-                : <p className="mt-2 text-sm text-suave">Valor não cadastrado</p>}
+                ? <p className="mt-2 text-lg font-bold leading-7 text-verde">{e.valor}</p>
+                : <p className="mt-2 text-sm font-semibold leading-7 text-suave/80">Valor não cadastrado</p>}
               <p className="mt-1 text-sm text-suave">
                 <b className="text-texto">{medicos}</b> {medicos === 1 ? "médico" : "médicos"} · cobre <b className="text-texto">{convenios}</b> {convenios === 1 ? "convênio" : "convênios"}
               </p>

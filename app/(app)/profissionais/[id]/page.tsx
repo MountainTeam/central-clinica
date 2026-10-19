@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { ViewTransition, useMemo, useState } from "react";
 import { ArrowLeft, Check, ChevronDown, ChevronRight, ClipboardList, Clock, Copy, FlaskConical, NotebookPen, Pencil, ShieldCheck, TriangleAlert, X } from "lucide-react";
 import { useItemDeOutraUnidade, useStore } from "@/lib/store";
 import { DIAS, type DadosClinica, type Profissional } from "@/lib/modelo";
 import { atende, coberturaDaBusca, combina, gruposHorarios, subtipoInfo } from "@/lib/regras";
 import { salvarProfissional } from "@/lib/repositorio";
-import { Atualizado, Avatar, Botao, Chip, Filtro, Icone, LogoMarca, ObservacaoInterna, Secao, Vazio, useHoje } from "@/components/ui";
+import { Atualizado, Avatar, Botao, Chip, Filtro, Icone, LogoMarca, ObservacaoInterna, Secao, Vazio, iconeDaEspecialidade, useHoje } from "@/components/ui";
 import { EditorHorarios, lerHorarios } from "@/components/formularios";
 
 const cartao = "rounded-3xl border border-borda bg-superficie p-5 shadow-card sm:p-6";
@@ -69,11 +69,11 @@ function Ficha({ p }: { p: Profissional }) {
 
       <header className={`entrar ${cartao} relative mb-6 flex flex-wrap items-center gap-5 overflow-hidden`} style={{ "--i": 1 } as React.CSSProperties}>
         <div className="pointer-events-none bg-verde absolute inset-x-0 top-0 h-1" />
-        <Avatar nome={p.nome} grande />
+        <ViewTransition name={`avatar-${p.id}`}><Avatar nome={p.nome} grande /></ViewTransition>
         <div className="min-w-0 flex-1">
-          <h1 className="text-[28px] font-bold leading-tight tracking-tight">{p.nome}</h1>
+          <ViewTransition name={`nome-${p.id}`}><h1 className="text-[28px] font-bold leading-tight tracking-tight">{p.nome}</h1></ViewTransition>
           <div className="mt-2 flex flex-wrap gap-2">
-            {esp && <Chip tom="verde"><Icone nome={esp.icone} className="size-3.5" />{esp.nome}</Chip>}
+            {esp && <Chip tom="verde"><Icone nome={iconeDaEspecialidade(esp)} className="size-3.5" />{esp.nome}</Chip>}
             {p.idadeMinima && <Chip>A partir de {p.idadeMinima} anos</Chip>}
             {hoje && (atendeHoje
               ? <Chip tom="verde"><span className="pulso size-1.5 rounded-full bg-verde" />Atende hoje · {atendeHoje.inicio}–{atendeHoje.fim}</Chip>
@@ -98,13 +98,13 @@ function Ficha({ p }: { p: Profissional }) {
       <div className="grid items-start gap-6 lg:grid-cols-[1fr_380px]">
         <div className="space-y-6">
           {p.restricoes.length > 0 && (
-            <div className={cartao}>
+            <div className={`${cartao} border-alerta/30 bg-alerta-claro/60`}>
               <Secao titulo="Restrições" icone={<TriangleAlert className="size-4" />} i={2}>
                 <ul className="space-y-2">
                   {p.restricoes.map((r, k) => {
                     const info = r.subtipoId ? subtipoInfo(dados, r.subtipoId) : undefined;
                     return (
-                      <li key={k} className="flex gap-3 rounded-2xl bg-alerta-claro px-4 py-3 text-[15px] text-alerta">
+                      <li key={k} className="flex gap-3 rounded-2xl bg-superficie/80 px-4 py-3 text-[15px] font-medium text-alerta">
                         <TriangleAlert className="mt-0.5 size-4 shrink-0" />
                         <span>{r.texto}{info && <span className="ml-1 opacity-75">· {info.convenio.nome} · {info.subtipo.nome}</span>}</span>
                       </li>
@@ -387,7 +387,8 @@ function ChecadorConveniosProfissional({ dados, p }: { dados: DadosClinica; p: P
                   </div>
                 )}
 
-                {listaAberta && <div className="entrar border-t border-borda/60 divide-y divide-borda/40">
+                <div className="desdobra" data-aberta={listaAberta} inert={!listaAberta}><div>
+                <div className="border-t border-borda/60 divide-y divide-borda/40">
                   {subs.map((s) => {
                     const podeC = p.atende[s.id]?.includes("c");
                     const podeE = p.atende[s.id]?.includes("e");
@@ -408,7 +409,8 @@ function ChecadorConveniosProfissional({ dados, p }: { dados: DadosClinica; p: P
                       </div>
                     );
                   })}
-                </div>}
+                </div>
+                </div></div>
               </div>
             );
           })}

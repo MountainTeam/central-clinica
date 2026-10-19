@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, ViewTransition, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUpRight, Building2, Check, CheckCircle2, ChevronsUpDown, FileUp, FlaskConical, LayoutGrid, Lock, LogOut, PhoneCall, Search, ShieldCheck, TriangleAlert, Users } from "lucide-react";
 import type { Usuario } from "@/lib/modelo";
 import { PAPEIS, podeCriarUsuario, podeGerenciarUnidades } from "@/lib/permissoes";
@@ -77,9 +77,11 @@ export function Estrutura({ children }: { children: React.ReactNode }) {
   if (!carregado || !usuario) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-fundo p-6">
-        <div className="text-center">
-          <div className="mx-auto mb-3 size-8 animate-spin rounded-full border-2 border-verde border-t-transparent" />
-          <p className="text-sm font-semibold text-suave">Carregando Guia Comercial...</p>
+        <div className="w-full max-w-md space-y-4" aria-busy="true" aria-label="Carregando Guia Comercial">
+          <div className="mx-auto w-fit"><Logo /></div>
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="entrar h-24 animate-pulse rounded-3xl border border-borda bg-superficie/70" style={{ "--i": i } as React.CSSProperties} />
+          ))}
         </div>
       </div>
     );
@@ -169,10 +171,13 @@ export function Estrutura({ children }: { children: React.ReactNode }) {
         </nav>
       </header>
 
-      <main key={`${rota}-${clinica?.id}`} tabIndex={-1} className="mx-auto outline-none max-w-6xl px-4 py-8 sm:px-8 lg:py-12">
-        {clinica && !livre && <FaixaPlano />}
-        {clinica || livre ? children : <Vazio texto="Escolha uma unidade para acessar esta opção." />}
-      </main>
+      {/* a troca de tela cruza em fade; avatar e nome com view-transition-name viajam do cartão até a ficha */}
+      <ViewTransition>
+        <main key={`${rota}-${clinica?.id}`} tabIndex={-1} className="mx-auto outline-none max-w-6xl px-4 py-8 sm:px-8 lg:py-12">
+          {clinica && !livre && <FaixaPlano />}
+          {clinica || livre ? children : <Vazio texto="Escolha uma unidade para acessar esta opção." />}
+        </main>
+      </ViewTransition>
 
       <Paineis />
       <Suspense><ExameNaUrl /></Suspense>
@@ -354,7 +359,7 @@ function SeletorClinica({ compacto = false }: { compacto?: boolean }) {
 
         <span className="min-w-0 flex-1">
           {!compacto && (
-            <span className="block truncate text-[11px] font-semibold text-suave">
+            <span className="block truncate text-xs font-semibold text-suave">
               {temNomeGrupoDiferente ? org?.nome : "Unidade ativa"}
             </span>
           )}
@@ -384,7 +389,7 @@ function SeletorClinica({ compacto = false }: { compacto?: boolean }) {
           {/* Cabeçalho do menu */}
           <div className="flex items-center justify-between border-b border-borda/60 px-3.5 py-2.5">
             <span className="text-xs font-bold text-texto tracking-tight">Trocar de Unidade</span>
-            <span className="rounded-full bg-fundo px-2 py-0.5 text-[11px] font-semibold text-suave">
+            <span className="rounded-full bg-fundo px-2 py-0.5 text-xs font-semibold text-suave">
               {clinicas.length} disponíveis
             </span>
           </div>
@@ -414,10 +419,10 @@ function SeletorClinica({ compacto = false }: { compacto?: boolean }) {
                 {grupos.redesMulti.map(({ org: o, itens }) => (
                   <div key={o.id} className="rounded-xl bg-fundo/40 p-1.5 space-y-1 border border-borda/40">
                     <div className="flex items-center justify-between px-2 pt-1 pb-1">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-suave truncate">
+                      <span className="text-xs font-bold uppercase tracking-wider text-suave truncate">
                         {o.nome}
                       </span>
-                      <span className="text-[10px] font-medium text-suave/70">
+                      <span className="text-xs font-medium text-suave/70">
                         {itens.length} {itens.length === 1 ? "unidade" : "unidades"}
                       </span>
                     </div>
@@ -442,11 +447,11 @@ function SeletorClinica({ compacto = false }: { compacto?: boolean }) {
                             </span>
                           </div>
                           {ativa ? (
-                            <span className="inline-flex items-center gap-1 rounded-md bg-verde px-1.5 py-0.5 text-[10px] font-bold text-white">
+                            <span className="inline-flex items-center gap-1 rounded-md bg-verde px-1.5 py-0.5 text-xs font-bold text-white">
                               <Check className="size-3" strokeWidth={3} /> Ativa
                             </span>
                           ) : (
-                            <span className="text-[11px] font-medium text-suave opacity-0 group-hover:opacity-100 transition-opacity">
+                            <span className="text-xs font-medium text-suave opacity-0 group-hover:opacity-100 transition-opacity">
                               Acessar
                             </span>
                           )}
@@ -460,7 +465,7 @@ function SeletorClinica({ compacto = false }: { compacto?: boolean }) {
                 {grupos.unidadesSoltas.length > 0 && (
                   <div className="space-y-1">
                     {grupos.redesMulti.length > 0 && (
-                      <p className="px-2 pt-1 text-[11px] font-bold uppercase tracking-wider text-suave">
+                      <p className="px-2 pt-1 text-xs font-bold uppercase tracking-wider text-suave">
                         Outras Unidades
                       </p>
                     )}
@@ -484,11 +489,11 @@ function SeletorClinica({ compacto = false }: { compacto?: boolean }) {
                             </span>
                           </div>
                           {ativa ? (
-                            <span className="inline-flex items-center gap-1 rounded-md bg-verde px-1.5 py-0.5 text-[10px] font-bold text-white">
+                            <span className="inline-flex items-center gap-1 rounded-md bg-verde px-1.5 py-0.5 text-xs font-bold text-white">
                               <Check className="size-3" strokeWidth={3} /> Ativa
                             </span>
                           ) : (
-                            <span className="text-[11px] font-medium text-suave opacity-0 group-hover:opacity-100 transition-opacity">
+                            <span className="text-xs font-medium text-suave opacity-0 group-hover:opacity-100 transition-opacity">
                               Acessar
                             </span>
                           )}

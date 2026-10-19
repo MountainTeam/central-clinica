@@ -52,7 +52,7 @@ export default function Login() {
             </label>
             <fieldset>
               <legend className="mb-1.5 block text-sm font-semibold">Usuário de teste</legend>
-              <div className="max-h-72 space-y-1.5 overflow-y-auto pr-1">
+              <div className="space-y-1.5">
                 {banco.usuarios.map((u) => (
                   <label key={u.id} className="pressionavel flex cursor-pointer items-center gap-3 rounded-xl border border-borda bg-superficie px-3 py-2.5 has-[:checked]:border-verde/50 has-[:checked]:bg-verde-claro">
                     <input type="radio" name="usuario" value={u.id} checked={u.id === escolhido.id} onChange={() => setUsuarioId(u.id)} className="size-4 accent-verde" />

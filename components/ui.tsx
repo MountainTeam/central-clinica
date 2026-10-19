@@ -2,9 +2,9 @@
 
 import { reduzirImagem } from "@/lib/logo";
 import Link from "next/link";
-import { createContext, useContext, useEffect, useId, useMemo, useRef, useState } from "react";
+import { ViewTransition, createContext, useContext, useEffect, useId, useMemo, useRef, useState } from "react";
 import * as Icones from "lucide-react";
-import { Activity, Baby, Bone, Brain, Ear, Eye, Heart, HeartPulse, Microscope, Pill, ScanLine, Smile, Stethoscope, Syringe, X, type LucideIcon } from "lucide-react";
+import { Activity, Baby, Bone, Brain, Dna, Droplets, Ear, Eye, Heart, HeartPulse, Microscope, Pill, Radiation, Ribbon, ScanLine, Scissors, Smile, Stethoscope, Sun, Syringe, X, type LucideIcon } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { DIAS_PARA_REVISAR, combina, gruposHorarios, iniciais, subtipoInfo, tempoDesde, trechosDestaque } from "@/lib/regras";
 import { DIAS, type DadosClinica, type Profissional, type Tipo } from "@/lib/modelo";
@@ -18,7 +18,7 @@ export function Logo({ claro = false }: { claro?: boolean }) {
       </div>
       <div className="leading-tight">
         <p className={`text-[15px] font-bold tracking-tight ${claro ? "text-white" : "text-texto"}`}>OncologyGroup</p>
-        <p className={`text-[11px] font-medium ${claro ? "text-white/75" : "text-suave"}`}>Guia Comercial</p>
+        <p className={`text-xs font-medium ${claro ? "text-white/75" : "text-suave"}`}>Guia Comercial</p>
       </div>
     </div>
   );
@@ -26,8 +26,18 @@ export function Logo({ claro = false }: { claro?: boolean }) {
 
 // Ícones de especialidade: mapa explícito (importar tudo do lucide pesa); nome desconhecido cai no estetoscópio
 const ICONES_ESPECIALIDADE: Record<string, LucideIcon> = {
-  Stethoscope, Activity, Baby, Bone, Brain, Ear, Eye, Heart, HeartPulse, Microscope, Pill, ScanLine, Smile, Syringe,
+  Stethoscope, Activity, Baby, Bone, Brain, Dna, Droplets, Ear, Eye, Heart, HeartPulse, Microscope, Pill, Radiation, Ribbon, ScanLine, Scissors, Smile, Sun, Syringe,
 };
+// Sem ícone escolhido, o nome da especialidade sugere um: "Mastologia" vira o laço, "Radiologia" o símbolo de radiação
+const ICONE_PELO_NOME: [RegExp, string][] = [
+  [/mastolog/i, "Ribbon"], [/oncolog|quimio/i, "Dna"], [/hematolog/i, "Droplets"], [/dermatolog/i, "Sun"], [/cirurg/i, "Scissors"],
+  [/radiolog|imagem/i, "Radiation"], [/ginecolog|obstetr|pediatr/i, "Baby"], [/cardiolog/i, "HeartPulse"], [/neuro|psiq/i, "Brain"],
+  [/oftalmo/i, "Eye"], [/otorrino/i, "Ear"], [/ortoped|reumato/i, "Bone"], [/odonto|bucomaxilo/i, "Smile"], [/patolog|laborat/i, "Microscope"],
+];
+export function iconeDaEspecialidade({ nome, icone }: { nome: string; icone: string }): string {
+  if (icone && icone !== "Stethoscope") return icone;
+  return ICONE_PELO_NOME.find(([re]) => re.test(nome))?.[1] ?? "Stethoscope";
+}
 export function Icone({ nome, className }: { nome: string; className?: string }) {
   const C = Object.hasOwn(ICONES_ESPECIALIDADE, nome) ? ICONES_ESPECIALIDADE[nome] : Stethoscope;
   return <C className={className} />;
@@ -44,7 +54,10 @@ export function Avatar({ nome, grande = false }: { nome: string; grande?: boolea
 export function CabecalhoPagina({ titulo, acao }: { titulo: string; acao?: React.ReactNode }) {
   return (
     <div className="entrar mb-8 flex flex-wrap items-end justify-between gap-4">
-      <h1 className="text-[28px] font-bold tracking-tight">{titulo}</h1>
+      <h1 className="text-[28px] font-bold tracking-tight">
+        <span aria-hidden className="gradiente-marca mb-2 block h-1 w-10 rounded-full" />
+        {titulo}
+      </h1>
       {acao}
     </div>
   );
@@ -66,7 +79,7 @@ export function Botao({ children, onClick, variante = "primario", type = "button
 export function Chip({ children, tom = "neutro" }: { children: React.ReactNode; tom?: "neutro" | "verde" | "azul" | "alerta" | "perigo" }) {
   const t = {
     neutro: "bg-fundo text-texto border-borda",
-    verde: "bg-verde-claro text-verde border-transparent",
+    verde: "bg-verde-claro text-verde-escuro border-transparent",
     azul: "bg-azul-claro text-azul border-transparent",
     alerta: "bg-alerta-claro text-alerta border-transparent",
     perigo: "bg-perigo-claro text-perigo border-transparent",
@@ -198,7 +211,7 @@ export function SeletorBusca({ valor, onChange, vazio, placeholder, atual, opcoe
       </div>
 
       {aberto && (
-        <div className={`absolute left-0 top-full z-50 mt-1.5 w-full ${largo ? "min-w-[280px]" : ""} rounded-2xl border border-borda bg-superficie p-2 shadow-elevado`}>
+        <div className={`entrar absolute left-0 top-full z-50 mt-1.5 w-full ${largo ? "min-w-[280px]" : ""} rounded-2xl border border-borda bg-superficie p-2 shadow-elevado`}>
           <div className="relative mb-2">
             <Icones.Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-suave" />
             <input
@@ -436,9 +449,9 @@ export function CartaoProfissional({ p, especialidade, destaque, i, q = "", onAb
     <Link href={`/profissionais/${p.id}`} onClick={onAbrir} style={{ "--i": Math.min(i, 10) } as React.CSSProperties}
       className="entrar pressionavel levanta group flex h-full w-full flex-col gap-4 rounded-3xl border border-borda bg-superficie p-5 text-left shadow-card">
       <div className="flex items-center gap-3">
-        <Avatar nome={p.nome} />
+        <ViewTransition name={`avatar-${p.id}`}><Avatar nome={p.nome} /></ViewTransition>
         <div className="min-w-0 flex-1">
-          <p className="line-clamp-2 font-semibold"><Destaque texto={p.nome} q={q} /></p>
+          <ViewTransition name={`nome-${p.id}`}><p className="line-clamp-2 font-semibold"><Destaque texto={p.nome} q={q} /></p></ViewTransition>
           {especialidade && <p className="text-sm text-suave">{especialidade}</p>}
         </div>
         <Icones.ChevronRight className="size-5 text-suave/50 transition-transform group-hover:translate-x-0.5 group-hover:text-verde" />
@@ -448,8 +461,9 @@ export function CartaoProfissional({ p, especialidade, destaque, i, q = "", onAb
         <Icones.CalendarDays className="mt-0.5 size-4 shrink-0" />
         <div>{p.horarios.length ? gruposHorarios(p.horarios).map((g) => <p key={g}>{g}</p>) : "Horários não informados"}</div>
       </div>
+      {/* chips e destaque colam no rodapé: cartões da mesma linha ficam alinhados */}
       {(atendeHoje || p.restricoes.length > 0 || p.valor) && (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="mt-auto flex flex-wrap items-center gap-2">
           {atendeHoje && <Chip tom="verde"><span className="pulso size-1.5 rounded-full bg-verde" />Atende hoje</Chip>}
           {doPlano.map((r, k) => <Chip key={k} tom="alerta"><Icones.TriangleAlert className="size-3.5 shrink-0" />{r.texto}</Chip>)}
           {outras > 0 && (
@@ -458,7 +472,7 @@ export function CartaoProfissional({ p, especialidade, destaque, i, q = "", onAb
           {p.valor && <Chip tom="verde">Particular: {p.valor}</Chip>}
         </div>
       )}
-      {destaque}
+      {destaque && <div className="mt-auto">{destaque}</div>}
     </Link>
   );
 }
