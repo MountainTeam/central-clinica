@@ -259,3 +259,26 @@ export function sugestaoParaBusca(nomes: string[], q: string): string | undefine
   }
   return melhor?.nome;
 }
+
+// Formata texto ou número como valor monetário em Real (ex.: "250" -> "R$ 250,00")
+export function formatarValor(v?: string): string {
+  if (!v) return "";
+  const limpo = v.trim();
+  if (!limpo) return "";
+  const semCifrao = limpo.replace(/^R\$\s*/i, "").trim();
+  if (!semCifrao) return "";
+  const numStr = semCifrao.includes(",") ? semCifrao.replace(/\./g, "").replace(",", ".") : semCifrao;
+  const n = parseFloat(numStr);
+  if (!isNaN(n) && /^[\d.,]+$/.test(semCifrao)) {
+    return `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+  return `R$ ${semCifrao}`;
+}
+
+// Retorna apenas a parte numérica formatada sem o "R$" (ex.: "250" -> "250,00")
+export function valorSemCifrao(v?: string): string {
+  if (!v) return "";
+  const f = formatarValor(v);
+  return f.replace(/^R\$\s*/i, "").trim();
+}
+

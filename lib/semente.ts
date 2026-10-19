@@ -255,6 +255,7 @@ const PROFISSIONAIS: Profissional[] = [
       { dia: "Ter", inicio: "08:00", fim: "12:00" },
       { dia: "Qua", inicio: "08:00", fim: "12:00" },
     ],
+    valor: "R$ 350,00",
     procedimentos: [],
     exames: [],
     atende: {

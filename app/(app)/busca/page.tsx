@@ -5,7 +5,6 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
-  BookOpen,
   ChevronRight,
   FlaskConical,
   Search,
@@ -22,10 +21,10 @@ import {
 import { CartaoProfissional, Chip, Destaque, Icone, LogoMarca, Segmentado, SeletorConvenio, SeletorEspecialidade, Vazio } from "@/components/ui";
 
 const ABAS = [
-  { id: "profissionais", rotulo: "Profissionais" },
+  { id: "especialidades", rotulo: "Especialidades" },
   { id: "exames", rotulo: "Exames" },
   { id: "convenios", rotulo: "Convênios" },
-  { id: "especialidades", rotulo: "Especialidades" },
+  { id: "profissionais", rotulo: "Profissionais" },
 ] as const;
 type Secao = (typeof ABAS)[number]["id"];
 
@@ -41,7 +40,7 @@ function BuscaRapida() {
   const params = useSearchParams();
   const [texto, setTexto] = useState(() => params.get("q") ?? "");
   const [esp, setEsp] = useState(() => params.get("esp") ?? "");
-  const [secaoAtiva, setSecaoAtiva] = useState<Secao>(() => ABAS.find((a) => a.id === params.get("aba"))?.id ?? "profissionais");
+  const [secaoAtiva, setSecaoAtiva] = useState<Secao>(() => ABAS.find((a) => a.id === params.get("aba"))?.id ?? "especialidades");
   // "Filtrar médicos" abre o seletor de convênio já buscando pelo nome do convênio
   const [filtroConvenio, setFiltroConvenio] = useState<string | null>(null);
   const [recentes, setRecentes] = useState<Recente[]>([]);
@@ -76,7 +75,7 @@ function BuscaRapida() {
     const p = new URLSearchParams(params.toString());
     const por = (k: string, v: string) => (v ? p.set(k, v) : p.delete(k));
     por("q", texto.trim());
-    por("aba", secaoAtiva === "profissionais" ? "" : secaoAtiva);
+    por("aba", secaoAtiva === "especialidades" ? "" : secaoAtiva);
     por("esp", esp);
     por("tipo", tipoManual ? "manual" : "");
     const s = p.toString();
@@ -97,7 +96,7 @@ function BuscaRapida() {
   // 1. Filtro de Profissionais
   const textoProfissional = (p: (typeof dados.profissionais)[number]) => {
     const exames = p.exames.map((id) => dados.exames.find((e) => e.id === id)?.nome ?? "");
-    return [p.nome, nomeEsp(p.especialidadeId), ...p.procedimentos, ...exames].join(" ");
+    return [p.nome, nomeEsp(p.especialidadeId), p.valor ? `particular ${p.valor}` : "", ...p.procedimentos, ...exames].join(" ");
   };
   const profissionaisFiltrados = ordenar(
     dados.profissionais.filter((p) => {
@@ -133,10 +132,10 @@ function BuscaRapida() {
 
   const filtrando = !!(q || subtipo || espOk);
   const contagem: Record<Secao, number> = {
-    profissionais: profissionaisFiltrados.length,
+    especialidades: especialidadesFiltradas.length,
     exames: examesFiltrados.length,
     convenios: conveniosFiltrados.length,
-    especialidades: especialidadesFiltradas.length,
+    profissionais: profissionaisFiltrados.length,
   };
   const chaveContagem = ABAS.map((a) => contagem[a.id]).join(",");
 
@@ -150,10 +149,10 @@ function BuscaRapida() {
 
   // o item cujo nome mais combina, quando ele não está na aba aberta ("mamo" → Mamografia com Profissionais aberto)
   const principal = q ? resultadoPrincipal([
-    ...profissionaisFiltrados.map((x) => ({ aba: "profissionais" as const, id: x.id, nome: x.nome })),
+    ...especialidadesFiltradas.map((x) => ({ aba: "especialidades" as const, id: x.id, nome: x.nome })),
     ...examesFiltrados.map((x) => ({ aba: "exames" as const, id: x.id, nome: x.nome })),
     ...conveniosFiltrados.map((x) => ({ aba: "convenios" as const, id: x.id, nome: x.nome })),
-    ...especialidadesFiltradas.map((x) => ({ aba: "especialidades" as const, id: x.id, nome: x.nome })),
+    ...profissionaisFiltrados.map((x) => ({ aba: "profissionais" as const, id: x.id, nome: x.nome })),
   ], q) : undefined;
   const mostrarPrincipal = principal && principal.aba !== secaoAtiva ? principal : undefined;
   // sem clique no seletor, o atendimento segue o que foi digitado: exame → Exame, médico/especialidade → Consulta
@@ -476,17 +475,21 @@ function BuscaRapida() {
                   const countNao = gNao?.planos.length ?? 0;
 
                   return (
-                    <div
+                    <Link
                       key={c.id}
+                      href={`/convenios/${c.id}`}
                       style={{ "--i": Math.min(i, 10) } as React.CSSProperties}
-                      className="entrar pressionavel levanta group flex flex-col justify-between rounded-3xl border border-borda bg-superficie p-6 shadow-card transition-all hover:border-verde/40"
+                      className="entrar pressionavel levanta group flex flex-col justify-between rounded-3xl border border-borda bg-superficie p-6 text-left shadow-card transition-all hover:border-verde/40 hover:shadow-elevado"
                     >
                       <div>
                         <div className="mb-4 flex items-center justify-between">
                           <LogoMarca nome={c.nome} logo={c.logo} cor={c.cor} tamanho="lg" />
-                          <span className="rounded-xl bg-fundo px-3 py-1 text-[13px] font-semibold text-suave">
-                            {c.subtipos.length} {c.subtipos.length === 1 ? "rede" : "redes"}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="rounded-xl bg-fundo px-3 py-1 text-[13px] font-semibold text-suave">
+                              {c.subtipos.length} {c.subtipos.length === 1 ? "rede" : "redes"}
+                            </span>
+                            <ChevronRight className="size-5 text-suave/50 transition-transform group-hover:translate-x-0.5 group-hover:text-verde" />
+                          </div>
                         </div>
 
                         <h3 className="text-xl font-bold tracking-tight text-texto group-hover:text-verde transition-colors">
@@ -525,23 +528,7 @@ function BuscaRapida() {
                           )}
                         </div>
                       </div>
-
-                      <div className="mt-5 flex items-center justify-between border-t border-borda/60 pt-3 text-[13px] font-bold text-verde">
-                        <Link href={`/convenios/${c.id}`} className="hover:underline flex items-center gap-1.5">
-                          <BookOpen className="size-3.5" />
-                          Manual de regras
-                        </Link>
-                        {c.subtipos.length > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => setFiltroConvenio(c.nome)}
-                            className="text-suave hover:text-texto font-semibold"
-                          >
-                            Filtrar médicos
-                          </button>
-                        )}
-                      </div>
-                    </div>
+                    </Link>
                   );
                 })}
               </div>

@@ -58,6 +58,7 @@ export type Profissional = {
   idadeMinima?: number;
   procedimentos: string[];
   exames: string[];
+  valor?: string;
   atende: Record<string, string>;
   restricoes: Restricao[];
   observacoes: string;

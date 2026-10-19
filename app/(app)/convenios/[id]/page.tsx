@@ -15,11 +15,11 @@ import {
   TriangleAlert,
   X,
 } from "lucide-react";
-import { useItemDeOutraUnidade, useStore } from "@/lib/store";
+import { useItemDeOutraUnidade, useStore, type Painel } from "@/lib/store";
 import { atende, combina, conflitosPlanos, gruposPlanosDoConvenio, observacoesDoConvenio, resumoRedes } from "@/lib/regras";
 import { salvarConvenio } from "@/lib/repositorio";
-import type { GrupoPlano, GrupoPlanoStatus, Profissional, Tipo } from "@/lib/modelo";
-import { Atualizado, Avatar, Botao, LogoMarca, Segmentado, SeletorBusca, Vazio } from "@/components/ui";
+import { DIAS, type Exame, type GrupoPlano, type GrupoPlanoStatus, type Profissional, type Tipo } from "@/lib/modelo";
+import { Atualizado, Avatar, Botao, Chip, LogoMarca, Segmentado, SeletorBusca, Vazio } from "@/components/ui";
 
 export default function PaginaConvenioDetalhes() {
   const { id } = useParams<{ id: string }>();
@@ -120,46 +120,7 @@ export default function PaginaConvenioDetalhes() {
     );
   };
 
-  const listaProfissionais = (tipo: Tipo) => {
-    const l = quem(tipo);
-    return (
-      <div className="rounded-3xl border border-borda bg-superficie p-5 shadow-card">
-        <h3 className="mb-4 flex items-center gap-2 font-bold">
-          <span
-            className={`grid size-8 place-items-center rounded-lg ${
-              tipo === "consulta" ? "bg-verde-claro text-verde" : "bg-azul-claro text-azul"
-            }`}
-          >
-            {tipo === "consulta" ? <Stethoscope className="size-4" /> : <FlaskConical className="size-4" />}
-          </span>
-          {tipo === "consulta" ? "Consultas credenciadas" : "Exames credenciados"}
-          <span className="ml-auto text-sm font-medium text-suave">{l.length}</span>
-        </h3>
-        {l.length ? (
-          <div className="space-y-1">
-            {l.map((p, i) => (
-              <Link
-                key={p.id}
-                href={`/profissionais/${p.id}`}
-                style={{ "--i": i } as React.CSSProperties}
-                className="entrar pressionavel group flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left hover:bg-fundo"
-              >
-                <Avatar nome={p.nome} />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-semibold">{p.nome}</span>
-                  <span className="text-sm text-suave">{esp(p)}</span>
-                </span>
-                {p.restricoes.length > 0 && <TriangleAlert className="size-4 text-alerta" aria-label="Tem restrição" />}
-                <ChevronRight className="size-4 text-suave/50 transition-transform group-hover:translate-x-0.5" />
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <Vazio texto="Nenhum profissional nesta rede." />
-        )}
-      </div>
-    );
-  };
+
 
   return (
     <div className="space-y-6">
@@ -411,30 +372,166 @@ export default function PaginaConvenioDetalhes() {
           </div>
 
           <div key={subId} className="grid gap-6 md:grid-cols-2">
-            {listaProfissionais("consulta")}
-            {listaProfissionais("exame")}
+            <BlocoProfissionaisRede tipo="consulta" profissionais={quem("consulta")} esp={esp} />
+            <BlocoProfissionaisRede tipo="exame" profissionais={quem("exame")} esp={esp} />
           </div>
 
-          <div className="rounded-3xl border border-borda bg-superficie p-6 shadow-card">
-            <h3 className="mb-3 text-base font-bold text-texto">Exames credenciados nesta rede</h3>
-            {exames.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {exames.map((e) => (
-                  <button
-                    key={e.id}
-                    onClick={() => abrir({ tipo: "exame", id: e.id })}
-                    className="pressionavel rounded-xl bg-azul-claro px-3.5 py-2 text-sm font-semibold text-azul transition hover:brightness-95"
-                  >
-                    {e.nome}
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <Vazio texto="Nenhum exame credenciado nesta rede." />
-            )}
-          </div>
+          <BlocoExamesRede exames={exames} abrir={abrir} />
         </div>
       )}
     </div>
   );
 }
+
+function BlocoProfissionaisRede({
+  tipo,
+  profissionais,
+  esp,
+}: {
+  tipo: Tipo;
+  profissionais: Profissional[];
+  esp: (p: Profissional) => string | undefined;
+}) {
+  const [busca, setBusca] = useState("");
+  const q = busca.trim();
+  const ehConsulta = tipo === "consulta";
+
+  const filtrados = useMemo(() => {
+    if (!q) return profissionais;
+    return profissionais.filter((p) => combina(p.nome, q) || combina(esp(p) ?? "", q));
+  }, [profissionais, esp, q]);
+
+  const hoje = DIAS[new Date().getDay() - 1];
+
+  return (
+    <div className="rounded-3xl border border-borda bg-superficie p-5 shadow-card space-y-3">
+      <div className="flex items-center gap-2 font-bold">
+        <span
+          className={`grid size-8 place-items-center rounded-lg ${
+            ehConsulta ? "bg-verde-claro text-verde" : "bg-azul-claro text-azul"
+          }`}
+        >
+          {ehConsulta ? <Stethoscope className="size-4" /> : <FlaskConical className="size-4" />}
+        </span>
+        <h3 className="text-base font-bold text-texto">
+          {ehConsulta ? "Profissionais para consulta" : "Profissionais para exames"}
+        </h3>
+        <span className="ml-auto text-sm font-medium text-suave">{profissionais.length}</span>
+      </div>
+
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-suave" />
+        <input
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+          placeholder={`Pesquisar profissional por nome ou especialidade...`}
+          className="h-9 w-full rounded-xl border border-borda bg-fundo pl-9 pr-8 text-xs outline-none transition focus:border-verde focus:ring-2 focus:ring-verde/15"
+        />
+        {busca && (
+          <button
+            type="button"
+            onClick={() => setBusca("")}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-suave hover:text-texto"
+          >
+            <X className="size-3.5" />
+          </button>
+        )}
+      </div>
+
+      {profissionais.length ? (
+        filtrados.length ? (
+          <div className="space-y-1.5 max-h-96 overflow-y-auto pr-1">
+            {filtrados.map((p, i) => {
+              const atendeHoje = hoje ? p.horarios.some((h) => h.dia === hoje) : false;
+              return (
+                <Link
+                  key={p.id}
+                  href={`/profissionais/${p.id}`}
+                  style={{ "--i": Math.min(i, 10) } as React.CSSProperties}
+                  className="entrar pressionavel group flex w-full items-center gap-3 rounded-2xl border border-borda/60 bg-superficie px-3 py-2.5 text-left transition hover:border-verde/40 hover:bg-verde-claro/20"
+                >
+                  <Avatar nome={p.nome} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-semibold text-sm text-texto">{p.nome}</span>
+                    <span className="block text-xs text-suave">{esp(p)}</span>
+                  </span>
+                  {atendeHoje && (
+                    <Chip tom="verde">
+                      <span className="pulso size-1.5 rounded-full bg-verde" /> Atende hoje
+                    </Chip>
+                  )}
+                  {p.restricoes.length > 0 && (
+                    <TriangleAlert className="size-4 text-alerta shrink-0" aria-label="Tem restrição" />
+                  )}
+                  <ChevronRight className="size-4 text-suave/50 transition-transform group-hover:translate-x-0.5" />
+                </Link>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="py-2 text-center text-xs text-suave">Nenhum profissional com &ldquo;{busca}&rdquo; nesta rede.</p>
+        )
+      ) : (
+        <Vazio texto={ehConsulta ? "Nenhum profissional para consulta nesta rede." : "Nenhum profissional para exames nesta rede."} />
+      )}
+    </div>
+  );
+}
+
+function BlocoExamesRede({ exames, abrir }: { exames: Exame[]; abrir: (p: Painel) => void }) {
+  const [busca, setBusca] = useState("");
+  const q = busca.trim();
+  const filtrados = useMemo(() => {
+    if (!q) return exames;
+    return exames.filter((e) => combina(e.nome, q));
+  }, [exames, q]);
+
+  return (
+    <div className="rounded-3xl border border-borda bg-superficie p-6 shadow-card space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-base font-bold text-texto">Exames cobertos nesta rede</h3>
+        <span className="text-sm font-medium text-suave">{exames.length}</span>
+      </div>
+      {exames.length > 6 && (
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-suave" />
+          <input
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder={`Buscar entre os ${exames.length} exames cobertos...`}
+            className="h-9 w-full rounded-xl border border-borda bg-fundo pl-9 pr-8 text-xs outline-none transition focus:border-verde focus:ring-2 focus:ring-verde/15"
+          />
+          {busca && (
+            <button
+              type="button"
+              onClick={() => setBusca("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-suave hover:text-texto"
+            >
+              <X className="size-3.5" />
+            </button>
+          )}
+        </div>
+      )}
+      {exames.length > 0 ? (
+        filtrados.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {filtrados.map((e) => (
+              <button
+                key={e.id}
+                onClick={() => abrir({ tipo: "exame", id: e.id })}
+                className="pressionavel rounded-xl bg-azul-claro px-3.5 py-2 text-sm font-semibold text-azul transition hover:brightness-95"
+              >
+                {e.nome}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className="py-2 text-center text-xs text-suave">Nenhum exame encontrado com &ldquo;{busca}&rdquo;.</p>
+        )
+      ) : (
+        <Vazio texto="Nenhum exame credenciado nesta rede." />
+      )}
+    </div>
+  );
+}
+

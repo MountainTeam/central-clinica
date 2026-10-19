@@ -5,9 +5,9 @@ import { createContext, useContext, useMemo, useState } from "react";
 import { ChevronDown, Search, X } from "lucide-react";
 import { useStore, type Formulario } from "@/lib/store";
 import { DIAS, type Convenio, type DadosClinica, type Exame, type GrupoPlano, type Horario, type Papel, type Profissional, type Restricao } from "@/lib/modelo";
-import { PAPEIS } from "@/lib/permissoes";
-import { combina, corDoIndice, gruposPlanosDoConvenio, juntarRedes, montarRedes, novoId, observacoesDoConvenio, slug } from "@/lib/regras";
+import { combina, corDoIndice, formatarValor, gruposPlanosDoConvenio, juntarRedes, montarRedes, novoId, observacoesDoConvenio, slug, valorSemCifrao } from "@/lib/regras";
 import { excluirConvenio, excluirEspecialidade, excluirExame, excluirProfissional, excluirUsuario, salvarClinica, salvarConvenio, salvarEspecialidade, salvarExame, salvarExameComProfissionais, salvarOrganizacao, salvarProfissional, salvarUsuario } from "@/lib/repositorio";
+import { PAPEIS } from "@/lib/permissoes";
 import { Botao, EnvioLogo, Gaveta, LogoMarca, SeletorConvenio, useFecharGaveta } from "./ui";
 
 export const campo = "w-full rounded-xl border border-borda bg-superficie px-3 py-2.5 text-[15px] outline-none transition placeholder:text-suave focus:border-verde focus:ring-4 focus:ring-verde/15";
@@ -23,6 +23,31 @@ export function Campo({ rotulo, children, dica, grupo }: { rotulo: string; child
     </Tag>
   );
 }
+
+// Campo de valor monetário com prefixo fixo R$ e formatação automática ao perder o foco
+export function InputMoeda({ name, defaultValue, placeholder = "0,00" }: { name: string; defaultValue?: string; placeholder?: string }) {
+  const [val, setVal] = useState(() => valorSemCifrao(defaultValue));
+
+  return (
+    <div className="relative flex items-center">
+      <span className="pointer-events-none absolute left-3.5 text-sm font-bold text-verde">R$</span>
+      <input
+        name={name}
+        value={val}
+        onChange={(e) => setVal(e.target.value.replace(/^R\$\s*/i, ""))}
+        onBlur={() => {
+          if (val.trim()) {
+            setVal(valorSemCifrao(val));
+          }
+        }}
+        inputMode="decimal"
+        placeholder={placeholder}
+        className={`${campo} pl-11 font-medium`}
+      />
+    </div>
+  );
+}
+
 
 // Dias e horários: um intervalo por dia, com campos nativos de hora
 export function EditorHorarios({ valor }: { valor: Horario[] }) {
@@ -406,6 +431,7 @@ function FormProfissional({ id }: { id?: string }) {
       especialidadeId: String(f.get("especialidade")),
       horarios: lerHorarios(f),
       idadeMinima: Number(f.get("idade")) || undefined,
+      valor: String(f.get("valor") ?? "").trim() ? formatarValor(String(f.get("valor") ?? "").trim()) : undefined,
       procedimentos: String(f.get("procedimentos")).split(",").map((x) => x.trim()).filter(Boolean),
       exames: dados.exames.filter((e) => f.get(`ex:${e.id}`)).map((e) => e.id),
       atende,
@@ -433,6 +459,9 @@ function FormProfissional({ id }: { id?: string }) {
           </select>
         </Campo>
         <Campo rotulo="Idade mínima do paciente"><input name="idade" type="number" min={0} defaultValue={p?.idadeMinima} placeholder="Sem limite" className={campo} /></Campo>
+        <Campo rotulo="Valor particular" dica="Só o valor da consulta sem convênio.">
+          <InputMoeda name="valor" defaultValue={p?.valor} />
+        </Campo>
       </div>
       <div>
         <span className="mb-1.5 block text-sm font-semibold">Dias e horários de atendimento</span>
@@ -633,7 +662,7 @@ function SeletorExamesProfissional({
                   />
                   <span className="truncate">{e.nome}</span>
                 </div>
-                {e.valor && <span className="text-[13px] font-normal text-suave">{e.valor}</span>}
+                {e.valor && <span className="text-[13px] font-normal text-suave">{formatarValor(e.valor)}</span>}
               </label>
             );
           })
@@ -1008,7 +1037,7 @@ function FormExame({ id }: { id?: string }) {
       clinicaId: clinica.id,
       nome,
       preparo: linhas(f.get("preparo")),
-      valor: String(f.get("valor") ?? "").trim(),
+      valor: String(f.get("valor") ?? "").trim() ? formatarValor(String(f.get("valor") ?? "").trim()) : "",
       observacoes: String(f.get("observacoes") ?? "").trim(),
       documentos: String(f.get("documentos") ?? "").trim() || undefined,
       observacoesInternas: String(f.get("observacoesInternas") ?? "").trim() || undefined,
@@ -1035,7 +1064,7 @@ function FormExame({ id }: { id?: string }) {
         <input name="documentos" defaultValue={ex?.documentos} className={campo} />
       </Campo>
       <Campo rotulo="Valor particular" dica="Só o valor sem convênio. O que o convênio paga fica com o faturamento.">
-        <input name="valor" defaultValue={ex?.valor} placeholder="Ex.: R$ 150,00" className={campo} />
+        <InputMoeda name="valor" defaultValue={ex?.valor} />
       </Campo>
       <Campo rotulo="Observações" dica="Avisos para a central, ex.: só às terças, agendar com 7 dias de antecedência.">
         <textarea name="observacoes" rows={3} defaultValue={ex?.observacoes} className={campo} />

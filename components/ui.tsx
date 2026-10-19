@@ -6,8 +6,8 @@ import { createContext, useContext, useEffect, useId, useMemo, useRef, useState 
 import * as Icones from "lucide-react";
 import { Activity, Baby, Bone, Brain, Ear, Eye, Heart, HeartPulse, Microscope, Pill, ScanLine, Smile, Stethoscope, Syringe, X, type LucideIcon } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { DIAS_PARA_REVISAR, combina, gruposHorarios, iniciais, subtipoInfo, tempoDesde, trechosDestaque } from "@/lib/regras";
-import type { DadosClinica, Profissional, Tipo } from "@/lib/modelo";
+import { DIAS_PARA_REVISAR, combina, formatarValor, iniciais, subtipoInfo, tempoDesde, trechosDestaque } from "@/lib/regras";
+import { DIAS, type DadosClinica, type Profissional, type Tipo } from "@/lib/modelo";
 
 export function Logo({ claro = false }: { claro?: boolean }) {
   return (
@@ -401,9 +401,17 @@ export function Vazio({ texto }: { texto: string }) {
 export function CartaoProfissional({ p, especialidade, destaque, i, q = "", onAbrir }: {
   p: Profissional; especialidade?: string; destaque?: React.ReactNode; i: number; q?: string; onAbrir?: () => void;
 }) {
+  const [hoje, setHoje] = useState<string | null>(null);
+  useEffect(() => {
+    setHoje(DIAS[new Date().getDay() - 1] ?? null);
+  }, []);
+
+  const atendeHoje = hoje ? p.horarios.some((h) => h.dia === hoje) : false;
+  const temChips = atendeHoje || p.restricoes.length > 0 || !!p.valor;
+
   return (
     <Link href={`/profissionais/${p.id}`} onClick={onAbrir} style={{ "--i": Math.min(i, 10) } as React.CSSProperties}
-      className="entrar pressionavel levanta group flex h-full w-full flex-col gap-4 rounded-3xl border border-borda bg-superficie p-5 text-left shadow-card">
+      className="entrar pressionavel levanta group flex h-full w-full flex-col justify-between gap-4 rounded-3xl border border-borda bg-superficie p-5 text-left shadow-card">
       <div className="flex items-center gap-3">
         <Avatar nome={p.nome} />
         <div className="min-w-0 flex-1">
@@ -412,13 +420,23 @@ export function CartaoProfissional({ p, especialidade, destaque, i, q = "", onAb
         </div>
         <Icones.ChevronRight className="size-5 text-suave/50 transition-transform group-hover:translate-x-0.5 group-hover:text-verde" />
       </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-start gap-1.5 text-sm text-suave">
-          <Icones.CalendarDays className="mt-0.5 size-4 shrink-0" />
-          <div>{p.horarios.length ? gruposHorarios(p.horarios).map((g) => <p key={g}>{g}</p>) : "Horários não informados"}</div>
+      {temChips && (
+        <div className="flex flex-wrap items-center gap-2">
+          {atendeHoje && (
+            <Chip tom="verde">
+              <span className="pulso size-1.5 rounded-full bg-verde" />
+              Atende hoje
+            </Chip>
+          )}
+          {p.restricoes.length > 0 && (
+            <Chip tom="alerta">
+              <Icones.TriangleAlert className="size-3.5" />
+              {p.restricoes.length === 1 ? "1 restrição" : `${p.restricoes.length} restrições`}
+            </Chip>
+          )}
+          {p.valor && <Chip tom="verde">Particular: {formatarValor(p.valor)}</Chip>}
         </div>
-        {p.restricoes.length > 0 && <Chip tom="alerta"><Icones.TriangleAlert className="size-3.5" />{p.restricoes.length === 1 ? "1 restrição" : `${p.restricoes.length} restrições`}</Chip>}
-      </div>
+      )}
       {destaque}
     </Link>
   );
