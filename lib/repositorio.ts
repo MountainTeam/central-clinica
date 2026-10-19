@@ -44,14 +44,20 @@ export function migrar(b: unknown): Banco | null {
   // versão 3 → 4: a central de atendimento ganha papel próprio
   if (banco.versao === 3) banco = { ...banco, versao: 4, usuarios: banco.usuarios.map((u) => u.id === "central-comn" && u.papel === "recepcao" ? { ...u, papel: "central" } : u) };
 
-  // Atualiza ou preenche logos das unidades padrão
+  // Atualiza ou preenche logos das unidades padrão; a unidade que virou "Nossa Clínica" acompanha a semente onde ainda tem o nome antigo
   const semente = pontoZero();
+  const nomeAntigo = (x: { id: string; nome: string }) => x.id === "oncoclinicas-mossoro" && x.nome === "Oncoclínicas Mossoró";
   banco = {
     ...banco,
+    organizacoes: banco.organizacoes.map((o) => (nomeAntigo(o) ? { ...o, nome: semente.organizacoes.find((so) => so.id === o.id)?.nome ?? o.nome } : o)),
     clinicas: banco.clinicas.map((c) => {
       const padrao = semente.clinicas.find((sc) => sc.id === c.id);
+      if (padrao && nomeAntigo(c)) return { ...c, nome: padrao.nome, logo: padrao.logo };
       return !c.logo && padrao?.logo ? { ...c, logo: padrao.logo } : c;
     }),
+    // pedido da clínica em 19/10/2026: a Dra. Teresa realiza a punção (PAAF); quem guardou a semente antiga recebe o vínculo
+    profissionais: banco.profissionais.map((p) =>
+      p.id === "prof-mvb3084bm53mj" && !p.exames.length && banco.exames.some((e) => e.id === "exame-mvb4hbf4v62pg") ? { ...p, exames: ["exame-mvb4hbf4v62pg"] } : p),
   };
 
   return banco.versao === VERSAO ? banco : null;

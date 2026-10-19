@@ -5,7 +5,7 @@ const ORGANIZACOES: Organizacao[] = [
   { id: "oncologia-mastologia", nome: "Clínica de Oncologia e Mastologia" },
   { id: "promater", nome: "Promater" },
   { id: "oncoclinicas", nome: "Oncoclínicas" },
-  { id: "oncoclinicas-mossoro", nome: "Oncoclínicas Mossoró" },
+  { id: "oncoclinicas-mossoro", nome: "Nossa Clínica" },
   { id: "sao-marcos", nome: "Clínica São Marcos" },
 ];
 
@@ -14,7 +14,7 @@ const CLINICAS = [
   { id: "oncy", organizacaoId: "oncologia-mastologia", nome: "ONCY", logo: "/logos/oncy.webp" },
   { id: "promater", organizacaoId: "promater", nome: "Promater", logo: "/logos/promater.webp" },
   { id: "oncoclinicas", organizacaoId: "oncoclinicas", nome: "Oncoclínicas", logo: "/logos/oncoclinicas.webp" },
-  { id: "oncoclinicas-mossoro", organizacaoId: "oncoclinicas-mossoro", nome: "Oncoclínicas Mossoró", logo: "/logos/oncoclinicas-mossoro.webp" },
+  { id: "oncoclinicas-mossoro", organizacaoId: "oncoclinicas-mossoro", nome: "Nossa Clínica", logo: "/logos/nossa-clinica.webp" },
   { id: "sao-marcos", organizacaoId: "sao-marcos", nome: "Clínica São Marcos", logo: "/logos/sao-marcos.webp" },
 ];
 
@@ -239,7 +239,7 @@ const PROFISSIONAIS: Profissional[] = [
     ],
     idadeMinima: 15,
     procedimentos: [],
-    exames: [],
+    exames: ["exame-mvb4hbf4v62pg"],
     atende: {
       "conv-mvb30cmh0be2n-unimed-intercambio": "c",
     },
